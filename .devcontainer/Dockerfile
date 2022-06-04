@@ -3,7 +3,7 @@
 FROM wolframresearch/wolframengine:13.0
 
 # # Install needed packages and setup non-root user. Use a separate RUN statement to add your own dependencies.
-RUN echo ${WOLFRAM_mathpass} 
+RUN echo ${WOLFRAM_MATHPASS} 
 RUN ls -R ~/.WolframEngine
 # > ~/.WolframEngine/Licensing/mathpass
 
