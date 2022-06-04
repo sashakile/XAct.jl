@@ -12,8 +12,8 @@
 	// "settings": {},
 
 	"features": {
-		"python": "latest",
-		"fish":"latest"
+		"python": "latest"
+		// "fish":"latest"
 		// "jupyterlab": {
 		// 	"version": "latest"
 		//   }
