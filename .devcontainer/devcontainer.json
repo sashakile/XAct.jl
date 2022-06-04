@@ -11,10 +11,23 @@
 	// Set *default* container specific settings.json values on container create.
 	"settings": {},
 
+	"features": {
+		"python": "latest",
+		"common": {
+			"username": "automatic",
+			"uid": "automatic",
+			"gid": "automatic",
+			"installZsh": true,
+			"installOhMyZsh": true,
+			"upgradePackages": true,
+			"nonFreePackages": false
+		}
+	},
+
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
   
-  ]
+   ]
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
