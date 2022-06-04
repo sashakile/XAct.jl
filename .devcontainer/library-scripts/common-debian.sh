@@ -26,6 +26,7 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+echo "A"
 # Ensure that login shells get the correct path if the user updated the PATH using ENV.
 rm -f /etc/profile.d/00-restore-env.sh
 echo "export PATH=${PATH//$(sh -lc 'echo $PATH')/\$PATH}" > /etc/profile.d/00-restore-env.sh
@@ -50,6 +51,7 @@ elif [ "${USERNAME}" = "none" ]; then
     USER_GID=0
 fi
 
+echo "B"
 # Load markers to see which steps have already run
 if [ -f "${MARKER_FILE}" ]; then
     echo "Marker file found:"
@@ -71,6 +73,7 @@ apt_get_update_if_needed()
     fi
 }
 
+echo "C"
 # Run install apt-utils to avoid debconf warning then verify presence of other common developer tools and dependencies
 if [ "${PACKAGES_ALREADY_INSTALLED}" != "true" ]; then
 
@@ -164,6 +167,7 @@ if [ "${PACKAGES_ALREADY_INSTALLED}" != "true" ]; then
     PACKAGES_ALREADY_INSTALLED="true"
 fi
 
+echo "D"
 # Get to latest versions of all packages
 if [ "${UPGRADE_PACKAGES}" = "true" ]; then
     apt_get_update_if_needed
@@ -171,6 +175,7 @@ if [ "${UPGRADE_PACKAGES}" = "true" ]; then
     apt-get autoremove -y
 fi
 
+echo "E"
 # Ensure at least the en_US.UTF-8 UTF-8 locale is available.
 # Common need for both applications and things like the agnoster ZSH theme.
 if [ "${LOCALE_ALREADY_SET}" != "true" ] && ! grep -o -E '^\s*en_US.UTF-8\s+UTF-8' /etc/locale.gen > /dev/null; then
@@ -179,6 +184,7 @@ if [ "${LOCALE_ALREADY_SET}" != "true" ] && ! grep -o -E '^\s*en_US.UTF-8\s+UTF-
     LOCALE_ALREADY_SET="true"
 fi
 
+echo "F"
 # Create or update a non-root user to match UID/GID.
 group_name="${USERNAME}"
 if id -u ${USERNAME} > /dev/null 2>&1; then
@@ -229,6 +235,7 @@ if  [ ! -f "${user_rc_path}/.profile" ] || [ ! -s "${user_rc_path}/.profile" ] ;
     cp  /etc/skel/.profile "${user_rc_path}/.profile"
 fi
 
+echo "G"
 # .bashrc/.zshrc snippet
 rc_snippet="$(cat << 'EOF'
 
