@@ -5,7 +5,7 @@
 	"build": {
 		"dockerfile": "Dockerfile",
 		// [Optional] You can use build args to set options. e.g. 'VARIANT' below affects the image in the Dockerfile
-		"args": { "WOLFRAM_MATHPASS": "buster" }
+		"args": { "WOLFRAM_MATHPASS": "${localEnv:WOLFRAM_MATHPASS}" }
 	},
 
 	// Set *default* container specific settings.json values on container create.
