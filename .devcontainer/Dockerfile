@@ -4,7 +4,7 @@ FROM wolframresearch/wolframengine:13.0
 
 ARG INSTALL_ZSH="true"
 ARG UPGRADE_PACKAGES="true"
-ARG USERNAME=vscode
+ARG USERNAME=root
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 # Install needed packages and setup non-root user. Use a separate RUN statement to add your own dependencies.
