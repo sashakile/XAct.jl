@@ -12,11 +12,11 @@
 	// "settings": {},
 
 	"features": {
-		"python": "latest"
-		// "fish":"latest"
-		// "jupyterlab": {
-		// 	"version": "latest"
-		//   }
+		"python": "latest",
+		"fish":"latest",
+		"jupyterlab": {
+			"version": "latest"
+		  }
 	},
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
