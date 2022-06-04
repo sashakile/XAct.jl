@@ -13,19 +13,18 @@
 
 	"features": {
 		"python": "latest",
-		"common": {
-			"username": "automatic",
-			"uid": "automatic",
-			"gid": "automatic",
-			"installZsh": true,
-			"installOhMyZsh": true,
-			"upgradePackages": true,
-			"nonFreePackages": false
-		}
+		"fish":"latest",
+		"jupyterlab": {
+			"version": "latest"
+		  }
 	},
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
-  
+  "eamodio.gitlens",
+  "ms-python.python",
+  "ms-python.vscode-pylance",
+  "vscodevim.vim",
+  "WolframResearch.wolfram"
    ]
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
