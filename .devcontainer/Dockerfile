@@ -8,9 +8,10 @@ USER root
 RUN mkdir -p ~/.WolframEngine/Licensing
 RUN echo -e ${WOLFRAM_MATHPASS} > ~/.WolframEngine/Licensing/mathpass
 
+RUN wolframscript -code 'PacletInstall["CodeParser"] PacletInstall["CodeInspector"] PacletInstall["CodeFormatter"] PacletInstall["LSPServer"]'
 
 # from https://github.com/WolframResearch/AWSLambda-WolframLanguage/blob/c85d96b8625c5935b3bffe094cc456fd0b477ab2/Dockerfile#L5
-
 # temporary workaround for bug(413167)
 RUN apt-get update -y && \
     apt-get install -y libglib2.0-0
+
