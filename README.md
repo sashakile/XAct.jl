@@ -40,9 +40,10 @@ See [SETUP.md](SETUP.md) for complete installation and usage guide.
 
 ```
 sxAct/
+├── .claude/commands/           # Claude Code commands
+│   └── dump-session.md        # Session notes template
 ├── docker-compose.yml          # Wolfram Engine setup
 ├── SETUP.md                    # Complete setup guide
-├── dump-session.md             # Session notes template
 ├── notebooks/                  # Example scripts
 │   ├── test_xact.wls          # xAct demo
 │   └── test_python_wolfram.py # Python example
