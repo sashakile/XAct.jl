@@ -8,7 +8,8 @@
 
 Create TOML-based test specifications that can be executed against:
 - **Oracle:** Wolfram xAct (ground truth)
-- **Implementations:** Python, Julia
+- **Primary Implementation:** Julia (performance-critical core)
+- **Secondary Access:** Python wrapper (around Julia core)
 
 Focus on **xCore, xPerm, xTensor** with regression tests extracted from documentation notebooks.
 
@@ -20,17 +21,25 @@ Focus on **xCore, xPerm, xTensor** with regression tests extracted from document
 - Performance-critical C code for permutation algorithms (xPerm)
 
 **Migration Goals:**
-- Port xAct functionality to Python and Julia
+- Port xAct functionality to Julia (primary implementation)
+- Create Python wrapper for broad accessibility
 - Create language-agnostic test framework
 - Enable oracle testing against Wolfram xAct
 - Performance comparison across implementations
 
 **Scope Decisions:**
 - Packages: xCore, xPerm, xTensor (core trio)
-- Languages: Python, Julia
+- Primary Language: Julia (native performance)
+- Python Access: Wrapper via PyJulia/PythonCall.jl
 - Test format: TOML (over YAML for explicitness)
 - Oracle: Wolfram xAct as ground truth
 - Coverage: Regression test suite from documentation notebooks
+
+**Rationale for Julia-First Approach:**
+- Julia provides C-like performance with high-level expressiveness
+- Suitable for performance-critical tensor operations and permutation algorithms
+- Python wrapper enables broad ecosystem access without sacrificing performance
+- Julia's native TOML support and JIT compilation optimize the migration
 
 ---
 
@@ -312,14 +321,15 @@ harness/
 │   ├── runner.py              # Execute via wolframclient
 │   ├── oracle_generator.py   # Generate ground truth
 │   └── serializer.py          # Wolfram → JSON conversion
-├── python/
-│   ├── runner.py              # Python xTensor implementation
-│   ├── adapter.py             # Map TOML actions to Python API
-│   └── __init__.py
 ├── julia/
-│   ├── runner.jl
-│   ├── adapter.jl
+│   ├── runner.jl              # Julia core implementation runner
+│   ├── adapter.jl             # Map TOML actions to Julia API
 │   └── Project.toml           # Julia also uses TOML!
+├── python/
+│   ├── runner.py              # Python wrapper runner
+│   ├── adapter.py             # Map TOML actions to Python wrapper API
+│   ├── julia_bridge.py        # PyJulia/PythonCall integration
+│   └── __init__.py
 └── cli.py                      # Main test runner
 ```
 
@@ -463,17 +473,20 @@ commands_file = "oracle/schwarzschild.wl"
 # Run all tests against Wolfram (generate oracle)
 ./harness/cli.py run --target wolfram --output oracle/
 
-# Run Python tests against oracle
+# Run Julia core tests against oracle
+./harness/cli.py run --target julia --compare oracle/
+
+# Run Python wrapper tests against oracle
 ./harness/cli.py run --target python --compare oracle/
 
 # Run specific test file
 ./harness/cli.py run --target julia --file tests/perm/canonicalization.toml
 
 # Filter by tags
-./harness/cli.py run --target python --tags contraction,critical
+./harness/cli.py run --target julia --tags contraction,critical
 
-# Performance benchmarks
-./harness/cli.py bench --targets wolfram,python,julia --output results/
+# Performance benchmarks (Julia core + Python wrapper)
+./harness/cli.py bench --targets wolfram,julia,python --output results/
 
 # Validate all TOML files
 ./harness/cli.py validate tests/
@@ -605,8 +618,8 @@ After extraction:
   "test_suite": "xAct Core",
   "implementations": {
     "wolfram": {"version": "14.3.0"},
-    "python": {"version": "0.1.0", "sympy": "1.12"},
-    "julia": {"version": "0.1.0", "julia": "1.12.3"}
+    "julia": {"version": "0.1.0", "julia": "1.12.3"},
+    "python": {"version": "0.1.0", "wrapper": "pyjulia", "julia_backend": "0.1.0"}
   },
   "results": [
     {
@@ -636,8 +649,8 @@ After extraction:
   ],
   "summary": {
     "total_tests": 150,
-    "python": {"passed": 142, "failed": 8, "avg_speedup": 0.24},
-    "julia": {"passed": 148, "failed": 2, "avg_speedup": 0.73}
+    "julia": {"passed": 150, "failed": 0, "avg_speedup": 0.91},
+    "python": {"passed": 148, "failed": 2, "avg_speedup": 0.77, "wrapper_overhead": "15%"}
   }
 }
 ```
@@ -741,10 +754,10 @@ end
 8. Generate full oracle database
 
 ### Phase 3: Harness (Week 3)
-9. Build Python test runner
-10. Build Julia test runner (with TOML.jl)
-11. Implement comparison logic
-12. Add performance benchmarking
+9. Build Julia core test runner (with TOML.jl)
+10. Build Python wrapper test runner (with PyJulia)
+11. Implement comparison logic (oracle vs Julia vs Python)
+12. Add performance benchmarking (track wrapper overhead)
 
 ### Phase 4: Validation (Week 4)
 13. Run full test suite
@@ -820,8 +833,14 @@ This design provides:
 - ✅ Comprehensive metrics (time, memory, startup, simplification depth)
 - ✅ Regression test extraction from notebooks
 - ✅ Focus on xCore/xPerm/xTensor
-- ✅ Python + Julia targets
+- ✅ Julia core implementation (performance target)
+- ✅ Python wrapper (accessibility target)
 - ✅ Explicit, unambiguous syntax via TOML
 - ✅ Native support in target languages
+
+**Migration Architecture:**
+- **Julia core** provides native performance (≤5x slower than Wolfram)
+- **Python wrapper** provides ecosystem access (≤10x slower than Wolfram including wrapper overhead)
+- **Shared test suite** validates both implementations against oracle
 
 The framework enables systematic migration validation and performance comparison across implementations while maintaining mathematical correctness through oracle testing.

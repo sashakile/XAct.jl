@@ -23,17 +23,24 @@ The framework uses **three testing layers** that serve both goals synergisticall
 
 ## Dual-Purpose Framework Goals
 
-### 🎯 Goal 1: Migration Validation (xAct → Python/Julia)
+### 🎯 Goal 1: Migration Validation (xAct → Julia → Python)
+
+**Migration Strategy**:
+- **Primary Implementation**: Julia (performance-critical core)
+- **Python Access**: Python wrapper around Julia implementation
+- **Rationale**: Julia provides native performance close to C while maintaining high-level expressiveness, Python wrapper ensures broad accessibility
 
 **Objective**: Ensure migrated implementations are:
 - Mathematically correct (same results as Wolfram xAct)
-- Performant enough for practical use
+- Performant enough for practical use (Julia core enables this)
 - Complete (all core functionality ported)
+- Accessible from Python (via wrapper layer)
 
 **Test Strategy**:
 - Oracle-based regression testing
 - Performance comparison against Wolfram baseline
 - Extracted test cases from xAct documentation notebooks
+- Test Julia core directly and Python wrapper separately
 
 ### 🎯 Goal 2: Mathematical Property Specification Research
 
@@ -270,14 +277,13 @@ These properties describe:
 4. **What equivalence means** (numerical tolerance, symbolic equality, etc.)
 
 **Any language implementing tensor algebra should satisfy these properties**, making them reusable across:
-- Python (NumPy, SymPy, PyTensor)
-- Julia (TensorOperations.jl, AbstractTensors.jl)
-- Rust (ndarray, tensor-rs)
-- C++ (Eigen, TensorFlow)
-- Haskell (hmatrix, accelerate)
+- **Julia (core implementation)** - Primary migration target
+- **Python (wrapper)** - Accesses Julia core via PyJulia/PythonCall.jl
+- Other implementations (Rust, C++, Haskell, etc.) - Future validation targets
 
 **Migration Support** (Goal 1):
-- If Python violates associativity but Wolfram doesn't → migration bug
+- If Julia core violates associativity but Wolfram doesn't → migration bug
+- If Python wrapper produces different results than Julia core → wrapper bug
 - Catches subtle semantic differences between implementations
 - Validates mathematical correctness beyond specific examples
 
@@ -399,27 +405,27 @@ outlier_threshold_stdev = 3.0
 
 ### Scenario 2: Comparing Implementations
 
-Run all three layers against Wolfram, Python, Julia:
+Run all three layers against Wolfram, Julia core, Python wrapper:
 
 ```bash
-./harness/cli.py run --layers all --targets wolfram,python,julia --output comparison_report.json
+./harness/cli.py run --layers all --targets wolfram,julia,python --output comparison_report.json
 ```
 
 **Layer 1 Results**:
 - Wolfram: 150/150 ✅
-- Python: 148/150 (2 failures)
-- Julia: 150/150 ✅
+- Julia (core): 150/150 ✅
+- Python (wrapper): 148/150 (2 failures in wrapper layer)
 
 **Layer 2 Results**:
 - Wolfram: 25/25 properties ✅
-- Python: 23/25 properties (associativity violation found!)
-- Julia: 25/25 properties ✅
+- Julia (core): 25/25 properties ✅
+- Python (wrapper): 25/25 properties ✅ (wrapper correctly calls Julia)
 
 **Layer 3 Results**:
-- Python: 1.8x slower than Wolfram (✅ usable)
-- Julia: 1.1x slower than Wolfram (✅ excellent)
+- Julia (core): 1.1x slower than Wolfram (✅ excellent)
+- Python (wrapper): 1.3x slower than Wolfram (✅ usable, includes wrapper overhead)
 
-**Conclusion**: Python has a mathematical bug (Layer 2), Julia is ready for production.
+**Conclusion**: Julia core is production-ready. Python wrapper needs 2 bug fixes but performance overhead is acceptable.
 
 ---
 
@@ -822,7 +828,21 @@ def test_contraction_associativity(num_samples=100):
 
 ## Open Questions for Refinement
 
-### 1. Property Generator Details
+### 1. Julia-Python Wrapper Testing Strategy
+
+**Question**: How should the Python wrapper be tested?
+
+**Options**:
+- **A**: Python wrapper runs same tests as Julia core (validates wrapper correctness)
+- **B**: Python wrapper has separate test suite (validates Python-specific concerns)
+- **C**: Hybrid - same TOML tests, additional wrapper-specific tests
+
+**Recommendation**: Option C
+- Run all TOML tests against both Julia core and Python wrapper (validates wrapper correctness)
+- Add Python-specific wrapper tests (validates data conversion, error handling, etc.)
+- Track wrapper overhead separately in performance tests
+
+### 2. Property Generator Details
 
 **Question**: How should random tensor generation balance coverage and validity?
 
@@ -833,7 +853,7 @@ def test_contraction_associativity(num_samples=100):
 
 **Recommendation**: Option C - most property violations occur at boundaries.
 
-### 2. Property Specification Language
+### 3. Property Specification Language
 
 **Question**: What level of formality for property specifications?
 
@@ -845,7 +865,7 @@ def test_contraction_associativity(num_samples=100):
 
 **Recommendation**: Start with B (AST), evaluate C (formal methods) in Phase 4.
 
-### 3. Oracle Role in Property Testing
+### 4. Oracle Role in Property Testing
 
 **Question**: Should properties be verified against Wolfram oracle?
 
@@ -861,7 +881,7 @@ def test_contraction_associativity(num_samples=100):
 
 **Recommendation**: Always verify oracle, but allow override flag `oracle_is_axiom = true` for properties we trust more than implementations.
 
-### 4. Failure Taxonomy and Reporting
+### 5. Failure Taxonomy and Reporting
 
 **Question**: How should different failure types be reported?
 
@@ -881,7 +901,7 @@ def test_contraction_associativity(num_samples=100):
 
 **Recommendation**: Implement this taxonomy in test harness with separate exit codes.
 
-### 5. Incremental Implementation Strategy
+### 6. Incremental Implementation Strategy
 
 **Question**: How to handle expected failures during development?
 
@@ -914,25 +934,29 @@ xfail_implementations = ["python", "julia"]  # Wolfram should still pass
 **Success = All three criteria met**:
 
 1. **Correctness**: ≥95% of Layer 1 + Layer 2 tests pass
-   - Layer 1: Direct oracle comparison
-   - Layer 2: Mathematical properties hold
+   - Julia core: Direct oracle comparison
+   - Python wrapper: Matches Julia core results
+   - Layer 2: Mathematical properties hold for both
 
-2. **Performance**: ≤5x slower than Wolfram xAct
+2. **Performance**:
+   - Julia core: ≤5x slower than Wolfram xAct
+   - Python wrapper: ≤10x slower than Wolfram (includes wrapper overhead)
    - Layer 3: Median execution time across benchmark suite
-   - Excludes JIT compilation overhead (measured separately)
+   - JIT compilation overhead measured and reported separately
 
 3. **Completeness**: Core packages fully ported
-   - xCore: 100% (manifolds, tensors, indices)
-   - xPerm: 100% (canonicalization, symmetries)
-   - xTensor: 100% (covariant derivatives, curvature)
+   - xCore: 100% (manifolds, tensors, indices) in Julia
+   - xPerm: 100% (canonicalization, symmetries) in Julia
+   - xTensor: 100% (covariant derivatives, curvature) in Julia
+   - Python wrapper: 100% coverage of Julia core API
 
 ### Goal 2: Reusable Mathematical Specifications
 
 **Success = Research contribution validated**:
 
-1. **Reusability**: Same property tests run on ≥3 languages
-   - Wolfram, Python, Julia (required)
-   - Bonus: Rust, C++, Haskell
+1. **Reusability**: Same property tests run on ≥3 targets
+   - Wolfram xAct, Julia core, Python wrapper (required)
+   - Bonus: Independent implementations in Rust, C++, Haskell
 
 2. **Expressiveness**: Catalog of ≥20 core tensor algebra properties
    - Covers: Algebra, symmetries, differential geometry, GR
