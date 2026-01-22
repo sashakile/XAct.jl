@@ -12,6 +12,17 @@ bd close <id>         # Complete work
 bd sync               # Sync with git
 ```
 
+## Testing
+
+```bash
+uv run pytest tests/                    # Run fast tests (skips oracle tests if server unavailable)
+uv run pytest tests/ -m oracle          # Run oracle tests only (requires Docker oracle)
+uv run pytest tests/ -m "not slow"      # Exclude slow tests (default recommendation)
+uv run pytest tests/ -m slow            # Run slow tests only (xAct loading ~3+ min)
+```
+
+**Note:** Tests marked `@pytest.mark.slow` (e.g., xAct initialization) take 3+ minutes. Exclude them during normal development with `-m "not slow"`.
+
 ## Landing the Plane (Session Completion)
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
