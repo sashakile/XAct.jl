@@ -1,12 +1,13 @@
-"""Flask HTTP server for Wolfram Engine evaluation."""
+"""Flask HTTP server for Wolfram Engine evaluation with persistent kernel."""
 
-from flask import Flask, request, jsonify
-import subprocess
 import time
 
-app = Flask(__name__)
+from flask import Flask, jsonify, request
 
-INIT_SCRIPT = "/oracle/init.wl"
+from kernel_manager import KernelManager
+
+app = Flask(__name__)
+km = KernelManager()
 
 
 @app.route("/health", methods=["GET"])
@@ -16,58 +17,23 @@ def health():
 
 @app.route("/evaluate", methods=["POST"])
 def evaluate():
+    """Evaluate a Wolfram expression (without xAct)."""
     data = request.get_json()
     if not data or "expr" not in data:
         return jsonify({"status": "error", "error": "Missing 'expr' field"}), 400
 
     expr = data["expr"]
-    timeout = data.get("timeout", 30)
+    timeout = int(data.get("timeout", 30))
 
     start = time.time()
-    try:
-        result = subprocess.run(
-            ["wolframscript", "-code", expr],
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-        elapsed_ms = int((time.time() - start) * 1000)
+    ok, result, error = km.evaluate(expr, timeout, with_xact=False)
+    elapsed_ms = int((time.time() - start) * 1000)
 
-        if result.returncode == 0:
-            return jsonify(
-                {
-                    "status": "ok",
-                    "result": result.stdout.strip(),
-                    "timing_ms": elapsed_ms,
-                }
-            )
-        else:
-            return jsonify(
-                {
-                    "status": "error",
-                    "result": result.stdout.strip(),
-                    "error": result.stderr.strip(),
-                    "timing_ms": elapsed_ms,
-                }
-            )
-    except subprocess.TimeoutExpired:
-        elapsed_ms = int((time.time() - start) * 1000)
-        return jsonify(
-            {
-                "status": "timeout",
-                "error": f"Evaluation timed out after {timeout}s",
-                "timing_ms": elapsed_ms,
-            }
-        )
-    except Exception as e:
-        elapsed_ms = int((time.time() - start) * 1000)
-        return jsonify(
-            {
-                "status": "error",
-                "error": str(e),
-                "timing_ms": elapsed_ms,
-            }
-        )
+    if ok:
+        return jsonify({"status": "ok", "result": result, "timing_ms": elapsed_ms})
+    else:
+        status = "timeout" if error and "timed out" in error else "error"
+        return jsonify({"status": status, "error": error, "timing_ms": elapsed_ms})
 
 
 @app.route("/evaluate-with-init", methods=["POST"])
@@ -78,55 +44,17 @@ def evaluate_with_init():
         return jsonify({"status": "error", "error": "Missing 'expr' field"}), 400
 
     expr = data["expr"]
-    timeout = data.get("timeout", 60)
-
-    full_expr = f'Get["{INIT_SCRIPT}"]; {expr}'
+    timeout = int(data.get("timeout", 60))
 
     start = time.time()
-    try:
-        result = subprocess.run(
-            ["wolframscript", "-code", full_expr],
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-        elapsed_ms = int((time.time() - start) * 1000)
+    ok, result, error = km.evaluate(expr, timeout, with_xact=True)
+    elapsed_ms = int((time.time() - start) * 1000)
 
-        if result.returncode == 0:
-            return jsonify(
-                {
-                    "status": "ok",
-                    "result": result.stdout.strip(),
-                    "timing_ms": elapsed_ms,
-                }
-            )
-        else:
-            return jsonify(
-                {
-                    "status": "error",
-                    "result": result.stdout.strip(),
-                    "error": result.stderr.strip(),
-                    "timing_ms": elapsed_ms,
-                }
-            )
-    except subprocess.TimeoutExpired:
-        elapsed_ms = int((time.time() - start) * 1000)
-        return jsonify(
-            {
-                "status": "timeout",
-                "error": f"Evaluation timed out after {timeout}s",
-                "timing_ms": elapsed_ms,
-            }
-        )
-    except Exception as e:
-        elapsed_ms = int((time.time() - start) * 1000)
-        return jsonify(
-            {
-                "status": "error",
-                "error": str(e),
-                "timing_ms": elapsed_ms,
-            }
-        )
+    if ok:
+        return jsonify({"status": "ok", "result": result, "timing_ms": elapsed_ms})
+    else:
+        status = "timeout" if error and "timed out" in error else "error"
+        return jsonify({"status": status, "error": error, "timing_ms": elapsed_ms})
 
 
 if __name__ == "__main__":

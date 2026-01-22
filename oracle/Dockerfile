@@ -8,8 +8,9 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install --break-system-packages flask
+RUN pip3 install --break-system-packages flask wolframclient
 
+COPY kernel_manager.py /oracle/kernel_manager.py
 COPY server.py /oracle/server.py
 COPY init.wl /oracle/init.wl
 

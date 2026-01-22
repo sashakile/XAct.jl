@@ -6,8 +6,9 @@ This document captures quirks, edge cases, and gotchas discovered while working 
 
 ### xAct Load Time
 
-- Loading xAct (`Needs["xAct\`xTensor\`"]`) takes **3-5 minutes** on first invocation
-- Each `/evaluate-with-init` call re-loads xAct (no persistent session yet)
+- Loading xAct (`Needs["xAct\`xTensor\`"]`) takes **~2-3 seconds** on first call (persistent kernel)
+- xAct is loaded once and reused across all `/evaluate-with-init` calls
+- Subsequent calls complete in **~5-10ms** (kernel already initialized)
 - Mark integration tests with `@pytest.mark.slow` to skip during normal development
 
 ### Index Naming
@@ -76,9 +77,10 @@ DefTensor[T[a,b], M, Symmetric[{a,b}]]  (* May silently fail *)
 
 ### Session State
 
-- Each wolframscript invocation starts fresh
-- Tensor definitions do not persist between API calls
-- For multi-step tests, combine all steps in one expression
+- The Oracle uses a **persistent Wolfram kernel** via WSTP (wolframclient)
+- Tensor definitions persist across API calls within the same kernel session
+- The kernel restarts automatically on timeout or error (xAct is reloaded)
+- For test isolation, combine all setup in one expression to avoid conflicts with previous state
 
 ### Error Messages
 
@@ -91,4 +93,4 @@ DefTensor[T[a,b], M, Symmetric[{a,b}]]  (* May silently fail *)
 1. Batch related operations into single expressions
 2. Use simpler test manifolds (dim 2-3) for unit tests
 3. Skip slow tests during development: `pytest -m "not slow"`
-4. Consider persistent kernel optimization (future work)
+4. The Oracle uses a persistent kernel - xAct loads once (~2s) and stays loaded
