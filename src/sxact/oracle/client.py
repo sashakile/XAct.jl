@@ -1,14 +1,20 @@
 """HTTP client for the Wolfram Oracle server."""
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Literal, Optional
 
 import requests
+
+from sxact.normalize import normalize
+from sxact.oracle.result import Result
 
 
 @dataclass
 class EvalResult:
-    """Result from evaluating a Wolfram expression."""
+    """Legacy result from evaluating a Wolfram expression.
+
+    Deprecated: Use Result from sxact.oracle.result instead.
+    """
 
     status: str
     result: Optional[str] = None
@@ -65,3 +71,45 @@ class OracleClient:
             )
         except requests.RequestException as e:
             return EvalResult(status="error", error=str(e))
+
+    def evaluate_result(self, expr: str, timeout: int = 30) -> Result:
+        """Evaluate an expression and return a full Result envelope."""
+        try:
+            resp = requests.post(
+                f"{self.base_url}/evaluate",
+                json={"expr": expr, "timeout": timeout},
+                timeout=timeout + 5,
+            )
+            data = resp.json()
+            status_raw = data.get("status", "error")
+            status: Literal["ok", "error", "timeout"] = (
+                "ok" if status_raw == "ok" else
+                "timeout" if status_raw == "timeout" else
+                "error"
+            )
+            raw_result = data.get("result", "")
+            return Result(
+                status=status,
+                type=data.get("type", "Expr"),
+                repr=raw_result,
+                normalized=normalize(raw_result) if raw_result else "",
+                properties=data.get("properties", {}),
+                diagnostics={"execution_time_ms": data.get("timing_ms")},
+                error=data.get("error"),
+            )
+        except requests.Timeout:
+            return Result(
+                status="timeout",
+                type="",
+                repr="",
+                normalized="",
+                error="Request timed out",
+            )
+        except requests.RequestException as e:
+            return Result(
+                status="error",
+                type="",
+                repr="",
+                normalized="",
+                error=str(e),
+            )
