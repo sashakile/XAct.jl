@@ -7,6 +7,10 @@ These tests validate the full pipeline:
 4. Comparator handles xAct output formats
 
 All tests require the Docker oracle server running with xAct loaded.
+
+NOTE: Each test uses unique manifold/tensor names (M1, M2, etc.) to avoid
+conflicts in the persistent Wolfram kernel. xAct protects symbols after
+definition, so reusing names across tests causes errors.
 """
 
 import pytest
@@ -59,12 +63,12 @@ class TestDefineManifold:
     """Test 1: Define manifold, verify output."""
 
     def test_define_manifold_returns_manifold_info(self, oracle: OracleClient) -> None:
-        result = xact_evaluate(oracle, "DefManifold[M, 4, {a,b,c,d}]; M")
+        result = xact_evaluate(oracle, "DefManifold[M1, 4, {a1,b1,c1,d1}]; M1")
         assert result.status == "ok", f"Failed: {result.error}"
-        assert "M" in result.repr or result.repr != ""
+        assert "M1" in result.repr or result.repr != ""
 
     def test_manifold_dimension(self, oracle: OracleClient) -> None:
-        result = xact_evaluate(oracle, "DefManifold[N, 3, {i,j,k}]; DimOfManifold[N]")
+        result = xact_evaluate(oracle, "DefManifold[M2, 3, {i2,j2,k2}]; DimOfManifold[M2]")
         assert result.status == "ok", f"Failed: {result.error}"
         assert "3" in result.repr
 
@@ -76,13 +80,13 @@ class TestDefineMetric:
 
     def test_define_metric_with_signature(self, oracle: OracleClient) -> None:
         expr = """
-        DefManifold[M, 4, {a,b,c,d}];
-        DefMetric[-1, g[-a,-b], CD];
-        SignatureOfMetric[g]
+        DefManifold[M3, 4, {a3,b3,c3,d3}];
+        DefMetric[-1, g3[-a3,-b3], CD3];
+        SignDetOfMetric[g3]
         """
         result = xact_evaluate(oracle, expr)
         assert result.status == "ok", f"Failed: {result.error}"
-        assert "-1" in result.repr or "Lorentzian" in result.repr or "{" in result.repr
+        assert "-1" in result.repr, f"Expected -1 for Lorentzian signature, got: {result.repr}"
 
 
 @pytest.mark.oracle
@@ -92,9 +96,9 @@ class TestSymmetricTensor:
 
     def test_symmetric_tensor_swap_indices(self, oracle: OracleClient) -> None:
         expr = """
-        DefManifold[M, 4, {a,b,c,d}];
-        DefTensor[S[-a,-b], M, Symmetric[{-a,-b}]];
-        S[-b,-a] - S[-a,-b] // ToCanonical
+        DefManifold[M4, 4, {a4,b4,c4,d4}];
+        DefTensor[S4[-a4,-b4], M4, Symmetric[{-a4,-b4}]];
+        S4[-b4,-a4] - S4[-a4,-b4] // ToCanonical
         """
         result = xact_evaluate(oracle, expr)
         assert result.status == "ok", f"Failed: {result.error}"
@@ -108,13 +112,13 @@ class TestToCanonical:
 
     def test_tocanonical_reorders_indices(self, oracle: OracleClient) -> None:
         expr = """
-        DefManifold[M, 4, {a,b,c,d}];
-        DefTensor[T[-a,-b], M];
-        ToCanonical[T[-b,-a]]
+        DefManifold[M5, 4, {a5,b5,c5,d5}];
+        DefTensor[T5[-a5,-b5], M5];
+        ToCanonical[T5[-b5,-a5]]
         """
         result = xact_evaluate(oracle, expr)
         assert result.status == "ok", f"Failed: {result.error}"
-        assert "T" in result.repr
+        assert "T5" in result.repr
 
 
 @pytest.mark.oracle
@@ -124,14 +128,14 @@ class TestMetricContraction:
 
     def test_metric_contraction_raises_index(self, oracle: OracleClient) -> None:
         expr = """
-        DefManifold[M, 4, {a,b,c,d}];
-        DefMetric[1, g[-a,-b], CD];
-        DefTensor[V[a], M];
-        g[a,b] V[-b] // ContractMetric
+        DefManifold[M6, 4, {a6,b6,c6,d6}];
+        DefMetric[1, g6[-a6,-b6], CD6];
+        DefTensor[V6[a6], M6];
+        g6[a6,b6] V6[-b6] // ContractMetric
         """
         result = xact_evaluate(oracle, expr)
         assert result.status == "ok", f"Failed: {result.error}"
-        assert "V" in result.repr
+        assert "V6" in result.repr
 
 
 @pytest.mark.oracle
@@ -141,9 +145,9 @@ class TestRiemannTensor:
 
     def test_riemann_exists_after_metric_definition(self, oracle: OracleClient) -> None:
         expr = """
-        DefManifold[M, 4, {a,b,c,d}];
-        DefMetric[-1, g[-a,-b], CD];
-        RiemannCD[-a,-b,-c,-d]
+        DefManifold[M7, 4, {a7,b7,c7,d7}];
+        DefMetric[-1, g7[-a7,-b7], CD7];
+        RiemannCD7[-a7,-b7,-c7,-d7]
         """
         result = xact_evaluate(oracle, expr)
         assert result.status == "ok", f"Failed: {result.error}"
@@ -157,13 +161,13 @@ class TestSymbolicEquality:
 
     def test_symmetric_tensor_sum_equals_double(self, oracle: OracleClient) -> None:
         setup = """
-        DefManifold[M, 4, {a,b,c,d}];
-        DefTensor[S[-a,-b], M, Symmetric[{-a,-b}]];
+        DefManifold[M8, 4, {a8,b8,c8,d8}];
+        DefTensor[S8[-a8,-b8], M8, Symmetric[{-a8,-b8}]];
         """
         xact_evaluate(oracle, setup)
 
-        lhs = xact_evaluate(oracle, "S[-a,-b] + S[-b,-a]")
-        rhs = xact_evaluate(oracle, "2*S[-a,-b]")
+        lhs = xact_evaluate(oracle, "S8[-a8,-b8] + S8[-b8,-a8]")
+        rhs = xact_evaluate(oracle, "2*S8[-a8,-b8]")
 
         assert lhs.status == "ok", f"LHS failed: {lhs.error}"
         assert rhs.status == "ok", f"RHS failed: {rhs.error}"
@@ -203,9 +207,9 @@ class TestAntisymmetricTensor:
 
     def test_antisymmetric_tensor_swap_negates(self, oracle: OracleClient) -> None:
         expr = """
-        DefManifold[M, 4, {a,b,c,d}];
-        DefTensor[F[-a,-b], M, Antisymmetric[{-a,-b}]];
-        F[-b,-a] + F[-a,-b] // ToCanonical
+        DefManifold[M9, 4, {a9,b9,c9,d9}];
+        DefTensor[F9[-a9,-b9], M9, Antisymmetric[{-a9,-b9}]];
+        F9[-b9,-a9] + F9[-a9,-b9] // ToCanonical
         """
         result = xact_evaluate(oracle, expr)
         assert result.status == "ok", f"Failed: {result.error}"
@@ -219,9 +223,9 @@ class TestBianchiIdentity:
 
     def test_riemann_first_bianchi_structure(self, oracle: OracleClient) -> None:
         expr = """
-        DefManifold[M, 4, {a,b,c,d,e,f}];
-        DefMetric[-1, g[-a,-b], CD];
-        RiemannCD[-a,-b,-c,-d] + RiemannCD[-a,-c,-d,-b] + RiemannCD[-a,-d,-b,-c] // ToCanonical
+        DefManifold[M10, 4, {a10,b10,c10,d10,e10,f10}];
+        DefMetric[-1, g10[-a10,-b10], CD10];
+        RiemannCD10[-a10,-b10,-c10,-d10] + RiemannCD10[-a10,-c10,-d10,-b10] + RiemannCD10[-a10,-d10,-b10,-c10] // ToCanonical
         """
         result = xact_evaluate(oracle, expr)
         assert result.status == "ok", f"Failed: {result.error}"
