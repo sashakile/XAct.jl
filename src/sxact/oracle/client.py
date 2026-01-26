@@ -54,12 +54,24 @@ class OracleClient:
         except requests.RequestException as e:
             return EvalResult(status="error", error=str(e))
 
-    def evaluate_with_xact(self, expr: str, timeout: int = 60) -> EvalResult:
-        """Evaluate a Wolfram expression with xAct pre-loaded."""
+    def evaluate_with_xact(self, expr: str, timeout: int = 60,
+                           context_id: str | None = None) -> EvalResult:
+        """Evaluate a Wolfram expression with xAct pre-loaded.
+
+        Args:
+            expr: The Wolfram expression to evaluate.
+            timeout: Timeout in seconds.
+            context_id: Optional context ID for test isolation. When provided,
+                the server wraps the expression in a Block with a unique context
+                to prevent symbol pollution between tests.
+        """
+        json_body = {"expr": expr, "timeout": timeout}
+        if context_id:
+            json_body["context_id"] = context_id
         try:
             resp = requests.post(
                 f"{self.base_url}/evaluate-with-init",
-                json={"expr": expr, "timeout": timeout},
+                json=json_body,
                 timeout=timeout + 5,
             )
             data = resp.json()

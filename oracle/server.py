@@ -45,9 +45,10 @@ def evaluate_with_init():
 
     expr = data["expr"]
     timeout = int(data.get("timeout", 60))
+    context_id = data.get("context_id")  # Optional context isolation
 
     start = time.time()
-    ok, result, error = km.evaluate(expr, timeout, with_xact=True)
+    ok, result, error = km.evaluate(expr, timeout, with_xact=True, context_id=context_id)
     elapsed_ms = int((time.time() - start) * 1000)
 
     if ok:

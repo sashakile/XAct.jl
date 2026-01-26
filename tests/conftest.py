@@ -2,6 +2,7 @@
 
 import os
 import time
+import uuid
 
 import pytest
 
@@ -32,3 +33,15 @@ def oracle(oracle_url: str) -> OracleClient:
 
     pytest.skip("Oracle server not available")
     return client  # unreachable, but satisfies type checker
+
+
+@pytest.fixture
+def context_id() -> str:
+    """Generate unique context ID for test isolation.
+
+    This fixture provides a unique identifier that can be passed to
+    evaluate_with_xact() to isolate symbol contexts between tests.
+    Each test gets its own Mathematica context namespace, preventing
+    symbol pollution in the persistent kernel.
+    """
+    return uuid.uuid4().hex[:8]

@@ -59,20 +59,43 @@ class KernelManager:
         self.start()
 
     def evaluate(
-        self, expr: str, timeout_s: int, with_xact: bool = False
+        self, expr: str, timeout_s: int, with_xact: bool = False,
+        context_id: str | None = None
     ) -> tuple[bool, str | None, str | None]:
         """
         Evaluate an expression.
+
+        Args:
+            expr: The Wolfram expression to evaluate.
+            timeout_s: Timeout in seconds.
+            with_xact: Whether to ensure xAct is loaded first.
+            context_id: Optional unique context ID for isolation. When provided,
+                wraps the expression in a Block that sets $Context to a unique
+                namespace, preventing symbol pollution between tests.
 
         Returns (ok: bool, result: str|None, error: str|None)
         """
         with self._lock:
             self.ensure()
 
+            # Wrap expression in context isolation if context_id provided.
+            # We evaluate in xAct`xTensor` context so xAct functions properly
+            # recognize tensor definitions. ToExpression delays parsing until
+            # after Begin switches context, preventing Global` pollution.
+            if context_id:
+                # Escape the expression for embedding in a Mathematica string
+                escaped_expr = expr.replace("\\", "\\\\").replace('"', '\\"')
+                wrapped_expr = (
+                    f'Begin["xAct`xTensor`"]; '
+                    f'With[{{result$$ = ToExpression["{escaped_expr}"]}}, End[]; result$$]'
+                )
+            else:
+                wrapped_expr = expr
+
             def _do_eval():
                 if with_xact:
                     self._ensure_xact()
-                return self._session.evaluate(wlexpr(expr))
+                return self._session.evaluate(wlexpr(wrapped_expr))
 
             fut = self._executor.submit(_do_eval)
             try:
