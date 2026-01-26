@@ -2,7 +2,9 @@
 
 This document captures quirks, edge cases, and gotchas discovered while working with xAct through the Oracle HTTP server.
 
-## Critical Issue: Symbol Context Pollution
+## Symbol Context Pollution (RESOLVED)
+
+> **Status**: Fixed in commit 9cc21fa (2026-01-26). See [session doc](sessions/2026-01-26-context-isolation-fix.md) for details.
 
 ### The Problem
 
@@ -12,47 +14,33 @@ When using wolframclient to evaluate expressions, **symbols are parsed in `Globa
 2. `ToCanonical` and other xAct functions don't recognize the expressions as tensors
 3. Curvature tensors like `RiemannCD` are created in `Global`` context and not treated as proper xAct curvatures
 
-### Evidence
+### Solution Implemented
 
-```mathematica
-(* After DefManifold[MZ, 4, {aZ,bZ,cZ,dZ}] and DefMetric[-1, gZ[-aZ,-bZ], CDZ] *)
+The Oracle now supports a `context_id` parameter for `/evaluate-with-init`. When provided:
 
-Context[RiemannCDZ]       (* → "Global`" — wrong! Should be in xAct context *)
-TensorQ[RiemannCDZ]       (* → False — not recognized as a tensor *)
-MetricQ[gZ]               (* → True — this works *)
-ManifoldQ[MZ]             (* → True — this works *)
+1. Expression is wrapped in `Begin["xAct`xTensor`"]; ToExpression[...]; End[]`
+2. `ToExpression` delays parsing until after context is set
+3. All symbols are created in `xAct`xTensor`` context
+4. xAct functions properly recognize tensors
 
-(* Bianchi identity fails because RiemannCDZ isn't a proper xAct tensor *)
-RiemannCDZ[-aZ,-bZ,-cZ,-dZ] + RiemannCDZ[-aZ,-cZ,-dZ,-bZ] + RiemannCDZ[-aZ,-dZ,-bZ,-cZ] // ToCanonical
-(* → Returns unsimplified Plus[...] instead of 0 *)
+### Usage
+
+```python
+# Python client
+client.evaluate_with_xact(expr, context_id="unique_id")
+
+# Or via HTTP
+POST /evaluate-with-init
+{"expr": "...", "context_id": "unique_id"}
 ```
 
-### Root Cause
+### Test Fixture
 
-The wolframclient library parses Mathematica expressions in Python before sending them to the kernel. During parsing, any unqualified symbol like `RiemannCDZ` gets created in `Global`` context. Even though xAct's `DefMetric` creates curvature tensors, the symbol `RiemannCDZ` already exists in `Global`` by the time the expression is evaluated.
-
-### Potential Solutions
-
-1. **Per-test context isolation** (recommended by Oracle):
-   - Wrap each evaluation in `Block[{$Context = "test$uuid`", $ContextPath = ...}, expr]`
-   - Each test gets its own namespace
-   - Requires passing context ID through API
-
-2. **Use ToExpression with explicit context**:
-   - Send expressions as strings and use `ToExpression[expr, InputForm, Hold]`
-   - Evaluate in proper xAct context
-
-3. **Pre-declare all symbols in xAct context before use**:
-   - Before each test, explicitly declare symbols in xAct context
-   - E.g., `Begin["xAct`xTensor`"]; symbols...; End[]`
-
-4. **Kernel restart between tests**:
-   - Slow but guaranteed clean
-   - Loses xAct load time benefit (~2-3s per restart)
-
-### Current Workaround
-
-Use **unique symbol names per test** (M1, M2, M3, etc.) to avoid conflicts between tests. This works for simple cases but doesn't solve the context pollution issue.
+```python
+@pytest.fixture
+def context_id() -> str:
+    return uuid.uuid4().hex[:8]
+```
 
 ## Loading & Initialization
 
@@ -167,22 +155,26 @@ DefTensor[T[a,b], M, Symmetric[{a,b}]]  (* May silently fail *)
 - Check that all indices are defined before use
 - Verify manifold dimensions match tensor rank
 
-### Tests That Currently Pass (8/11)
+### Tests Status (12/12 Pass)
+
+All integration tests now pass after implementing context isolation:
 
 1. ✅ TestDefineManifold::test_define_manifold_returns_manifold_info
 2. ✅ TestDefineManifold::test_manifold_dimension
-3. ✅ TestDefineMetric::test_define_metric_with_signature (after fixing to use SignDetOfMetric)
+3. ✅ TestDefineMetric::test_define_metric_with_signature
 4. ✅ TestSymmetricTensor::test_symmetric_tensor_swap_indices
 5. ✅ TestToCanonical::test_tocanonical_reorders_indices
 6. ✅ TestMetricContraction::test_metric_contraction_raises_index
 7. ✅ TestRiemannTensor::test_riemann_exists_after_metric_definition
-8. ✅ TestNumericSampling::test_numeric_evaluation_of_scalar_expression
+8. ✅ TestSymbolicEquality::test_symmetric_tensor_sum_equals_double (uses context_id)
+9. ✅ TestNumericSampling::test_numeric_evaluation_of_scalar_expression
+10. ✅ TestAntisymmetricTensor::test_antisymmetric_tensor_swap_negates (uses context_id)
+11. ✅ TestBianchiIdentity::test_riemann_antisymmetry_first_pair (uses context_id)
+12. ✅ TestBianchiIdentity::test_riemann_pair_exchange (uses context_id)
 
-### Tests That Currently Fail (3/11)
-
-1. ❌ TestSymbolicEquality::test_symmetric_tensor_sum_equals_double — context pollution
-2. ❌ TestAntisymmetricTensor::test_antisymmetric_tensor_swap_negates — context pollution  
-3. ❌ TestBianchiIdentity::test_riemann_first_bianchi_structure — context pollution
+> **Note**: The original Bianchi identity test was replaced. ToCanonical doesn't apply
+> multi-term symmetries like the first Bianchi identity. Tests now verify mono-term
+> symmetries (antisymmetry, pair exchange) that ToCanonical does support.
 
 ## Performance Tips
 
@@ -192,17 +184,32 @@ DefTensor[T[a,b], M, Symmetric[{a,b}]]  (* May silently fail *)
 4. The Oracle uses a persistent kernel - xAct loads once (~2s) and stays loaded
 5. Use unique symbol names per test to avoid protection errors
 
-## Next Steps to Fix Context Pollution
+## Implementation Notes
 
-The recommended approach is to implement **per-test context isolation**:
+### Context Isolation (Completed)
 
-1. Add `context_id` parameter to `/evaluate-with-init` endpoint
-2. Server wraps evaluation in `Block[{$Context = ctx, $ContextPath = ...}, expr]`
-3. Pytest fixture generates unique context ID per test
-4. All evaluations within a test use the same context ID
+The context isolation feature was implemented in commit 9cc21fa:
 
-This allows:
-- Multi-call tests (setup + lhs + rhs evaluations) to share state
-- Complete isolation between tests
-- No kernel restarts needed
-- xAct symbols properly scoped
+1. ✅ Added `context_id` parameter to `/evaluate-with-init` endpoint
+2. ✅ Server wraps evaluation in `Begin["xAct`xTensor`"]; ToExpression[...]; End[]`
+3. ✅ Pytest fixture generates unique context ID per test
+4. ✅ All evaluations within a test use the same context ID
+
+### Why Begin/ToExpression Instead of Block
+
+The original plan suggested `Block[{$Context = ...}, expr]`, but this doesn't work because:
+- `Block` only affects evaluation context, not parsing context
+- Symbols are parsed BEFORE `Block` executes
+- All symbols end up in `Global`` anyway
+
+The solution uses `ToExpression` to delay parsing:
+```mathematica
+Begin["xAct`xTensor`"];
+With[{result$$ = ToExpression["expr"]}, End[]; result$$]
+```
+
+### Future Improvements
+
+1. **Comparator**: Could add `ToCanonical` for tensor expressions in tier-2 comparison
+2. **Bianchi identity**: Could load xTras and use `CurvatureRelationsBianchi` if needed
+3. **Context cleanup**: May want kernel restart strategy for very long test runs
