@@ -1,0 +1,13 @@
+name = "XCore"
+uuid = "61ed89dc-cc38-478d-be53-e1ee1d7160f1"
+authors = ["sxAct contributors"]
+version = "0.1.0"
+
+[compat]
+julia = "1.9"
+
+[extras]
+Test = "8dfed614-e22c-358a-b9bc-a3bc1af8b41a"
+
+[targets]
+test = ["Test"]
