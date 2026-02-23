@@ -1,0 +1,226 @@
+# xcore_basic.toml
+# Basic xCore/xTensor functionality smoke tests.
+# Exercises DefManifold, DefTensor, Evaluate, ToCanonical, Contract, Assert.
+# Each operation run in per-file isolation (fresh CAS context).
+# Validates against schema: tests/schema/test-schema.json
+
+[meta]
+id          = "xcore/basic"
+description = "Basic manifold, tensor definition, and canonicalization (layer 1)"
+tags        = ["xcore", "xtensor", "layer:1", "critical"]
+layer       = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Setup: define a 4-dimensional Lorentzian manifold and common tensors.
+# store_as bindings here are visible to all tests in this file.
+# ---------------------------------------------------------------------------
+[[setup]]
+action   = "DefManifold"
+store_as = "M"
+[setup.args]
+name             = "M"
+dimension        = 4
+indices          = ["a", "b", "c", "d", "e", "f", "i", "j", "k", "l"]
+metric_signature = -2   # (+,-,-,-) Lorentzian
+
+[[setup]]
+action   = "DefMetric"
+store_as = "g"
+[setup.args]
+signdet = -1
+metric  = "g[-a,-b]"
+covd    = "CD"
+symbols = [";", "∇"]
+
+[[setup]]
+action   = "DefTensor"
+store_as = "T"
+[setup.args]
+name    = "T"
+indices = ["-a", "-b"]
+
+[[setup]]
+action   = "DefTensor"
+store_as = "S"
+[setup.args]
+name     = "S"
+indices  = ["-a", "-b"]
+symmetry = "Symmetric[{-a,-b}]"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "A"
+[setup.args]
+name     = "A"
+indices  = ["-a", "-b"]
+symmetry = "Antisymmetric[{-a,-b}]"
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "def_manifold_ok"
+description = "Manifold M is defined with dimension 4"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "Dimension[M] == 4"
+message   = "Manifold M should have dimension 4"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "symmetric_tensor_plus_self"
+description = "A symmetric tensor satisfies T[-a,-b] == T[-b,-a]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "lhs"
+[tests.operations.args]
+expression = "S[-a,-b] - S[-b,-a]"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "$lhs"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "S[-a,-b] - S[-b,-a] should canonicalize to 0 for a symmetric tensor"
+
+[tests.expected]
+is_zero            = true
+comparison_tier    = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "antisymmetric_tensor_antisymmetry"
+description = "An antisymmetric tensor satisfies A[-a,-b] == -A[-b,-a]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "sum"
+[tests.operations.args]
+expression = "A[-a,-b] + A[-b,-a]"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "$sum"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "A[-a,-b] + A[-b,-a] should canonicalize to 0 for an antisymmetric tensor"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "metric_contraction_identity"
+description = "Contracting the metric with its inverse gives the Kronecker delta: g[-a,b] g[b,-c] = delta[-a,-c]"
+dependencies = []
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "contraction"
+[tests.operations.args]
+expression = "g[-a,b] * g[b,-c]"
+
+[[tests.operations]]
+action   = "Contract"
+store_as = "contracted"
+[tests.operations.args]
+expression = "$contraction"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "$contracted"
+
+[tests.expected]
+normalized      = "delta[-$1,-$2]"
+comparison_tier = 1
+[tests.expected.properties]
+rank = 2
+type = "Tensor"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "to_canonical_is_idempotent"
+description = "Applying ToCanonical twice gives the same result as applying it once"
+dependencies = ["symmetric_tensor_plus_self"]
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "expr"
+[tests.operations.args]
+expression = "T[-a,-b] + T[-b,-a]"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "once"
+[tests.operations.args]
+expression = "$expr"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "twice"
+[tests.operations.args]
+expression = "$once"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$once == $twice"
+message   = "ToCanonical should be idempotent"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "riemann_first_bianchi"
+description = "First Bianchi identity: R[-a,-b,-c,-d] + R[-a,-c,-d,-b] + R[-a,-d,-b,-c] = 0"
+
+[[tests.operations]]
+action   = "DefTensor"
+store_as = "R"
+[tests.operations.args]
+name     = "R"
+indices  = ["-a", "-b", "-c", "-d"]
+symmetry = "RiemannSymmetric[{-a,-b,-c,-d}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "bianchi"
+[tests.operations.args]
+expression = "R[-a,-b,-c,-d] + R[-a,-c,-d,-b] + R[-a,-d,-b,-c]"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "$bianchi"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "First Bianchi identity should hold"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 2   # require semantic check, not just string match

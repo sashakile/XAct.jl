@@ -1,0 +1,401 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sxact.dev/schemas/test-schema.json",
+  "title": "sxAct test file",
+  "description": "Schema for TOML-based sxAct test files. Each file runs in a fresh CAS context (per-file isolation). See specs/2026-01-22-design-framework-gaps.md §5.1, §5.4.",
+  "type": "object",
+  "required": ["meta"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "description": "File-level metadata",
+      "type": "object",
+      "required": ["id", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Unique identifier for this test file (used in reporting and snapshot naming)",
+          "type": "string",
+          "pattern": "^[a-z0-9_/-]+$"
+        },
+        "description": {
+          "description": "Human-readable description of what this file tests",
+          "type": "string"
+        },
+        "tags": {
+          "description": "Categorization tags (e.g. 'xcore', 'manifold', 'critical', 'layer:1')",
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true,
+          "default": []
+        },
+        "layer": {
+          "description": "Test layer: 1=unit, 2=property, 3=performance",
+          "type": "integer",
+          "enum": [1, 2, 3],
+          "default": 1
+        },
+        "oracle_is_axiom": {
+          "description": "When false, mathematical law takes precedence over oracle output for assertions",
+          "type": "boolean",
+          "default": true
+        },
+        "skip": {
+          "description": "If set, skip this file with the given reason",
+          "type": "string"
+        }
+      }
+    },
+    "setup": {
+      "description": "Ordered list of setup operations run once per file before any tests. Results stored via store_as are available to all tests.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/operation" },
+      "default": []
+    },
+    "tests": {
+      "description": "List of test cases in this file",
+      "type": "array",
+      "items": { "$ref": "#/$defs/test" },
+      "default": []
+    }
+  },
+  "$defs": {
+    "operation": {
+      "description": "A single CAS operation within a setup or test block",
+      "type": "object",
+      "required": ["action"],
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "description": "The action to perform",
+          "$ref": "#/$defs/actionName"
+        },
+        "store_as": {
+          "description": "Bind the result of this operation to a name for later reference. Scope: setup→file-wide; test operation→test-local.",
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
+        },
+        "args": {
+          "description": "Action-specific arguments (see action vocabulary below)",
+          "$ref": "#/$defs/actionArgs"
+        }
+      }
+    },
+    "actionName": {
+      "type": "string",
+      "enum": [
+        "DefManifold",
+        "DefMetric",
+        "DefTensor",
+        "Evaluate",
+        "ToCanonical",
+        "Simplify",
+        "Contract",
+        "Assert"
+      ]
+    },
+    "actionArgs": {
+      "description": "Arguments dispatched by action type",
+      "oneOf": [
+        { "$ref": "#/$defs/args/DefManifold" },
+        { "$ref": "#/$defs/args/DefMetric" },
+        { "$ref": "#/$defs/args/DefTensor" },
+        { "$ref": "#/$defs/args/Evaluate" },
+        { "$ref": "#/$defs/args/ToCanonical" },
+        { "$ref": "#/$defs/args/Simplify" },
+        { "$ref": "#/$defs/args/Contract" },
+        { "$ref": "#/$defs/args/Assert" }
+      ]
+    },
+    "test": {
+      "description": "A named test case",
+      "type": "object",
+      "required": ["id", "description", "operations"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Unique identifier within this file",
+          "type": "string",
+          "pattern": "^[a-z0-9_-]+$"
+        },
+        "description": {
+          "description": "Human-readable description of what is being tested",
+          "type": "string"
+        },
+        "tags": {
+          "description": "Test-level tags (merged with file-level tags for filtering)",
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true,
+          "default": []
+        },
+        "dependencies": {
+          "description": "IDs of other tests in this file that must run and pass before this test. Topologically sorted by the runner.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9_-]+$"
+          },
+          "uniqueItems": true,
+          "default": []
+        },
+        "skip": {
+          "description": "If set, skip this test with the given reason",
+          "type": "string"
+        },
+        "operations": {
+          "description": "Ordered list of operations to execute for this test",
+          "type": "array",
+          "items": { "$ref": "#/$defs/operation" },
+          "minItems": 1
+        },
+        "expected": {
+          "description": "Expected outcome of the test (compared against the last operation result that does not use store_as, or the operation with the matching action)",
+          "$ref": "#/$defs/expected"
+        }
+      }
+    },
+    "expected": {
+      "description": "Expected output specification for a test. At least one of expr, normalized, or properties must be present.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "expr": {
+          "description": "Expected expression string in implementation-native notation. Compared after normalization (tier 1).",
+          "type": "string"
+        },
+        "normalized": {
+          "description": "Expected expression after normalization (dummy indices renamed to $1, $2, ...; terms sorted). Compared as-is (tier 1 fast path).",
+          "type": "string"
+        },
+        "value": {
+          "description": "Expected scalar value (for numeric results)",
+          "type": ["number", "string"]
+        },
+        "is_zero": {
+          "description": "Assert the result simplifies to zero via tier 2 semantic check",
+          "type": "boolean"
+        },
+        "properties": {
+          "description": "Structured properties expected on the result",
+          "$ref": "#/$defs/properties"
+        },
+        "comparison_tier": {
+          "description": "Force a minimum comparison tier (1=normalized string, 2=semantic diff=0, 3=numeric sampling). Default: use lowest tier that succeeds.",
+          "type": "integer",
+          "enum": [1, 2, 3]
+        }
+      }
+    },
+    "properties": {
+      "description": "Structured tensor/expression properties",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rank": {
+          "description": "Tensor rank (number of free indices)",
+          "type": "integer",
+          "minimum": 0
+        },
+        "symmetry": {
+          "description": "Symmetry specification",
+          "type": "object",
+          "required": ["type"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["Symmetric", "Antisymmetric", "RiemannSymmetric", "NoSymmetry"]
+            },
+            "slots": {
+              "description": "Index slot positions the symmetry acts on (0-based)",
+              "type": "array",
+              "items": { "type": "integer" }
+            }
+          }
+        },
+        "manifold": {
+          "description": "Name of the manifold this tensor is defined on",
+          "type": "string"
+        },
+        "type": {
+          "description": "Object type as returned by the adapter",
+          "type": "string",
+          "enum": ["Tensor", "Scalar", "Manifold", "Metric", "CovD", "Bool", "Expr"]
+        }
+      }
+    },
+    "args": {
+      "DefManifold": {
+        "description": "Arguments for DefManifold action",
+        "type": "object",
+        "required": ["name", "dimension", "indices"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "Manifold symbol name",
+            "type": "string"
+          },
+          "dimension": {
+            "description": "Manifold dimension",
+            "type": "integer",
+            "minimum": 1
+          },
+          "indices": {
+            "description": "List of index symbol names available on this manifold",
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "metric_signature": {
+            "description": "Metric signature as integer (e.g. -2 for Lorentzian 4D)",
+            "type": "integer"
+          }
+        }
+      },
+      "DefMetric": {
+        "description": "Arguments for DefMetric action",
+        "type": "object",
+        "required": ["signdet", "metric", "covd"],
+        "additionalProperties": false,
+        "properties": {
+          "signdet": {
+            "description": "Sign of metric determinant: +1 (Riemannian) or -1 (Lorentzian)",
+            "type": "integer",
+            "enum": [-1, 1]
+          },
+          "metric": {
+            "description": "Metric tensor expression with indices, e.g. 'g[-a,-b]'",
+            "type": "string"
+          },
+          "covd": {
+            "description": "Covariant derivative operator symbol name",
+            "type": "string"
+          },
+          "symbols": {
+            "description": "Display symbols for the covariant derivative [infix, prefix], e.g. [';', '∇']",
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "manifold": {
+            "description": "Manifold name (resolved via store_as if omitted, uses last defined manifold)",
+            "type": "string"
+          }
+        }
+      },
+      "DefTensor": {
+        "description": "Arguments for DefTensor action",
+        "type": "object",
+        "required": ["name", "indices"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "Tensor symbol name",
+            "type": "string"
+          },
+          "indices": {
+            "description": "Index slots with up/down position, e.g. ['-a', '-b'] for covariant",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[+-]?[a-zA-Z][a-zA-Z0-9]*$"
+            },
+            "minItems": 0
+          },
+          "manifold": {
+            "description": "Manifold name this tensor lives on (resolved via store_as context)",
+            "type": "string"
+          },
+          "symmetry": {
+            "description": "Symmetry in xAct notation, e.g. 'Symmetric[{-a,-b}]' or 'Antisymmetric[{1,2}]'",
+            "type": "string"
+          },
+          "weight": {
+            "description": "Tensor weight for density tensors",
+            "type": ["integer", "number"]
+          }
+        }
+      },
+      "Evaluate": {
+        "description": "Arguments for Evaluate action",
+        "type": "object",
+        "required": ["expression"],
+        "additionalProperties": false,
+        "properties": {
+          "expression": {
+            "description": "Expression string to evaluate in the current context",
+            "type": "string"
+          }
+        }
+      },
+      "ToCanonical": {
+        "description": "Arguments for ToCanonical action",
+        "type": "object",
+        "required": ["expression"],
+        "additionalProperties": false,
+        "properties": {
+          "expression": {
+            "description": "Expression to canonicalize",
+            "type": "string"
+          },
+          "method": {
+            "description": "Canonicalization method (adapter-specific; default: standard Butler-Portugal)",
+            "type": "string"
+          }
+        }
+      },
+      "Simplify": {
+        "description": "Arguments for Simplify action",
+        "type": "object",
+        "required": ["expression"],
+        "additionalProperties": false,
+        "properties": {
+          "expression": {
+            "description": "Expression to simplify",
+            "type": "string"
+          },
+          "assumptions": {
+            "description": "Assumptions to apply during simplification",
+            "type": "string"
+          },
+          "depth": {
+            "description": "Simplification depth (adapter-specific)",
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "Contract": {
+        "description": "Arguments for Contract action",
+        "type": "object",
+        "required": ["expression"],
+        "additionalProperties": false,
+        "properties": {
+          "expression": {
+            "description": "Expression with repeated indices to contract",
+            "type": "string"
+          }
+        }
+      },
+      "Assert": {
+        "description": "Arguments for Assert action. Evaluates condition in current context and fails the test if false.",
+        "type": "object",
+        "required": ["condition"],
+        "additionalProperties": false,
+        "properties": {
+          "condition": {
+            "description": "Condition expression to evaluate. Use $store_as_name to reference stored results. Must evaluate to a boolean.",
+            "type": "string"
+          },
+          "message": {
+            "description": "Message to include in the failure report if the assertion fails",
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
