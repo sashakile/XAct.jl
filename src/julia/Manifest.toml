@@ -1,0 +1,10 @@
+# This file is machine-generated - editing it directly is not advised
+
+julia_version = "1.12.5"
+manifest_format = "2.0"
+project_hash = "4c536c4a4ec6654c46c6952e0f7eb1e1dac82a55"
+
+[[deps.XCore]]
+path = "."
+uuid = "61ed89dc-cc38-478d-be53-e1ee1d7160f1"
+version = "0.1.0"

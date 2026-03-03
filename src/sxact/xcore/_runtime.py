@@ -1,0 +1,60 @@
+"""Julia runtime singleton for sxact.xcore.
+
+Initialises the Julia runtime and loads XCore exactly once per process.
+Thread-safe: concurrent first-calls block until initialisation completes.
+"""
+
+from __future__ import annotations
+
+import threading
+from pathlib import Path
+from typing import Any
+
+_lock = threading.Lock()
+_jl: Any = None
+_xcore: Any = None
+
+
+def get_julia() -> Any:
+    """Return the juliacall Main module, initialising Julia if needed."""
+    _ensure_initialized()
+    return _jl
+
+
+def get_xcore() -> Any:
+    """Return the Julia XCore module object, initialising Julia if needed."""
+    _ensure_initialized()
+    return _xcore
+
+
+def _ensure_initialized() -> None:
+    global _jl, _xcore
+    if _xcore is not None:
+        return
+    with _lock:
+        if _xcore is None:
+            _init_julia()
+
+
+def _init_julia() -> None:
+    global _jl, _xcore
+    import juliacall  # noqa: PLC0415  (deferred import for lazy init)
+
+    _jl = juliacall.Main
+
+    # XCore.jl lives at src/julia/XCore.jl relative to the repo root.
+    # From this file: src/sxact/xcore/_runtime.py → go up 3 levels → src/
+    # then into julia/XCore.jl.
+    xcore_path = (
+        Path(__file__).parent.parent.parent / "julia" / "XCore.jl"
+    ).resolve()
+
+    if not xcore_path.exists():
+        raise FileNotFoundError(
+            f"XCore.jl not found at {xcore_path}. "
+            "Ensure the sxAct repo structure is intact."
+        )
+
+    _jl.seval(f'include("{xcore_path}")')
+    _jl.seval("using .XCore")
+    _xcore = _jl.XCore
