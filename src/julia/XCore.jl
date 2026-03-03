@@ -20,17 +20,18 @@ module XCore
 # ============================================================
 
 # 1. List utilities
-export JustOne, MapIfPlus
+export JustOne, MapIfPlus, ThreadArray
 
 # 2. Argument guards
 export SetNumberOfArguments
 
 # 3. Options
-export CheckOptions, TrueOrFalse
+export CheckOptions, TrueOrFalse, ReportSet, ReportSetOption
 
 # 4. Symbol naming and dagger character
 export SymbolJoin, NoPattern
 export DaggerCharacter, HasDaggerCharacterQ, MakeDaggerSymbol
+export LinkCharacter, LinkSymbols, UnlinkSymbol
 
 # 5. xUpvalues
 export SubHead, xUpSet!, xUpSetDelayed!, xUpAppendTo!, xUpDeleteCasesTo!
@@ -93,6 +94,18 @@ or apply `f` once to `expr` if it is a scalar.
 MapIfPlus(f, expr::Union{AbstractVector,Tuple}) = map(f, expr)
 MapIfPlus(f, expr) = f(expr)
 
+"""
+    ThreadArray(head, left::AbstractArray, right::AbstractArray)
+
+Map `head` over corresponding pairs from `left` and `right`, preserving array
+shape.  Analogous to Mathematica `ThreadArray[head[left, right]]` which threads
+`head` over matching elements at full array depth via `MapThread`.
+
+Julia's `map` on two arrays already threads element-wise; this is a thin
+wrapper for call-site compatibility.  Not used by xTensor or xPerm downstream.
+"""
+ThreadArray(head, left::AbstractArray, right::AbstractArray) = map(head, left, right)
+
 # ============================================================
 # 2. Argument guards
 # ============================================================
@@ -118,6 +131,36 @@ Return `true` if `x isa Bool`; return `false` otherwise.
 """
 TrueOrFalse(::Bool) = true
 TrueOrFalse(_) = false
+
+"""
+    ReportSet(ref::Ref, value; verbose=true)
+
+Assign `value` to `ref[]`, printing a report if the value changed.
+
+Analogous to Mathematica `ReportSet[var, value]` which assigns and prints when
+the variable changes.  Mathematica uses `HoldFirst` to capture the variable
+name; Julia cannot do that, so callers pass a `Ref` wrapper.
+
+Not used by xTensor or xPerm downstream.
+"""
+function ReportSet(ref::Ref, value; verbose::Bool=true)
+    if ref[] !== value
+        verbose && println("ReportSet: value changed from $(ref[]) to $value")
+        ref[] = value
+    end
+    nothing
+end
+
+"""
+    ReportSetOption(symbol, option => value)
+
+No-op shim.  Mathematica's `ReportSetOption` sets an option on a symbol and
+prints if the value changed, relying on `Options`/`SetOptions`.  Julia has no
+built-in option-dictionary system; packages manage their own option storage.
+
+Not used by xTensor or xPerm downstream.
+"""
+ReportSetOption(symbol, pair::Pair) = nothing
 
 """
     CheckOptions(opts...)
@@ -165,6 +208,36 @@ NoPattern(expr) = expr
 Return `true` if the symbol name contains `DaggerCharacter[]`.
 """
 HasDaggerCharacterQ(s::Symbol) = occursin(DaggerCharacter[], string(s))
+
+"""
+Global link character used to join symbol parts in `LinkSymbols`.
+Default is `⁀` (U+2040, UnderBracket), matching xCore's `\\[UnderBracket]`.
+"""
+const LinkCharacter = Ref{String}("⁀")
+
+"""
+    LinkSymbols(symbols::Vector{Symbol}) -> Symbol
+
+Create a single symbol by interleaving `symbols` with `LinkCharacter`.
+
+Analogous to Mathematica `LinkSymbols[{s1, s2, ...}]`.
+"""
+function LinkSymbols(symbols::Vector{Symbol})
+    isempty(symbols) && return Symbol("")
+    Symbol(join(string.(symbols), LinkCharacter[]))
+end
+
+"""
+    UnlinkSymbol(s::Symbol) -> Vector{Symbol}
+
+Split a symbol at each occurrence of `LinkCharacter`, returning the parts as symbols.
+
+Analogous to Mathematica `UnlinkSymbol[symbol]`.
+"""
+function UnlinkSymbol(s::Symbol)
+    parts = split(string(s), LinkCharacter[])
+    Symbol.(parts)
+end
 
 """
     MakeDaggerSymbol(s::Symbol) -> Symbol

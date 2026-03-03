@@ -143,6 +143,83 @@ end
 end
 
 # ============================================================
+# ThreadArray
+# ============================================================
+
+@testset "ThreadArray — element-wise application" begin
+    result = ThreadArray(+, [1, 2, 3], [10, 20, 30])
+    @test result == [11, 22, 33]
+end
+
+@testset "ThreadArray — with lambda" begin
+    result = ThreadArray((a, b) -> a * b, [2, 3], [4, 5])
+    @test result == [8, 15]
+end
+
+# ============================================================
+# ReportSet
+# ============================================================
+
+@testset "ReportSet — changes value when different" begin
+    r = Ref(1)
+    ReportSet(r, 2; verbose=false)
+    @test r[] == 2
+end
+
+@testset "ReportSet — no change when same value" begin
+    r = Ref(42)
+    ReportSet(r, 42; verbose=false)
+    @test r[] == 42
+end
+
+@testset "ReportSet — verbose=true does not throw" begin
+    r = Ref("old")
+    @test_nowarn ReportSet(r, "new"; verbose=false)
+    @test r[] == "new"
+end
+
+# ============================================================
+# ReportSetOption
+# ============================================================
+
+@testset "ReportSetOption — is a no-op" begin
+    @test ReportSetOption(:SomeSymbol, :opt => "val") === nothing
+end
+
+# ============================================================
+# LinkCharacter / LinkSymbols / UnlinkSymbol
+# ============================================================
+
+@testset "LinkSymbols — joins with LinkCharacter" begin
+    lc = LinkCharacter[]
+    result = LinkSymbols([:ab, :cd, :ef])
+    @test string(result) == "ab$(lc)cd$(lc)ef"
+end
+
+@testset "LinkSymbols — single symbol" begin
+    @test LinkSymbols([:foo]) == :foo
+end
+
+@testset "LinkSymbols — empty list" begin
+    @test LinkSymbols(Symbol[]) == Symbol("")
+end
+
+@testset "UnlinkSymbol — splits at LinkCharacter" begin
+    lc = LinkCharacter[]
+    s = Symbol("ab$(lc)cd$(lc)ef")
+    @test UnlinkSymbol(s) == [:ab, :cd, :ef]
+end
+
+@testset "UnlinkSymbol — no link character is identity" begin
+    @test UnlinkSymbol(:foo) == [:foo]
+end
+
+@testset "LinkSymbols + UnlinkSymbol — roundtrip" begin
+    parts = [:alpha, :beta, :gamma]
+    @test UnlinkSymbol(LinkSymbols(parts)) == parts
+end
+
+# ============================================================
 # xTension! / MakexTensions
 # ============================================================
 
