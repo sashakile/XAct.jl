@@ -141,3 +141,62 @@ end
     @test length(result) == 2
     @test :p in result && :q in result
 end
+
+# ============================================================
+# xTension! / MakexTensions
+# ============================================================
+
+# Helper to reset the extensions store between test sets.
+function reset_xtensions!()
+    empty!(XCore._xtensions)
+end
+
+@testset "xTension! + MakexTensions — hooks fire in registration order" begin
+    reset_xtensions!()
+    log = Int[]
+    xTension!("PkgA", :DefMetric, "Beginning", (_...) -> push!(log, 1))
+    xTension!("PkgB", :DefMetric, "Beginning", (_...) -> push!(log, 2))
+    xTension!("PkgC", :DefMetric, "Beginning", (_...) -> push!(log, 3))
+    MakexTensions(:DefMetric, "Beginning")
+    @test log == [1, 2, 3]
+end
+
+@testset "xTension! + MakexTensions — Beginning and End are independent" begin
+    reset_xtensions!()
+    fired = Symbol[]
+    xTension!("Pkg", :DefTensor, "Beginning", (_...) -> push!(fired, :begin))
+    xTension!("Pkg", :DefTensor, "End",       (_...) -> push!(fired, :end))
+    MakexTensions(:DefTensor, "Beginning")
+    @test fired == [:begin]
+    MakexTensions(:DefTensor, "End")
+    @test fired == [:begin, :end]
+end
+
+@testset "xTension! + MakexTensions — hooks receive args" begin
+    reset_xtensions!()
+    received = []
+    xTension!("Pkg", :DefMetric, "End", (a, b) -> push!(received, (a, b)))
+    MakexTensions(:DefMetric, "End", :g, 4)
+    @test received == [(:g, 4)]
+end
+
+@testset "xTension! + MakexTensions — no hooks registered is a no-op" begin
+    reset_xtensions!()
+    @test_nowarn MakexTensions(:UnknownCmd, "Beginning")
+end
+
+@testset "xTension! — invalid moment throws" begin
+    reset_xtensions!()
+    @test_throws ErrorException xTension!("Pkg", :DefTensor, "Middle", identity)
+end
+
+@testset "xTension! + MakexTensions — multiple commands are independent" begin
+    reset_xtensions!()
+    log = Symbol[]
+    xTension!("Pkg", :DefMetric, "End", (_...) -> push!(log, :metric))
+    xTension!("Pkg", :DefTensor, "End", (_...) -> push!(log, :tensor))
+    MakexTensions(:DefMetric, "End")
+    @test log == [:metric]
+    MakexTensions(:DefTensor, "End")
+    @test log == [:metric, :tensor]
+end
