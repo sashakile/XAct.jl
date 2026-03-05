@@ -69,8 +69,8 @@ def mock_xcore() -> MagicMock:
 def patched(mock_julia: MagicMock, mock_xcore: MagicMock):
     """Patch get_julia/get_xcore for the duration of a test."""
     with (
-        patch("sxact.xcore.get_julia", return_value=mock_julia),
-        patch("sxact.xcore.get_xcore", return_value=mock_xcore),
+        patch("sxact.xcore._runtime.get_julia", return_value=mock_julia),
+        patch("sxact.xcore._runtime.get_xcore", return_value=mock_xcore),
     ):
         yield mock_julia, mock_xcore
 
