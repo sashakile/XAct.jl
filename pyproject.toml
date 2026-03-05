@@ -18,6 +18,7 @@ xact-test = "sxact.cli:main"
 dev = [
     "pytest>=7.0.0",
     "mypy>=1.0.0",
+    "ruff>=0.3.0",
     "types-requests>=2.28.0",
 ]
 docs = [

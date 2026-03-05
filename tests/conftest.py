@@ -1,5 +1,7 @@
 """Pytest configuration and fixtures."""
 
+from __future__ import annotations
+
 import os
 import time
 import uuid
@@ -7,6 +9,49 @@ import uuid
 import pytest
 
 from sxact.oracle import OracleClient
+from sxact.oracle.result import Result
+
+
+class MockOracleClient:
+    """Fake OracleClient for unit testing without a live server.
+
+    Construct with a *responses* dict mapping expression strings to Results.
+    Unrecognized expressions return a default error Result.
+    All calls are recorded in ``self.calls`` for assertion.
+    """
+
+    def __init__(self, responses: dict[str, Result] | None = None) -> None:
+        self._responses: dict[str, Result] = responses or {}
+        self.calls: list[str] = []
+
+    def health(self) -> bool:
+        return True
+
+    def evaluate(self, expr: str, timeout: int = 30) -> Result:
+        self.calls.append(expr)
+        return self._responses.get(
+            expr,
+            Result(status="error", type="", repr="", normalized="",
+                   error=f"MockOracleClient: no response configured for: {expr!r}"),
+        )
+
+    def evaluate_with_xact(self, expr: str, timeout: int = 60,
+                           context_id: str | None = None) -> Result:
+        self.calls.append(expr)
+        return self._responses.get(
+            expr,
+            Result(status="error", type="", repr="", normalized="",
+                   error=f"MockOracleClient: no response configured for: {expr!r}"),
+        )
+
+    def cleanup(self) -> bool:
+        return True
+
+    def restart(self) -> bool:
+        return True
+
+    def check_clean_state(self) -> tuple[bool, list[str]]:
+        return True, []
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -33,6 +78,12 @@ def oracle(oracle_url: str) -> OracleClient:
 
     pytest.skip("Oracle server not available")
     return client  # unreachable, but satisfies type checker
+
+
+@pytest.fixture
+def mock_oracle() -> MockOracleClient:
+    """Provide a MockOracleClient with no pre-configured responses."""
+    return MockOracleClient()
 
 
 @pytest.fixture
