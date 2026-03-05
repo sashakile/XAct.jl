@@ -467,6 +467,196 @@ def _cmd_regen_oracle(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Subcommand: benchmark
+# ---------------------------------------------------------------------------
+
+_BASELINE_PATH = Path("benchmarks/baseline.json")
+
+
+def _cmd_benchmark(args: argparse.Namespace) -> int:
+    from sxact.benchmarks.runner import (
+        BenchResult,
+        RegressionResult,
+        bench_test_case,
+        check_regression,
+        load_baseline,
+        save_baseline,
+        THRESHOLD_WARNING,
+        THRESHOLD_FAIL,
+        THRESHOLD_CRITICAL,
+    )
+    from sxact.runner.loader import load_test_file, LoadError
+
+    adapter_name = args.adapter
+    adapter = _make_adapter(args)
+
+    baseline_path = Path(args.baseline)
+
+    # --compare: run all available adapters, print table
+    if args.compare:
+        return _cmd_benchmark_compare(args, adapter_name, baseline_path)
+
+    test_files_paths = sorted(Path(args.test_dir).rglob("*.toml"))
+    if not test_files_paths:
+        print(f"warning: no .toml test files found in {args.test_dir}", file=sys.stderr)
+        return 0
+
+    results: list[BenchResult] = []
+
+    for toml_path in test_files_paths:
+        try:
+            test_file = load_test_file(toml_path)
+        except LoadError as exc:
+            print(f"LOAD ERROR {toml_path}: {exc}", file=sys.stderr)
+            continue
+
+        for tc in test_file.tests:
+            tag_filter = args.tag
+            if tag_filter and not _tc_matches_tag(tc.tags, test_file.meta.tags, tag_filter):
+                continue
+
+            print(f"  {test_file.meta.id}/{tc.id} ({adapter_name}) ... ", end="", flush=True)
+            try:
+                result = bench_test_case(
+                    adapter,
+                    test_file,
+                    tc,
+                    n_warmup=args.n_warmup,
+                    n_measure=args.n_measure,
+                    adapter_name=adapter_name,
+                )
+            except Exception as exc:
+                print(f"ERROR: {exc}", file=sys.stderr)
+                continue
+
+            results.append(result)
+            print(
+                f"median={result.median_ms:.3f}ms  "
+                f"p95={result.p95_ms:.3f}ms  "
+                f"min={result.min_ms:.3f}ms  "
+                f"max={result.max_ms:.3f}ms"
+            )
+
+    if not results:
+        return 0
+
+    if args.record:
+        save_baseline(baseline_path, results)
+        print(f"\nBaseline written to {baseline_path}")
+
+    if args.check:
+        baseline = load_baseline(baseline_path)
+        if not baseline:
+            print(f"warning: no baseline found at {baseline_path}; run with --record first", file=sys.stderr)
+            return 0
+
+        regressions = check_regression(results, baseline)
+        had_fail = False
+        for reg in regressions:
+            if reg.level == "ok":
+                continue
+            label = reg.level.upper()
+            print(
+                f"{label:<8} {reg.adapter}/{reg.test_id}: "
+                f"{reg.ratio:.1f}x ({reg.current_median_ms:.3f}ms vs baseline {reg.baseline_median_ms:.3f}ms)"
+            )
+            if reg.level in ("fail", "critical"):
+                had_fail = True
+
+        if had_fail:
+            return 1
+
+    return 0
+
+
+def _cmd_benchmark_compare(args, primary_adapter_name: str, baseline_path: Path) -> int:
+    """Run all available adapters on the test dir and print a comparison table."""
+    from sxact.benchmarks.runner import bench_test_case, BenchResult
+    from sxact.runner.loader import load_test_file, LoadError
+
+    adapter_names = ["wolfram", "julia", "python"]
+    adapter_results: dict[str, list[BenchResult]] = {}
+
+    test_files_paths = sorted(Path(args.test_dir).rglob("*.toml"))
+    if not test_files_paths:
+        print(f"warning: no .toml test files found in {args.test_dir}", file=sys.stderr)
+        return 0
+
+    for name in adapter_names:
+        try:
+            adapter = _make_adapter_by_name(name, args)
+        except Exception as exc:
+            print(f"  skip {name}: {exc}")
+            continue
+
+        print(f"\nRunning {name} adapter...")
+        adapter_results[name] = []
+
+        for toml_path in test_files_paths:
+            try:
+                test_file = load_test_file(toml_path)
+            except LoadError:
+                continue
+
+            for tc in test_file.tests:
+                print(f"  {test_file.meta.id}/{tc.id} ... ", end="", flush=True)
+                try:
+                    result = bench_test_case(
+                        adapter, test_file, tc,
+                        n_warmup=args.n_warmup,
+                        n_measure=args.n_measure,
+                        adapter_name=name,
+                    )
+                    adapter_results[name].append(result)
+                    print(f"median={result.median_ms:.3f}ms")
+                except Exception as exc:
+                    print(f"ERROR: {exc}")
+
+    # Print cross-adapter table
+    all_test_ids = sorted({r.test_id for rs in adapter_results.values() for r in rs})
+    wolfram_map = {r.test_id: r for r in adapter_results.get("wolfram", [])}
+
+    print("\n" + "=" * 70)
+    print(f"{'test_id':<30} {'wolfram':>10} {'julia':>10} {'python':>10} {'j/w':>6} {'p/w':>6}")
+    print("-" * 70)
+
+    for tid in all_test_ids:
+        row = f"{tid:<30}"
+        wms = next((r.median_ms for r in adapter_results.get("wolfram", []) if r.test_id == tid), None)
+        jms = next((r.median_ms for r in adapter_results.get("julia", []) if r.test_id == tid), None)
+        pms = next((r.median_ms for r in adapter_results.get("python", []) if r.test_id == tid), None)
+
+        row += f" {f'{wms:.3f}ms':>10}" if wms is not None else f" {'—':>10}"
+        row += f" {f'{jms:.3f}ms':>10}" if jms is not None else f" {'—':>10}"
+        row += f" {f'{pms:.3f}ms':>10}" if pms is not None else f" {'—':>10}"
+
+        jw = f"{jms/wms:.1f}x" if jms is not None and wms else "—"
+        pw = f"{pms/wms:.1f}x" if pms is not None and wms else "—"
+        row += f" {jw:>6} {pw:>6}"
+        print(row)
+
+    print("=" * 70)
+    return 0
+
+
+def _make_adapter_by_name(name: str, args):
+    """Create an adapter by explicit name, using args for URL/timeout."""
+    oracle_url = getattr(args, "oracle_url", "http://localhost:8765")
+    timeout = getattr(args, "timeout", 60)
+    if name == "wolfram":
+        from sxact.adapter.wolfram import WolframAdapter
+        return WolframAdapter(base_url=oracle_url, timeout=timeout)
+    elif name == "julia":
+        from sxact.adapter.julia_stub import JuliaAdapter
+        return JuliaAdapter()
+    elif name == "python":
+        from sxact.adapter.python_stub import PythonAdapter
+        return PythonAdapter()
+    else:
+        raise ValueError(f"Unknown adapter: {name!r}")
+
+
+# ---------------------------------------------------------------------------
 # Run helpers
 # ---------------------------------------------------------------------------
 
@@ -842,6 +1032,81 @@ def main() -> None:
         help="Skip confirmation prompt and overwrite immediately",
     )
     regen.set_defaults(func=_cmd_regen_oracle)
+
+    # --- benchmark subcommand ---
+    bench = subparsers.add_parser(
+        "benchmark",
+        help="Layer 3: time test cases and track performance regressions",
+    )
+    bench.add_argument("test_dir", help="Directory containing .toml test files")
+    bench.add_argument(
+        "--adapter",
+        default="wolfram",
+        choices=["wolfram", "julia", "python"],
+        help="Adapter to benchmark (default: wolfram)",
+    )
+    bench.add_argument(
+        "--oracle-url",
+        default="http://localhost:8765",
+        metavar="URL",
+        dest="oracle_url",
+        help="Oracle HTTP server URL (default: http://localhost:8765)",
+    )
+    bench.add_argument(
+        "--timeout",
+        type=int,
+        default=60,
+        metavar="SECONDS",
+        dest="timeout",
+        help="Per-evaluation timeout in seconds (default: 60)",
+    )
+    bench.add_argument(
+        "--n-warmup",
+        type=int,
+        default=10,
+        metavar="N",
+        dest="n_warmup",
+        help="Warmup iterations (default: 10)",
+    )
+    bench.add_argument(
+        "--n-measure",
+        type=int,
+        default=30,
+        metavar="N",
+        dest="n_measure",
+        help="Measured iterations (default: 30)",
+    )
+    bench.add_argument(
+        "--baseline",
+        default=str(_BASELINE_PATH),
+        metavar="PATH",
+        help=f"Baseline JSON path (default: {_BASELINE_PATH})",
+    )
+    bench.add_argument(
+        "--record",
+        action="store_true",
+        default=False,
+        help="Record current run as new baseline",
+    )
+    bench.add_argument(
+        "--check",
+        action="store_true",
+        default=False,
+        help="Compare against baseline and fail if regression threshold exceeded",
+    )
+    bench.add_argument(
+        "--compare",
+        action="store_true",
+        default=False,
+        help="Run all available adapters and print cross-adapter comparison table",
+    )
+    bench.add_argument(
+        "--tag",
+        default=None,
+        metavar="TAG",
+        help="Filter tests by tag",
+    )
+    bench.set_defaults(func=_cmd_benchmark)
 
     args = parser.parse_args()
     sys.exit(args.func(args))
