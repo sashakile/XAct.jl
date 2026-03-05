@@ -1,0 +1,43 @@
+{
+  "metadata": {
+    "n_warmup": 3,
+    "n_measure": 10
+  },
+  "benchmarks": {
+    "validate_symbol": {
+      "jit_overhead_ms": 625.6591,
+      "median_ms": 0.0176,
+      "iqr_ms": 0.0029,
+      "min_ms": 0.0128,
+      "max_ms": 0.0212
+    },
+    "register_symbol": {
+      "jit_overhead_ms": 39.6928,
+      "median_ms": 0.0024,
+      "iqr_ms": 0.0006,
+      "min_ms": 0.002,
+      "max_ms": 0.003
+    },
+    "xtension_dispatch_10hooks": {
+      "jit_overhead_ms": 35.4998,
+      "median_ms": 0.0046,
+      "iqr_ms": 0.0006,
+      "min_ms": 0.0044,
+      "max_ms": 0.0128
+    },
+    "symbol_join": {
+      "jit_overhead_ms": 70.1093,
+      "median_ms": 0.0038,
+      "iqr_ms": 0.0002,
+      "min_ms": 0.0034,
+      "max_ms": 0.0049
+    },
+    "has_dagger_character_q": {
+      "jit_overhead_ms": 17.8346,
+      "median_ms": 0.0021,
+      "iqr_ms": 0.0003,
+      "min_ms": 0.0019,
+      "max_ms": 0.0034
+    }
+  }
+}
