@@ -8,11 +8,15 @@ Usage::
     xact-test run tests/
     xact-test run tests/ --oracle-mode=snapshot --oracle-dir=oracle/ --adapter=julia
     xact-test run tests/ --filter tag:smoke --format=json
+
+    xact-test regen-oracle tests/ --oracle-dir oracle/
+    xact-test regen-oracle tests/ --oracle-dir oracle/ --diff --yes
 """
 
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import re
 import sys
@@ -229,6 +233,137 @@ def _cmd_run(args: argparse.Namespace) -> int:
         for r in results
     )
     return 1 if any_failure else 0
+
+
+# ---------------------------------------------------------------------------
+# Subcommand: regen-oracle
+# ---------------------------------------------------------------------------
+
+def _cmd_regen_oracle(args: argparse.Namespace) -> int:
+    from sxact.adapter.wolfram import WolframAdapter
+    from sxact.adapter.base import AdapterError
+    from sxact.runner.loader import load_test_file, LoadError
+    from sxact.snapshot.runner import run_file
+    from sxact.snapshot.store import SnapshotStore
+    from sxact.snapshot.writer import write_oracle_dir
+
+    test_dir = Path(args.test_dir)
+    oracle_dir = Path(args.oracle_dir)
+
+    if not test_dir.exists():
+        print(f"error: test directory not found: {test_dir}", file=sys.stderr)
+        return 1
+    if not oracle_dir.exists():
+        print(f"error: oracle directory not found: {oracle_dir}", file=sys.stderr)
+        return 1
+
+    adapter = WolframAdapter(base_url=args.oracle_url, timeout=args.timeout)
+    if not adapter._oracle.health():
+        print(
+            f"error: oracle not reachable at {args.oracle_url}\n"
+            "       Start the oracle server before regenerating snapshots.",
+            file=sys.stderr,
+        )
+        return 1
+
+    store = SnapshotStore(oracle_dir)
+    version = adapter.get_version()
+
+    toml_files = sorted(test_dir.rglob("*.toml"))
+    if not toml_files:
+        print(f"warning: no .toml test files found in {test_dir}", file=sys.stderr)
+        return 0
+
+    print(f"Running {len(toml_files)} file(s) against live oracle...")
+
+    new_snapshots = []
+    errors = 0
+
+    for toml_path in toml_files:
+        rel = toml_path.relative_to(test_dir)
+        print(f"  {rel} ... ", end="", flush=True)
+
+        try:
+            test_file = load_test_file(toml_path)
+        except LoadError as exc:
+            print(f"LOAD ERROR: {exc}", file=sys.stderr)
+            errors += 1
+            continue
+
+        try:
+            file_snap = run_file(test_file, adapter)
+            new_snapshots.append(file_snap)
+            print(f"ok ({len(file_snap.tests)} tests)")
+        except AdapterError as exc:
+            print(f"ADAPTER ERROR: {exc}", file=sys.stderr)
+            errors += 1
+        except Exception as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            errors += 1
+
+    # ------------------------------------------------------------------
+    # Diff: compare new vs existing
+    # ------------------------------------------------------------------
+    existing_keys = set(store.list_snapshots())
+    new_keys = {(fs.meta_id, s.test_id) for fs in new_snapshots for s in fs.tests}
+
+    added = []
+    removed = sorted(existing_keys - new_keys)
+    changed = []  # list of (key, diff_lines)
+
+    for file_snap in new_snapshots:
+        for snap in file_snap.tests:
+            key = (file_snap.meta_id, snap.test_id)
+            old = store.load(file_snap.meta_id, snap.test_id)
+            if old is None:
+                added.append(key)
+            elif old.normalized_output != snap.normalized_output:
+                diff_lines = list(difflib.unified_diff(
+                    old.normalized_output.splitlines(keepends=True),
+                    snap.normalized_output.splitlines(keepends=True),
+                    fromfile=f"{key[0]}/{key[1]} (old)",
+                    tofile=f"{key[0]}/{key[1]} (new)",
+                    lineterm="",
+                ))
+                changed.append((key, diff_lines))
+
+    total_changes = len(added) + len(removed) + len(changed)
+    if total_changes == 0:
+        print("\nNo changes detected.")
+        return 0
+
+    print(f"\n{total_changes} change(s):")
+    for meta_id, test_id in added:
+        print(f"  + {meta_id}/{test_id}  [NEW]")
+    for meta_id, test_id in removed:
+        print(f"  - {meta_id}/{test_id}  [REMOVED]")
+    for (meta_id, test_id), diff_lines in changed:
+        print(f"  ~ {meta_id}/{test_id}  [CHANGED]")
+        if args.diff:
+            for line in diff_lines:
+                print(f"    {line}")
+
+    print()
+    if not args.yes:
+        try:
+            answer = input("Overwrite oracle snapshots? [y/N] ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print("\nAborted.")
+            return 1
+        if answer not in ("y", "yes"):
+            print("Aborted.")
+            return 1
+
+    write_oracle_dir(
+        new_snapshots,
+        oracle_dir,
+        oracle_version=f"xAct {version.extra.get('xact_version', '1.2.0')}",
+        mathematica_version=version.cas_version,
+    )
+
+    total = sum(len(f.tests) for f in new_snapshots)
+    print(f"Wrote {total} snapshot(s) to {oracle_dir}/")
+    return 1 if errors else 0
 
 
 # ---------------------------------------------------------------------------
@@ -553,6 +688,47 @@ def main() -> None:
         help="Output format (default: terminal)",
     )
     run.set_defaults(func=_cmd_run)
+
+    # --- regen-oracle subcommand ---
+    regen = subparsers.add_parser(
+        "regen-oracle",
+        help="Regenerate oracle snapshots from the live oracle, showing a diff first",
+    )
+    regen.add_argument("test_dir", help="Directory containing .toml test files")
+    regen.add_argument(
+        "--oracle-dir",
+        required=True,
+        metavar="ORACLE_DIR",
+        dest="oracle_dir",
+        help="Existing oracle snapshot directory to update",
+    )
+    regen.add_argument(
+        "--oracle-url",
+        default="http://localhost:8765",
+        metavar="URL",
+        dest="oracle_url",
+        help="Oracle HTTP server URL (default: http://localhost:8765)",
+    )
+    regen.add_argument(
+        "--timeout",
+        type=int,
+        default=60,
+        metavar="SECONDS",
+        help="Per-evaluation timeout in seconds (default: 60)",
+    )
+    regen.add_argument(
+        "--diff",
+        action="store_true",
+        default=False,
+        help="Show full unified diff for changed snapshots",
+    )
+    regen.add_argument(
+        "--yes", "-y",
+        action="store_true",
+        default=False,
+        help="Skip confirmation prompt and overwrite immediately",
+    )
+    regen.set_defaults(func=_cmd_regen_oracle)
 
     args = parser.parse_args()
     sys.exit(args.func(args))
