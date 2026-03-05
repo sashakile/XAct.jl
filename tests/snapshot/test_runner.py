@@ -9,13 +9,12 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from sxact.oracle.result import Result
 from sxact.runner.loader import (
-    Expected,
     Operation,
     TestCase,
     TestFile,

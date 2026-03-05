@@ -252,7 +252,7 @@ class TestAPIForwarding:
         _, mock_xc = patched
         mock_xc.MapIfPlus.return_value = [2, 4]
         from sxact.xcore import map_if_plus
-        f = lambda x: x * 2
+        def f(x): return x * 2
         map_if_plus(f, [1, 2])
         mock_xc.MapIfPlus.assert_called_once()
 
@@ -313,7 +313,7 @@ class TestAPIForwarding:
         mock_jl, mock_xc = patched
         mock_jl.Symbol.side_effect = lambda s: f"<JuliaSymbol:{s}>"
         from sxact.xcore import x_up_delete_cases_to
-        pred = lambda x: x > 5
+        def pred(x): return x > 5
         x_up_delete_cases_to("prop", "tag", pred)
         mock_xc.xUpDeleteCasesTo_b.assert_called_once_with(
             "<JuliaSymbol:prop>", "<JuliaSymbol:tag>", pred

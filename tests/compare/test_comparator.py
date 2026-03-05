@@ -3,7 +3,7 @@
 import pytest
 
 from sxact.compare import compare
-from sxact.compare.comparator import CompareResult, EqualityMode
+from sxact.compare.comparator import EqualityMode
 from sxact.oracle.result import Result
 
 

@@ -8,13 +8,10 @@ _print_terminal_run, _print_json_run, and the full _cmd_run dispatcher.
 from __future__ import annotations
 
 import json
-import sys
 from io import StringIO
 from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from sxact.cli import (
     _RunResult,

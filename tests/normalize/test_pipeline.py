@@ -1,6 +1,5 @@
 """Tests for the normalization pipeline."""
 
-import pytest
 
 from sxact.normalize import ast_normalize, normalize
 
@@ -90,7 +89,7 @@ class TestAstParser:
         assert tree.args == [Leaf("-a"), Leaf("-b")]
 
     def test_parse_nested_application(self) -> None:
-        from sxact.normalize.ast_parser import Leaf, Node, parse
+        from sxact.normalize.ast_parser import Node, parse
         tree = parse("Plus[a, b]")
         assert isinstance(tree, Node)
         assert tree.head == "Plus"

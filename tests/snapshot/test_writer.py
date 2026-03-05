@@ -9,7 +9,6 @@ import hashlib
 import json
 from pathlib import Path
 
-import pytest
 
 from sxact.snapshot.runner import FileSnapshot, TestSnapshot, compute_oracle_hash
 from sxact.snapshot.writer import write_oracle_dir

@@ -18,7 +18,6 @@ from sxact.runner.loader import (
     Operation,
     TestCase,
     TestFile,
-    TestMeta,
     load_test_file,
 )
 

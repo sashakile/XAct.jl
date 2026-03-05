@@ -90,7 +90,7 @@ class PythonAdapter(TestAdapter[_PythonContext]):
         try:
             from sxact.xcore._runtime import get_julia, get_xcore
             self._jl = get_julia()
-            xc = get_xcore()
+            get_xcore()
             raw_jl = self._jl.seval("string(VERSION)")
             self._julia_version = str(raw_jl).strip()
             # Try to get XCore package version

@@ -7,7 +7,6 @@ import difflib
 import sys
 from pathlib import Path
 
-from .run import _make_adapter
 
 
 def _interactive_review(new_snapshots, added, removed, changed, store):
@@ -60,7 +59,6 @@ def _interactive_review(new_snapshots, added, removed, changed, store):
             elif ans == "q":
                 return None
 
-    from sxact.snapshot.runner import FileSnapshot
     result = []
     for file_snap in new_snapshots:
         accepted_tests = []

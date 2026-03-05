@@ -12,15 +12,13 @@ Key invariants under test:
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 import pytest
 
-from sxact.adapter.base import EqualityMode
 from sxact.oracle.result import Result
 from sxact.runner.isolation import (
     IsolatedContext,
-    TestResult,
     _sub_refs,
     _substitute_bindings,
 )

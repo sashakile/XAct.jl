@@ -20,7 +20,7 @@ Example
 
 from __future__ import annotations
 
-from ._runtime import get_julia, get_xcore
+from ._runtime import get_julia as get_julia, get_xcore as get_xcore
 
 try:
     from juliacall import JuliaError

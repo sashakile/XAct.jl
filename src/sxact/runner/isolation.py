@@ -21,7 +21,7 @@ from typing import Any, Literal
 
 from sxact.adapter.base import EqualityMode, TestAdapter
 from sxact.oracle.result import Result
-from sxact.runner.loader import Operation, TestCase, TestFile
+from sxact.runner.loader import TestCase, TestFile
 
 
 # ---------------------------------------------------------------------------

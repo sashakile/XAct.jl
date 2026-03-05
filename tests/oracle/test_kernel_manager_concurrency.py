@@ -7,7 +7,6 @@ import time
 import types
 from unittest.mock import MagicMock
 
-import pytest
 
 # Stub out wolframclient before importing kernel_manager so tests run offline.
 _wc = types.ModuleType("wolframclient")

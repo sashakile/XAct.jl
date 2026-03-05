@@ -11,7 +11,6 @@ Passes (applied in order by :func:`ast_normalize`):
 from __future__ import annotations
 
 import re
-from typing import Union
 
 from sxact.normalize.ast_parser import Expr, Leaf, Node
 

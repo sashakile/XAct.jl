@@ -10,9 +10,8 @@ They verify that:
 import sys
 import os
 import types
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
-import pytest
 
 # Stub wolframclient before importing kernel_manager.
 _wc = types.ModuleType("wolframclient")

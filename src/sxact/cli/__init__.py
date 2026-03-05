@@ -21,21 +21,21 @@ from pathlib import Path
 
 # Re-export everything the tests import from sxact.cli
 from .run import (
-    _RunResult,
-    _REF_RE,
+    _RunResult as _RunResult,
+    _REF_RE as _REF_RE,
     _make_adapter,
     _make_adapter_by_name,
     _tc_matches_tag,
-    _sub_bindings,
-    _run_file_live,
-    _run_file_snapshot,
-    _STATUS_LABEL,
-    _print_terminal_run,
-    _print_json_run,
+    _sub_bindings as _sub_bindings,
+    _run_file_live as _run_file_live,
+    _run_file_snapshot as _run_file_snapshot,
+    _STATUS_LABEL as _STATUS_LABEL,
+    _print_terminal_run as _print_terminal_run,
+    _print_json_run as _print_json_run,
     _cmd_run,
 )
 from .snapshot import _cmd_snapshot
-from .regen import _interactive_review, _cmd_regen_oracle
+from .regen import _interactive_review as _interactive_review, _cmd_regen_oracle
 
 
 # ---------------------------------------------------------------------------
@@ -48,14 +48,10 @@ _BASELINE_PATH = Path("benchmarks/baseline.json")
 def _cmd_benchmark(args: argparse.Namespace) -> int:
     from sxact.benchmarks.runner import (
         BenchResult,
-        RegressionResult,
         bench_test_case,
         check_regression,
         load_baseline,
         save_baseline,
-        THRESHOLD_WARNING,
-        THRESHOLD_FAIL,
-        THRESHOLD_CRITICAL,
     )
     from sxact.runner.loader import load_test_file, LoadError
 

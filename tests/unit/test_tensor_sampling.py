@@ -18,7 +18,6 @@ from sxact.compare.tensor_objects import (
 from sxact.compare.sampling import (
     Sample,
     SamplingResult,
-    TensorContext,
     build_tensor_context,
     _extract_variables,
     _numpy_to_wl,

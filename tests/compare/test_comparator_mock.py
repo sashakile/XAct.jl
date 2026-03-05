@@ -6,10 +6,9 @@ otherwise require a running Docker oracle.
 
 from __future__ import annotations
 
-import pytest
 
 from sxact.compare import compare
-from sxact.compare.comparator import CompareResult, EqualityMode
+from sxact.compare.comparator import EqualityMode
 from sxact.oracle.result import Result
 from tests.conftest import MockOracleClient
 

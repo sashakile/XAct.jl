@@ -137,7 +137,6 @@ class TestVerifyHash:
         # Tamper: overwrite the file with a different normalized_output but keep the original hash
         path = tmp_path / "p" / "q" / "tc.json"
         data = json.loads(path.read_text())
-        original_hash = data["hash"]
         data["normalized_output"] = "TAMPERED"
         path.write_text(json.dumps(data))
 

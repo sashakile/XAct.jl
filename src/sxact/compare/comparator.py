@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Optional
 
-from sxact.compare.sampling import SamplingResult, TensorContext, sample_numeric
+from sxact.compare.sampling import TensorContext, sample_numeric
 
 if TYPE_CHECKING:
     from sxact.oracle import OracleClient

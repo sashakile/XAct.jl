@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 
 from sxact.oracle.result import Result
 from sxact.snapshot.compare import SnapshotComparator, SnapshotCompareResult
