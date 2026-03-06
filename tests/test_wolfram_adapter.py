@@ -13,6 +13,9 @@ Usage::
     pytest tests/test_wolfram_adapter.py -m oracle
 """
 
+import warnings
+from unittest.mock import MagicMock
+
 import pytest
 
 from sxact.adapter.wolfram import WolframAdapter
@@ -123,3 +126,127 @@ class TestWolframNormalize:
     def test_empty(self):
         adapter = WolframAdapter()
         assert adapter.normalize("") == ""
+
+
+class TestWolframLifecycle:
+    """Unit tests for initialize() / teardown() — no oracle needed (uses mock)."""
+
+    def _make_adapter(self, mock_oracle):
+        """Return a WolframAdapter with the given mock injected."""
+        adapter = WolframAdapter()
+        adapter._oracle = mock_oracle
+        return adapter
+
+    # ------------------------------------------------------------------
+    # teardown()
+    # ------------------------------------------------------------------
+
+    def test_teardown_calls_cleanup(self):
+        """teardown() must invoke oracle.cleanup() exactly once."""
+        oracle = MagicMock()
+        oracle.cleanup.return_value = True
+        adapter = self._make_adapter(oracle)
+        from sxact.adapter.wolfram import _WolframContext
+        ctx = _WolframContext(context_id="test-ctx")
+        adapter.teardown(ctx)
+        oracle.cleanup.assert_called_once()
+
+    def test_teardown_marks_context_dead(self):
+        """teardown() sets ctx.alive = False."""
+        oracle = MagicMock()
+        oracle.cleanup.return_value = True
+        adapter = self._make_adapter(oracle)
+        from sxact.adapter.wolfram import _WolframContext
+        ctx = _WolframContext(context_id="test-ctx")
+        assert ctx.alive is True
+        adapter.teardown(ctx)
+        assert ctx.alive is False
+
+    def test_teardown_warns_on_cleanup_failure(self):
+        """teardown() emits RuntimeWarning when cleanup() returns False."""
+        oracle = MagicMock()
+        oracle.cleanup.return_value = False
+        adapter = self._make_adapter(oracle)
+        from sxact.adapter.wolfram import _WolframContext
+        ctx = _WolframContext(context_id="test-ctx")
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            adapter.teardown(ctx)
+        assert any(issubclass(w.category, RuntimeWarning) for w in caught), (
+            "Expected RuntimeWarning when cleanup() returns False"
+        )
+
+    def test_teardown_does_not_raise_even_on_failure(self):
+        """teardown() must never raise, even when cleanup() fails."""
+        oracle = MagicMock()
+        oracle.cleanup.return_value = False
+        adapter = self._make_adapter(oracle)
+        from sxact.adapter.wolfram import _WolframContext
+        ctx = _WolframContext(context_id="test-ctx")
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+            adapter.teardown(ctx)  # must not raise
+
+    # ------------------------------------------------------------------
+    # initialize()
+    # ------------------------------------------------------------------
+
+    def test_initialize_checks_clean_state(self):
+        """initialize() calls check_clean_state() before returning context."""
+        oracle = MagicMock()
+        oracle.health.return_value = True
+        oracle.check_clean_state.return_value = (True, [])
+        adapter = self._make_adapter(oracle)
+        ctx = adapter.initialize()
+        oracle.check_clean_state.assert_called_once()
+        assert ctx is not None
+
+    def test_initialize_raises_when_oracle_down(self):
+        """initialize() raises AdapterError when oracle is unreachable."""
+        from sxact.adapter.base import AdapterError
+        oracle = MagicMock()
+        oracle.health.return_value = False
+        adapter = self._make_adapter(oracle)
+        with pytest.raises(AdapterError):
+            adapter.initialize()
+
+    def test_initialize_restarts_on_dirty_state(self):
+        """initialize() calls restart() and warns when kernel is dirty."""
+        oracle = MagicMock()
+        oracle.health.return_value = True
+        oracle.check_clean_state.return_value = (False, ["DirtyManifold"])
+        oracle.restart.return_value = True
+        adapter = self._make_adapter(oracle)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            ctx = adapter.initialize()
+        oracle.restart.assert_called_once()
+        assert any(issubclass(w.category, RuntimeWarning) for w in caught), (
+            "Expected RuntimeWarning about dirty kernel state"
+        )
+        assert ctx is not None
+
+    def test_initialize_raises_if_restart_fails_on_dirty(self):
+        """initialize() raises AdapterError when dirty and restart() fails."""
+        from sxact.adapter.base import AdapterError
+        oracle = MagicMock()
+        oracle.health.return_value = True
+        oracle.check_clean_state.return_value = (False, ["LeakedTensor"])
+        oracle.restart.return_value = False
+        adapter = self._make_adapter(oracle)
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+            with pytest.raises(AdapterError):
+                adapter.initialize()
+
+    def test_initialize_returns_context_with_uuid(self):
+        """initialize() returns a context with a unique context_id string."""
+        oracle = MagicMock()
+        oracle.health.return_value = True
+        oracle.check_clean_state.return_value = (True, [])
+        adapter = self._make_adapter(oracle)
+        ctx1 = adapter.initialize()
+        ctx2 = adapter.initialize()
+        assert ctx1.context_id != ctx2.context_id, (
+            "Each initialize() call must produce a unique context_id"
+        )
