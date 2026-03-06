@@ -1,9 +1,9 @@
 # Layer 2 Property Test Format and Runner Integration Design
 
 **Date:** 2026-03-05
-**Ticket:** sxAct-yue
-**Status:** Decision
-**Blocks:** sxAct-a2i (Layer 2 property catalog implementation)
+**Ticket:** sxAct-c0l (Layer 2 property catalog implementation)
+**Status:** Decision — implementation pending
+**Blocks:** sxAct-c0l (property catalog); sxAct-c0l blocked by sxAct-b01 (Julia variable binding bug)
 
 ---
 

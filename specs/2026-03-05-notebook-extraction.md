@@ -1,9 +1,9 @@
 # Notebook Extraction Strategy and Automation Feasibility
 
 **Date:** 2026-03-05
-**Ticket:** sxAct-m42
-**Status:** Decision
-**Blocks:** sxAct-9b1 (xTensor/xPerm TOML test data)
+**Ticket:** sxAct-z1c (ButlerExamples automated extraction), sxAct-3w1 (manual xTensor/xPerm curation)
+**Status:** Decision — implementation pending
+**Note:** sxAct-3w1 blocked by sxAct-6tb (Contract action must exist before oracle snapshots for full test coverage)
 
 ---
 

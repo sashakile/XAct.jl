@@ -1,7 +1,7 @@
 # Spec: Oracle Snapshots & CI Harness
 
 **Date:** 2026-03-03
-**Status:** Proposed
+**Status:** Implemented — xact-test run --oracle-mode=snapshot operational; 40/40 Tier 1 xTensor/xPerm tests pass in snapshot mode
 **Priority:** High (RSE / Infrastructure)
 
 ## Problem Statement

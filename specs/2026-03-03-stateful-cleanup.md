@@ -2,6 +2,7 @@
 
 **Date:** 2026-03-03
 **Status:** Proposed
+**Ticket:** sxAct-xu0
 **Priority:** Medium (Stability)
 
 ## Problem Statement

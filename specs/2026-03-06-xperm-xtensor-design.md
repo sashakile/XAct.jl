@@ -1,8 +1,9 @@
 # XPerm.jl and XTensor.jl Design Spec
 
 **Date:** 2026-03-06
-**Status:** Draft (v2 — post Rule-of-5 review)
-**Ticket:** sxAct-01g (Python adapter), sxAct-rl6 (xPerm epic), sxAct-ctx (xTensor epic)
+**Status:** Implemented — Tier 1 complete (40/40 tests passing)
+**Ticket:** sxAct-rl6 (xPerm epic), sxAct-ctx (xTensor epic)
+**Tier 2 tickets:** sxAct-6tb (Contract action), sxAct-3to (covariant derivatives), sxAct-c0l (Layer 2 property catalog), sxAct-bw4 (PythonAdapter)
 **Prerequisites read:**
 - `research/XACT_MIGRATION_RESEARCH.md`
 - `resources/xAct/xPerm/xPerm.m` (API surface)
