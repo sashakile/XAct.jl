@@ -36,6 +36,7 @@ from .run import (
 )
 from .snapshot import _cmd_snapshot
 from .regen import _interactive_review as _interactive_review, _cmd_regen_oracle
+from .property import _cmd_property
 
 
 # ---------------------------------------------------------------------------
@@ -430,6 +431,49 @@ def main() -> None:
         help="Filter tests by tag",
     )
     bench.set_defaults(func=_cmd_benchmark)
+
+    # --- property subcommand ---
+    prop = subparsers.add_parser(
+        "property",
+        help="Layer 2: run property-based tests and report pass/fail/counterexamples",
+    )
+    prop.add_argument(
+        "test_path",
+        help="Path to a property .toml file or directory containing property .toml files",
+    )
+    prop.add_argument(
+        "--adapter",
+        choices=["wolfram", "julia", "python"],
+        default="wolfram",
+        help="Adapter under test (default: wolfram)",
+    )
+    prop.add_argument(
+        "--oracle-url",
+        default="http://localhost:8765",
+        metavar="URL",
+        dest="oracle_url",
+        help="Oracle HTTP server URL (default: http://localhost:8765)",
+    )
+    prop.add_argument(
+        "--timeout",
+        type=int,
+        default=60,
+        metavar="SECONDS",
+        help="Per-evaluation timeout in seconds (default: 60)",
+    )
+    prop.add_argument(
+        "--filter",
+        action="append",
+        metavar="tag:<TAG>",
+        help="Filter properties by tag (e.g. --filter tag:critical). May be repeated.",
+    )
+    prop.add_argument(
+        "--format",
+        choices=["terminal", "json"],
+        default="terminal",
+        help="Output format (default: terminal)",
+    )
+    prop.set_defaults(func=_cmd_property)
 
     args = parser.parse_args()
     sys.exit(args.func(args))
