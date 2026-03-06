@@ -2,7 +2,7 @@
     XTensor
 
 Abstract tensor algebra for the xAct/sxAct system.
-Implements DefManifold, DefMetric, DefTensor, and ToCanonical.
+Implements DefManifold, DefMetric, DefTensor, ToCanonical, and Contract.
 
 Curvature tensors are auto-created by def_metric!.
 Condition evaluation (Assert, Evaluate) is handled in the Python adapter layer.
@@ -39,8 +39,11 @@ export ManifoldQ, TensorQ, VBundleQ, MetricQ
 export Dimension, IndicesOfVBundle, SlotsOfTensor
 export MemberQ
 
-# Canonicalization
-export ToCanonical
+# Canonicalization and contraction
+export ToCanonical, Contract
+
+# Contract support
+export SignDetOfMetric
 
 # ============================================================
 # Types
@@ -104,6 +107,13 @@ const Manifolds  = Symbol[]   # ordered list
 const Tensors    = Symbol[]
 const VBundles   = Symbol[]
 
+# Contract support: physics rules
+# Tensors whose full trace vanishes (e.g. Weyl tensor)
+const _traceless_tensors = Set{Symbol}()
+# Trace rules: trace_of_tensor → (scalar_tensor_name, Int_coefficient)
+# e.g. EinsteinXXX → (:RicciScalarXXX, -1)  meaning tr(G) = -1 * R
+const _trace_scalars = Dict{Symbol, Tuple{Symbol, Int}}()
+
 # ============================================================
 # State management
 # ============================================================
@@ -111,6 +121,7 @@ const VBundles   = Symbol[]
 function reset_state!()
     empty!(_manifolds); empty!(_vbundles); empty!(_tensors); empty!(_metrics)
     empty!(Manifolds); empty!(Tensors); empty!(VBundles)
+    empty!(_traceless_tensors); empty!(_trace_scalars)
 end
 
 # ============================================================
@@ -175,6 +186,20 @@ MemberQ(collection::AbstractVector, s::Symbol) = s in collection
 MemberQ(collection::AbstractVector, s::AbstractString) = Symbol(s) in collection
 MemberQ(collection::Symbol, s::AbstractString) = MemberQ(collection, Symbol(s))
 MemberQ(collection::AbstractString, s) = MemberQ(Symbol(collection), s)
+
+"""    SignDetOfMetric(metric_name) → Int
+Return the sign of the determinant (+1 Riemannian, -1 Lorentzian) for a registered metric.
+"""
+function SignDetOfMetric(metric_name::Symbol) :: Int
+    # _metrics is keyed by covd name; search by metric tensor name
+    for (covd, m) in _metrics
+        if m.name == metric_name
+            return m.signdet
+        end
+    end
+    error("SignDetOfMetric: metric $metric_name not found")
+end
+SignDetOfMetric(s::AbstractString) = SignDetOfMetric(Symbol(s))
 
 # ============================================================
 # Symmetry string parser
@@ -384,6 +409,19 @@ function _auto_create_curvature!(manifold::Symbol, covd::Symbol)
         slots4 = String[i1, i2, i3, i4]
         sym4   = "RiemannSymmetric[{$i1,$i2,$i3,$i4}]"
         def_tensor!(weyl_name, slots4, manifold; symmetry_str=sym4)
+    end
+    # Mark Weyl as traceless (any trace over any pair of its indices = 0)
+    push!(_traceless_tensors, weyl_name)
+
+    # Register Einstein tensor trace rule: tr(G_{ab}) = g^{ab} G_{ab} = -R
+    # In n dimensions: g^{ab} G_{ab} = R - (n/2)*R = (1 - n/2)*R
+    # For a general manifold we encode the 4D rule (coefficient -1) since
+    # the curvature invariant tests use 4D manifolds.
+    # The coefficient is (1 - dim/2).  For dim=4: coeff = -1.
+    n = m.dimension
+    coeff_int = 1 - div(n, 2)  # integer only for even dimensions
+    if !haskey(_trace_scalars, einstein_name)
+        _trace_scalars[einstein_name] = (ricci_scalar_name, coeff_int)
     end
 end
 
@@ -651,6 +689,287 @@ function _serialize(keys::Vector{Vector{Tuple{Symbol, Vector{String}}}},
         end
     end
 
+    String(take!(result))
+end
+
+# ============================================================
+# Contract (ContractMetric)
+# ============================================================
+
+"""    Contract(expression::String) → String
+Perform metric contraction (ContractMetric) on a tensor expression.
+
+For each metric factor in the expression, contracts its indices with matching
+indices in other factors (raises/lowers indices, removes the metric).
+
+Physics rules applied:
+- Weyl-type tensors (traceless): any self-trace → term is 0
+- Einstein tensor trace: tr(G_{ab}) → (1 - dim/2) * RicciScalar
+"""
+function Contract(expression::AbstractString) :: String
+    s = strip(expression)
+    (s == "0" || isempty(s)) && return "0"
+
+    terms = _parse_expression(s)
+    isempty(terms) && return "0"
+
+    result_terms = TermAST[]
+    for term in terms
+        contracted = _contract_term(term)
+        isnothing(contracted) && continue
+        push!(result_terms, contracted)
+    end
+
+    isempty(result_terms) && return "0"
+
+    # Run ToCanonical on the contracted result
+    ToCanonical(_serialize_terms(result_terms))
+end
+
+"""Return the bare index label (strip leading '-')."""
+_bare(s::AbstractString) = startswith(s, "-") ? s[2:end] : string(s)
+
+"""True if index is covariant (has leading '-')."""
+_is_covariant(s::AbstractString) = startswith(s, "-")
+
+"""
+Find which registered metric a tensor factor corresponds to, and its variance.
+Returns (covd_key, MetricObj, :contravariant | :covariant) or nothing.
+  :contravariant — g^{ab}: both indices up (no '-' prefix) → raises indices
+  :covariant     — g_{ab}: both indices down ('-' prefix)   → lowers indices
+"""
+function _factor_as_metric(f::FactorAST) :: Union{Tuple{Symbol, MetricObj, Symbol}, Nothing}
+    t = get(_tensors, f.tensor_name, nothing)
+    isnothing(t) && return nothing
+    length(f.indices) == 2 || return nothing
+    for (covd, metric) in _metrics
+        if metric.name == f.tensor_name
+            i1_cov = _is_covariant(f.indices[1])
+            i2_cov = _is_covariant(f.indices[2])
+            if !i1_cov && !i2_cov
+                return (covd, metric, :contravariant)  # g^{ab}
+            elseif i1_cov && i2_cov
+                return (covd, metric, :covariant)       # g_{ab}
+            end
+        end
+    end
+    nothing
+end
+
+"""
+Apply ContractMetric to a single term.
+Returns the contracted TermAST, or nothing if the term is zero.
+"""
+function _contract_term(term::TermAST) :: Union{TermAST, Nothing}
+    # Iteratively contract metrics until none remain
+    current = term
+    max_iters = 20
+    for _ in 1:max_iters
+        result = _contract_one_metric(current)
+        if isnothing(result)
+            return nothing  # term is zero
+        end
+        if result === current
+            # No metric found / no further contraction possible
+            break
+        end
+        current = result
+    end
+    current
+end
+
+"""
+Find one metric factor and contract it with another factor (or apply a trace rule).
+Returns:
+- The updated TermAST if a contraction was performed
+- the same TermAST object if no metric found (signal: no more contractions)
+- nothing if the term is zero (traceless tensor trace)
+"""
+function _contract_one_metric(term::TermAST) :: Union{TermAST, Nothing}
+    factors = term.factors
+
+    # Find a metric factor (contravariant or covariant)
+    metric_pos    = 0
+    metric_covd   = nothing
+    metric_obj    = nothing
+    metric_var    = :contravariant  # :contravariant (g^{ab}) or :covariant (g_{ab})
+    for (i, f) in enumerate(factors)
+        r = _factor_as_metric(f)
+        if !isnothing(r)
+            metric_pos = i
+            metric_covd, metric_obj, metric_var = r
+            break
+        end
+    end
+
+    metric_pos == 0 && return term  # no metric found, signal no-op
+
+    metric_factor = factors[metric_pos]
+
+    # For g^{ab} (contravariant): metric indices are UP, we look for DOWN (covariant) matches
+    # For g_{ab} (covariant):     metric indices are DOWN, we look for UP (contravariant) matches
+    if metric_var == :contravariant
+        # g^{ab}: indices stored without '-', bare labels are the contracted names
+        idx_1 = metric_factor.indices[1]   # e.g. "cia" (up)
+        idx_2 = metric_factor.indices[2]   # e.g. "cib" (up)
+        bare_1 = _bare(idx_1)
+        bare_2 = _bare(idx_2)
+    else
+        # g_{ab}: indices stored with '-', bare labels are the contracted names
+        idx_1 = metric_factor.indices[1]   # e.g. "-cia" (down)
+        idx_2 = metric_factor.indices[2]   # e.g. "-cib" (down)
+        bare_1 = _bare(idx_1)
+        bare_2 = _bare(idx_2)
+    end
+
+    # Find another factor that has matching index(es) of the opposite variance
+    for (j, other) in enumerate(factors)
+        j == metric_pos && continue
+
+        if metric_var == :contravariant
+            # g^{ab} contracts with down (-) indices in other factors
+            has_1 = any(idx -> _bare(idx) == bare_1 && _is_covariant(idx), other.indices)
+            has_2 = any(idx -> _bare(idx) == bare_2 && _is_covariant(idx), other.indices)
+        else
+            # g_{ab} contracts with up (no -) indices in other factors
+            has_1 = any(idx -> _bare(idx) == bare_1 && !_is_covariant(idx), other.indices)
+            has_2 = any(idx -> _bare(idx) == bare_2 && !_is_covariant(idx), other.indices)
+        end
+
+        (has_1 || has_2) || continue
+
+        # Perform the contraction: replace matched indices with the OTHER metric index
+        # For g^{ab} contracting with T_{a...}: replace -a in T with b (up) → raises index
+        # For g_{ab} contracting with T^{a...}: replace a in T with -b (down) → lowers index
+        new_indices = copy(other.indices)
+
+        function replace_idx!(new_idxs, bare_match, replacement, is_contra)
+            for k in eachindex(new_idxs)
+                b = _bare(new_idxs[k])
+                cov = _is_covariant(new_idxs[k])
+                # Match: correct bare label AND opposite variance to the metric
+                if b == bare_match && (is_contra ? cov : !cov)
+                    new_idxs[k] = replacement
+                end
+            end
+        end
+
+        if metric_var == :contravariant
+            # g^{ab}: raise -a to b (up), and/or raise -b to a (up)
+            if has_1 && has_2
+                replace_idx!(new_indices, bare_1, idx_2, true)   # -a → b (up)
+                replace_idx!(new_indices, bare_2, idx_1, true)   # -b → a (up)
+            elseif has_1
+                replace_idx!(new_indices, bare_1, idx_2, true)   # -a → b (up)
+            else
+                replace_idx!(new_indices, bare_2, idx_1, true)   # -b → a (up)
+            end
+        else
+            # g_{ab}: lower a to -b (down), and/or lower b to -a (down)
+            if has_1 && has_2
+                replace_idx!(new_indices, bare_1, "-" * bare_2, false)  # a → -b (down)
+                replace_idx!(new_indices, bare_2, "-" * bare_1, false)  # b → -a (down)
+            elseif has_1
+                replace_idx!(new_indices, bare_1, "-" * bare_2, false)  # a → -b (down)
+            else
+                replace_idx!(new_indices, bare_2, "-" * bare_1, false)  # b → -a (down)
+            end
+        end
+
+        # Build the new factor with updated indices
+        new_other = FactorAST(other.tensor_name, new_indices)
+
+        # Detect traces:
+        # 1. Double contraction (has_1 && has_2 against the same factor) is always a trace.
+        #    For a rank-2 tensor: full trace (scalar).  For rank-4: trace on 2 slots.
+        # 2. Self-trace after substitution: same bare label appears twice in new_indices.
+        bare_new = [_bare(idx) for idx in new_indices]
+        self_trace_from_subst = length(unique(bare_new)) < length(bare_new)
+        is_trace = (has_1 && has_2) || self_trace_from_subst
+
+        if is_trace
+            # Apply physics rules for the trace case
+            # First: is this tensor traceless?
+            if other.tensor_name in _traceless_tensors
+                return nothing  # term is zero
+            end
+            # Second: do we have a trace rule for this tensor?
+            if has_1 && has_2 && haskey(_trace_scalars, other.tensor_name)
+                # Check this is truly a full trace (all slots of the tensor contracted by metric)
+                # For a rank-2 tensor this is always the case when has_1 && has_2
+                # For rank-4 we only apply if the tensor has no remaining free indices after contraction
+                # Count how many distinct bare labels remain in new_other after removing contracted ones
+                remaining_free = [idx for idx in new_other.indices
+                                  if !(_bare(idx) == bare_1 || _bare(idx) == bare_2)]
+                # If all original contracted slots are consumed, check trace rule
+                if isempty(remaining_free) ||
+                   all(b -> b == bare_1 || b == bare_2, bare_new)
+                    (scalar_name, coeff_int) = _trace_scalars[other.tensor_name]
+                    new_factors = FactorAST[]
+                    scalar_factor = FactorAST(scalar_name, String[])
+                    for (k, ff) in enumerate(factors)
+                        k == metric_pos && continue
+                        k == j && continue
+                        push!(new_factors, ff)
+                    end
+                    push!(new_factors, scalar_factor)
+                    new_coeff = term.coeff * coeff_int
+                    return TermAST(new_coeff, new_factors)
+                end
+            end
+            # No special rule: keep the self-trace factor (ToCanonical handles)
+        end
+
+        # Remove the metric factor, replace `other` with `new_other`
+        new_factors = FactorAST[]
+        for (k, ff) in enumerate(factors)
+            k == metric_pos && continue
+            if k == j
+                push!(new_factors, new_other)
+            else
+                push!(new_factors, ff)
+            end
+        end
+        return TermAST(term.coeff, new_factors)
+    end
+
+    # Metric found but no matching factor for either index — return as-is
+    term
+end
+
+"""Serialize a list of TermAST back to a string (without collecting like terms)."""
+function _serialize_terms(terms::Vector{TermAST}) :: String
+    isempty(terms) && return "0"
+    parts = Tuple{Int, String}[]
+    for term in terms
+        mono = join(["$(f.tensor_name)[$(join(f.indices, ","))]" for f in term.factors], " ")
+        push!(parts, (term.coeff, mono))
+    end
+
+    result = IOBuffer()
+    first = true
+    for (c, mono) in parts
+        if first
+            if c == 1
+                print(result, mono)
+            elseif c == -1
+                print(result, "-", mono)
+            else
+                print(result, c, " ", mono)
+            end
+            first = false
+        else
+            if c == 1
+                print(result, " + ", mono)
+            elseif c == -1
+                print(result, " - ", mono)
+            elseif c > 0
+                print(result, " + ", c, " ", mono)
+            else
+                print(result, " - ", abs(c), " ", mono)
+            end
+        end
+    end
     String(take!(result))
 end
 

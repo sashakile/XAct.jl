@@ -135,6 +135,7 @@ message   = "Contracting covariant metric with contravariant vector should lower
 [[tests]]
 id          = "metric_trace_is_dimension"
 description = "Trace of identity: delta^a_a = dimension = 4"
+skip        = "requires Simplify (Tier 2 deferred)"
 
 [[tests.operations]]
 action   = "Evaluate"

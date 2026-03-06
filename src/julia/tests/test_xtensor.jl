@@ -186,4 +186,32 @@ using .XTensor
         @test isempty(list_manifolds())
     end
 
+    @testset "Contract" begin
+        reset_state!()
+        def_manifold!(:Cm, 4, [:ca, :cb, :cc, :cd])
+        def_metric!(1, "Cg[-ca,-cb]", :Cd)
+        def_tensor!(:Cv, ["-ca"], :Cm)
+
+        # SignDetOfMetric
+        @test SignDetOfMetric(:Cg) == 1
+
+        # Raise index: g^{ab} v_b → v^a
+        @test Contract("Cg[ca,cb] Cv[-cb]") == "Cv[ca]"
+
+        # Lower index: g_{ab} v^b → v_{-a} (result: Cv[-ca])
+        @test Contract("Cg[-ca,-cb] Cv[cb]") == "Cv[-ca]"
+
+        # Weyl tracelessness: g^{ac} W_{abcd} = 0
+        reset_state!()
+        def_manifold!(:Cm4, 4, [:cxa, :cxb, :cxc, :cxd, :cxe, :cxf])
+        def_metric!(-1, "CIg[-cxa,-cxb]", :CxD)
+        @test Contract("CIg[cxa,cxc] WeylCxD[-cxa,-cxb,-cxc,-cxd]") == "0"
+
+        # Einstein trace in 4D: g^{ab} G_{ab} = -R
+        @test Contract("CIg[cxa,cxb] EinsteinCxD[-cxa,-cxb]") == "-RicciScalarCxD[]"
+        @test ToCanonical(
+            Contract("CIg[cxa,cxb] EinsteinCxD[-cxa,-cxb]") * " + RicciScalarCxD[]"
+        ) == "0"
+    end
+
 end

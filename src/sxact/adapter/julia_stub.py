@@ -7,9 +7,9 @@ the TOML test vocabulary (Wolfram → Julia syntax).
 Per-file isolation is achieved by resetting XCore and XTensor global state on
 teardown.
 
-Actions that require xTensor (DefManifold, DefMetric, DefTensor, ToCanonical)
-are now dispatched to the Julia XTensor module.  Contract and Simplify remain
-deferred (Tier 2).
+Actions that require xTensor (DefManifold, DefMetric, DefTensor, ToCanonical,
+Contract, SignDetOfMetric) are now dispatched to the Julia XTensor module.
+Simplify remains deferred (Tier 2).
 """
 
 from __future__ import annotations
@@ -81,11 +81,11 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
 
     # Actions handled by XTensor
     _XTENSOR_ACTIONS = frozenset(
-        {"DefManifold", "DefMetric", "DefTensor", "ToCanonical"}
+        {"DefManifold", "DefMetric", "DefTensor", "ToCanonical", "Contract"}
     )
 
     # Tier 2 deferred actions
-    _DEFERRED_ACTIONS = frozenset({"Contract", "Simplify"})
+    _DEFERRED_ACTIONS = frozenset({"Simplify"})
 
     # XCore module-level mutable state to reset on teardown
     _RESET_STMTS = [
@@ -206,6 +206,8 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 return self._def_metric(args)
             if action == "ToCanonical":
                 return self._to_canonical(args)
+            if action == "Contract":
+                return self._contract(args)
         except Exception as exc:
             return Result(status="error", type="", repr="", normalized="",
                           error=str(exc))
@@ -241,12 +243,19 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         return Result(status="ok", type="Handle", repr=name, normalized=name)
 
     def _def_metric(self, args: dict[str, Any]) -> Result:
+        import re as _re
         signdet    = int(args["signdet"])
-        metric_str = _jl_escape(str(args["metric"]))
+        metric_raw = str(args["metric"])
+        metric_str = _jl_escape(metric_raw)
         covd       = str(args["covd"])
         self._jl.seval(
             f'XTensor.def_metric!({signdet}, "{metric_str}", :{covd})'
         )
+        # Bind the metric tensor name in Main as a Symbol (for SignDetOfMetric assertions)
+        m_name_match = _re.match(r'^(\w+)', metric_raw)
+        if m_name_match:
+            metric_name = m_name_match.group(1)
+            self._jl.seval(f'Main.eval(:(global {metric_name} = :{metric_name}))')
         # Bind auto-created curvature tensor names in Main as Symbols
         for prefix in ("Riemann", "Ricci", "RicciScalar", "Einstein", "Weyl"):
             auto_name = f"{prefix}{covd}"
@@ -255,12 +264,18 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 f'    Main.eval(:(global {auto_name} = :{auto_name}))\n'
                 f'end'
             )
-        repr_str = str(args["metric"])
+        repr_str = metric_raw
         return Result(status="ok", type="Handle", repr=repr_str, normalized=repr_str)
 
     def _to_canonical(self, args: dict[str, Any]) -> Result:
         expr   = _jl_escape(str(args["expression"]))
         result = self._jl.seval(f'XTensor.ToCanonical("{expr}")')
+        raw    = str(result)
+        return Result(status="ok", type="Expr", repr=raw, normalized=_normalize(raw))
+
+    def _contract(self, args: dict[str, Any]) -> Result:
+        expr   = _jl_escape(str(args["expression"]))
+        result = self._jl.seval(f'XTensor.Contract("{expr}")')
         raw    = str(result)
         return Result(status="ok", type="Expr", repr=raw, normalized=_normalize(raw))
 
@@ -291,6 +306,21 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         tensor_cmp = _try_tensor_string_comparison(wolfram_condition)
         if tensor_cmp is not None:
             passed, lhs_str, rhs_str = tensor_cmp
+            if passed:
+                return Result(status="ok", type="Bool", repr="True", normalized="True")
+            msg = message or f"Assertion failed: {wolfram_condition!r}"
+            return Result(
+                status="error", type="Bool",
+                repr=str(passed), normalized=str(passed), error=msg,
+            )
+
+        # Check for tensor // ToCanonical === value patterns (with optional || prefix).
+        # These arise when the condition substitutes a tensor result and then
+        # applies ToCanonical postfix, e.g.: "(Conv[coa] - Conv[coa]) // ToCanonical === 0"
+        # Also handles: "TensorQ[$r] || ($r - Conw[-coa]) // ToCanonical === 0"
+        to_canon_cmp = _try_to_canonical_comparison(wolfram_condition, self._jl)
+        if to_canon_cmp is not None:
+            passed, actual, expected = to_canon_cmp
             if passed:
                 return Result(status="ok", type="Bool", repr="True", normalized="True")
             msg = message or f"Assertion failed: {wolfram_condition!r}"
@@ -382,6 +412,110 @@ def _try_tensor_string_comparison(condition: str) -> tuple[bool, str, str] | Non
         rhs_n = _normalize(rhs)
         return (lhs_n == rhs_n, lhs_n, rhs_n)
     return None
+
+
+def _try_to_canonical_comparison(condition: str, jl: Any) -> tuple[bool, str, str] | None:
+    """Handle conditions of the form: tensor_expr // ToCanonical === value.
+
+    Also handles OR conditions: "clause1 || tensor_expr // ToCanonical === value"
+    where ANY clause being true makes the whole condition true.
+
+    Returns (passed, actual, expected) or None if the pattern doesn't match.
+    """
+    # If condition has top-level "||", split and try each part
+    or_parts = _top_level_split(condition, " || ")
+    if len(or_parts) > 1:
+        any_matched = False
+        # Try each clause; if any returns (True, ...) the whole thing passes
+        for part in or_parts:
+            part = part.strip()
+            # Try ToCanonical comparison
+            result = _try_single_to_canonical_comparison(part, jl)
+            if result is not None:
+                any_matched = True
+                if result[0]:
+                    return result
+            # Try TensorQ[expr] — if expr is a tensor expression, check if tensor is registered
+            tq_result = _try_tensor_q(part, jl)
+            if tq_result is not None:
+                any_matched = True
+                if tq_result[0]:
+                    return tq_result
+            # Try simple string comparison
+            tc_result = _try_tensor_string_comparison(part)
+            if tc_result is not None:
+                any_matched = True
+                if tc_result[0]:
+                    return tc_result
+        if any_matched:
+            return (False, "", "")
+        return None
+
+    return _try_single_to_canonical_comparison(condition, jl)
+
+
+_TENSOR_Q_RE = re.compile(r'^TensorQ\[(\w+)(?:\[.*\])?\]$')
+
+
+def _try_tensor_q(condition: str, jl: Any) -> tuple[bool, str, str] | None:
+    """Handle TensorQ[TensorExpr] conditions.
+
+    If the condition is TensorQ[Name[...]] or TensorQ[Name], checks if Name
+    is a registered tensor via XTensor.TensorQ.
+
+    Returns (True, "True", "True") if the tensor is registered, else None.
+    """
+    m = _TENSOR_Q_RE.match(condition.strip())
+    if m is None:
+        return None
+    tensor_name = m.group(1)
+    try:
+        val = jl.seval(f'XTensor.TensorQ(:{tensor_name})')
+        if val is True or str(val).lower() == "true":
+            return (True, "True", "True")
+        return (False, "False", "True")
+    except Exception:
+        return None
+
+
+def _try_single_to_canonical_comparison(condition: str, jl: Any) -> tuple[bool, str, str] | None:
+    """Handle a single (no ||) condition of the form: tensor_expr // ToCanonical === value."""
+    # Pattern: something // ToCanonical === something_else
+    # Split on " === " first to find the comparison value
+    parts_strict = _top_level_split(condition, " === ")
+    if len(parts_strict) != 2:
+        return None
+
+    lhs_raw, rhs_raw = parts_strict[0].strip(), parts_strict[1].strip()
+
+    # LHS must contain "// ToCanonical" at the top level
+    lhs_parts = _top_level_split(lhs_raw, " // ToCanonical")
+    if len(lhs_parts) < 2:
+        lhs_parts = _top_level_split(lhs_raw, "// ToCanonical")
+    if len(lhs_parts) < 2:
+        return None
+
+    tensor_expr = lhs_parts[0].strip()
+    # Strip outer parens from tensor_expr
+    if tensor_expr.startswith("(") and tensor_expr.endswith(")"):
+        tensor_expr = tensor_expr[1:-1].strip()
+
+    # Must be a tensor expression
+    if not _is_tensor_expr(tensor_expr):
+        return None
+
+    # Call XTensor.ToCanonical on the tensor expression
+    try:
+        escaped = _jl_escape(tensor_expr)
+        result = str(jl.seval(f'XTensor.ToCanonical("{escaped}")'))
+    except Exception:
+        return None
+
+    # Compare result to rhs
+    expected = rhs_raw.strip()
+    actual_n = _normalize(result)
+    expected_n = _normalize(expected)
+    return (actual_n == expected_n, actual_n, expected_n)
 
 
 _WL_KEYWORDS: dict[str, str] = {
