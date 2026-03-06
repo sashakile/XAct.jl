@@ -1,0 +1,161 @@
+# xtensor/contraction.toml
+# Layer 1 regression tests for metric contraction (ContractMetric) and
+# related index-raising/lowering operations.
+# Validates against schema: tests/schema/test-schema.json
+
+[meta]
+id              = "xtensor/contraction"
+description     = "ContractMetric: raise/lower index, metric determinant, trace (layer 1)"
+tags            = ["xtensor", "contraction", "metric", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Setup: 4D Euclidean manifold with metric and tensors.
+# ---------------------------------------------------------------------------
+
+[[setup]]
+action   = "DefManifold"
+store_as = "Conm"
+[setup.args]
+name      = "Conm"
+dimension = 4
+indices   = ["coa", "cob", "coc", "cod"]
+
+[[setup]]
+action   = "DefMetric"
+store_as = "Cong"
+[setup.args]
+signdet = 1
+metric  = "Cong[-coa,-cob]"
+covd    = "Cond"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "Conv"
+[setup.args]
+name     = "Conv"
+indices  = ["coa"]
+manifold = "Conm"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "Conw"
+[setup.args]
+name     = "Conw"
+indices  = ["-coa"]
+manifold = "Conm"
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "metric_sign_det_euclidean"
+description = "SignDetOfMetric returns 1 for Euclidean metric"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "SignDetOfMetric[Cong] === 1"
+message   = "Euclidean metric should have SignDetOfMetric == 1"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "metric_symmetry"
+description = "Metric Cong[-coa,-cob] - Cong[-cob,-coa] == 0 under ToCanonical"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "Cong[-coa,-cob] - Cong[-cob,-coa]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Metric should be symmetric: Cong[-a,-b] == Cong[-b,-a]"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "raise_index_with_metric"
+description = "Cong[coa,cob] Conv[-cob] // ContractMetric gives Conv[coa] (index raising)"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "expr"
+[tests.operations.args]
+expression = "Cong[coa,cob] Conv[-cob]"
+
+[[tests.operations]]
+action   = "Contract"
+store_as = "result"
+[tests.operations.args]
+expression = "$expr"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "($result - Conv[coa]) // ToCanonical === 0"
+message   = "Contracting metric with covariant vector should raise index"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "lower_index_with_metric"
+description = "Cong[-coa,-cob] Conv[cob] // ContractMetric gives Conw[-coa] (index lowering)"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "expr"
+[tests.operations.args]
+expression = "Cong[-coa,-cob] Conv[cob]"
+
+[[tests.operations]]
+action   = "Contract"
+store_as = "result"
+[tests.operations.args]
+expression = "$expr"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "TensorQ[$result] || ($result - Conw[-coa]) // ToCanonical === 0"
+message   = "Contracting covariant metric with contravariant vector should lower index"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "metric_trace_is_dimension"
+description = "Trace of identity: delta^a_a = dimension = 4"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "delta_trace"
+[tests.operations.args]
+expression = "Cong[coa,cob] Cong[-coa,-cob]"
+
+[[tests.operations]]
+action   = "Contract"
+store_as = "contracted"
+[tests.operations.args]
+expression = "$delta_trace"
+
+[[tests.operations]]
+action   = "Simplify"
+store_as = "result"
+[tests.operations.args]
+expression = "$contracted"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 4"
+message   = "Trace g^{ab}g_{ab} should equal the dimension 4"

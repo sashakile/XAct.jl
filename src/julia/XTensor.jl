@@ -1,0 +1,657 @@
+"""
+    XTensor
+
+Abstract tensor algebra for the xAct/sxAct system.
+Implements DefManifold, DefMetric, DefTensor, and ToCanonical.
+
+Curvature tensors are auto-created by def_metric!.
+Condition evaluation (Assert, Evaluate) is handled in the Python adapter layer.
+
+Reference: specs/2026-03-06-xperm-xtensor-design.md
+"""
+module XTensor
+
+include("XPerm.jl")
+using .XPerm
+
+# ============================================================
+# Exports
+# ============================================================
+
+# Type exports
+export ManifoldObj, VBundleObj, TensorObj, MetricObj, IndexSpec, SymmetrySpec
+
+# State management
+export reset_state!
+
+# Global registry collections (mutable; exported for MemberQ use in conditions)
+export Manifolds, Tensors, VBundles
+
+# Def functions
+export def_manifold!, def_tensor!, def_metric!
+
+# Accessor functions
+export get_manifold, get_tensor, get_vbundle, get_metric
+export list_manifolds, list_tensors, list_vbundles
+
+# Query predicates (Wolfram-named, used by _wl_to_jl translator)
+export ManifoldQ, TensorQ, VBundleQ, MetricQ
+export Dimension, IndicesOfVBundle, SlotsOfTensor
+export MemberQ
+
+# Canonicalization
+export ToCanonical
+
+# ============================================================
+# Types
+# ============================================================
+
+"""An abstract index slot: the declared label and its variance."""
+struct IndexSpec
+    label::Symbol    # e.g. :a (without the '-' prefix)
+    covariant::Bool  # true ↔ '-a' (covariant/down); false ↔ 'a' (contravariant/up)
+end
+
+struct ManifoldObj
+    name::Symbol
+    dimension::Int
+    index_labels::Vector{Symbol}   # declared abstract index names (without '-')
+end
+
+struct VBundleObj
+    name::Symbol          # e.g. :TangentM
+    manifold::Symbol
+    index_labels::Vector{Symbol}
+end
+
+"""
+Describes the permutation symmetry of a tensor's slot group.
+  type  — one of: :Symmetric, :Antisymmetric, :RiemannSymmetric, :NoSymmetry
+  slots — 1-indexed positions (within this tensor's slot list) that the symmetry acts on.
+          For :RiemannSymmetric, exactly 4 elements.
+          For :NoSymmetry, empty.
+"""
+struct SymmetrySpec
+    type::Symbol
+    slots::Vector{Int}
+end
+
+"""A fully defined tensor object."""
+struct TensorObj
+    name::Symbol
+    slots::Vector{IndexSpec}   # declared slot list
+    manifold::Symbol
+    symmetry::SymmetrySpec
+end
+
+struct MetricObj
+    name::Symbol
+    manifold::Symbol
+    covd::Symbol     # name of auto-created covariant derivative
+    signdet::Int     # +1 (Riemannian) or -1 (Lorentzian)
+end
+
+# ============================================================
+# Global state
+# ============================================================
+
+const _manifolds = Dict{Symbol, ManifoldObj}()
+const _vbundles  = Dict{Symbol, VBundleObj}()
+const _tensors   = Dict{Symbol, TensorObj}()
+const _metrics   = Dict{Symbol, MetricObj}()
+
+const Manifolds  = Symbol[]   # ordered list
+const Tensors    = Symbol[]
+const VBundles   = Symbol[]
+
+# ============================================================
+# State management
+# ============================================================
+
+function reset_state!()
+    empty!(_manifolds); empty!(_vbundles); empty!(_tensors); empty!(_metrics)
+    empty!(Manifolds); empty!(Tensors); empty!(VBundles)
+end
+
+# ============================================================
+# Accessor functions
+# ============================================================
+
+get_manifold(name::Symbol)  = get(_manifolds, name, nothing)
+get_tensor(name::Symbol)    = get(_tensors, name, nothing)
+get_vbundle(name::Symbol)   = get(_vbundles, name, nothing)
+get_metric(name::Symbol)    = get(_metrics, name, nothing)
+list_manifolds()            = copy(Manifolds)
+list_tensors()              = copy(Tensors)
+list_vbundles()             = copy(VBundles)
+
+get_manifold(name::AbstractString) = get_manifold(Symbol(name))
+get_tensor(name::AbstractString)   = get_tensor(Symbol(name))
+get_vbundle(name::AbstractString)  = get_vbundle(Symbol(name))
+get_metric(name::AbstractString)   = get_metric(Symbol(name))
+
+# ============================================================
+# Query predicates
+# ============================================================
+
+ManifoldQ(s::Symbol) = haskey(_manifolds, s)
+ManifoldQ(s::AbstractString) = ManifoldQ(Symbol(s))
+TensorQ(s::Symbol) = haskey(_tensors, s)
+TensorQ(s::AbstractString) = TensorQ(Symbol(s))
+VBundleQ(s::Symbol) = haskey(_vbundles, s)
+VBundleQ(s::AbstractString) = VBundleQ(Symbol(s))
+MetricQ(s::Symbol) = haskey(_metrics, s)
+MetricQ(s::AbstractString) = MetricQ(Symbol(s))
+
+function Dimension(s::Symbol)
+    m = get(_manifolds, s, nothing)
+    isnothing(m) && error("Dimension: manifold $s not defined")
+    m.dimension
+end
+Dimension(s::AbstractString) = Dimension(Symbol(s))
+
+function IndicesOfVBundle(s::Symbol)
+    vb = get(_vbundles, s, nothing)
+    isnothing(vb) && error("IndicesOfVBundle: VBundle $s not defined")
+    vb.index_labels
+end
+IndicesOfVBundle(s::AbstractString) = IndicesOfVBundle(Symbol(s))
+
+function SlotsOfTensor(s::Symbol)
+    t = get(_tensors, s, nothing)
+    isnothing(t) && error("SlotsOfTensor: tensor $s not defined")
+    t.slots
+end
+SlotsOfTensor(s::AbstractString) = SlotsOfTensor(Symbol(s))
+
+function MemberQ(collection::Symbol, s::Symbol)
+    collection == :Manifolds ? s in Manifolds :
+    collection == :Tensors   ? s in Tensors   :
+    collection == :VBundles  ? s in VBundles  :
+    false
+end
+# Also accept a live collection (e.g. when `Manifolds` resolves to the actual Vector)
+MemberQ(collection::AbstractVector, s::Symbol) = s in collection
+MemberQ(collection::AbstractVector, s::AbstractString) = Symbol(s) in collection
+MemberQ(collection::Symbol, s::AbstractString) = MemberQ(collection, Symbol(s))
+MemberQ(collection::AbstractString, s) = MemberQ(Symbol(collection), s)
+
+# ============================================================
+# Symmetry string parser
+# ============================================================
+
+"""    _parse_symmetry(sym_str, slot_specs) → SymmetrySpec
+Parse a Wolfram symmetry string like "Symmetric[{-bta,-btb}]" into a SymmetrySpec.
+`slot_specs` is the tensor's slot list for mapping labels → slot positions.
+"""
+function _parse_symmetry(sym_str::Union{String, Nothing}, slot_specs::Vector{IndexSpec}) :: SymmetrySpec
+    (isnothing(sym_str) || isempty(sym_str)) && return SymmetrySpec(:NoSymmetry, Int[])
+
+    m = match(r"^(Symmetric|Antisymmetric|RiemannSymmetric)\[\{([^}]*)\}\]$", sym_str)
+    isnothing(m) && error("Cannot parse symmetry string: $sym_str")
+
+    type_str = m.captures[1]
+    labels_str = m.captures[2]
+
+    sym_type = Symbol(type_str)
+
+    if isempty(strip(labels_str))
+        return SymmetrySpec(:NoSymmetry, Int[])
+    end
+
+    raw_labels = split(labels_str, ",")
+    label_names = String[strip(lstrip(strip(l), '-')) for l in raw_labels]
+
+    # Map label names to 1-based slot positions
+    slot_positions = Int[]
+    for lbl in label_names
+        lbl_sym = Symbol(lbl)
+        pos = findfirst(s -> s.label == lbl_sym, slot_specs)
+        isnothing(pos) && error("Symmetry label '$lbl' not found in tensor slots")
+        push!(slot_positions, pos)
+    end
+
+    if sym_type == :RiemannSymmetric && length(slot_positions) != 4
+        error("RiemannSymmetric requires exactly 4 slots, got $(length(slot_positions))")
+    end
+
+    SymmetrySpec(sym_type, slot_positions)
+end
+
+# ============================================================
+# Def functions
+# ============================================================
+
+"""    def_manifold!(name, dim, index_labels) → ManifoldObj
+Define a new abstract manifold.
+"""
+function def_manifold!(name::Symbol, dim::Int, index_labels::Vector{Symbol}) :: ManifoldObj
+    haskey(_manifolds, name) && error("Manifold $name already defined")
+
+    m = ManifoldObj(name, dim, index_labels)
+    tb = VBundleObj(Symbol("Tangent" * string(name)), name, index_labels)
+
+    _manifolds[name] = m
+    _vbundles[tb.name] = tb
+    push!(Manifolds, name)
+    push!(VBundles, tb.name)
+
+    m
+end
+
+# Convenience overloads for string input
+function def_manifold!(name::AbstractString, dim::Int, index_labels::Vector) :: ManifoldObj
+    sym_name = Symbol(name)
+    sym_labels = [Symbol(string(l)) for l in index_labels]
+    def_manifold!(sym_name, dim, sym_labels)
+end
+
+"""    def_tensor!(name, index_specs, manifold; symmetry_str=nothing) → TensorObj
+Define a new abstract tensor.
+index_specs: vector of strings like ["-bta","-btb"] or ["bta"].
+"""
+function def_tensor!(name::Symbol, index_specs::Vector{String}, manifold::Symbol;
+                     symmetry_str::Union{String, Nothing}=nothing) :: TensorObj
+    m = get(_manifolds, manifold, nothing)
+    isnothing(m) && error("def_tensor!: manifold $manifold not defined")
+
+    # Parse index specs into IndexSpec
+    slots = IndexSpec[]
+    for spec in index_specs
+        if startswith(spec, "-")
+            push!(slots, IndexSpec(Symbol(spec[2:end]), true))
+        else
+            push!(slots, IndexSpec(Symbol(spec), false))
+        end
+    end
+
+    # Validate labels belong to manifold's index set
+    allowed = Set(m.index_labels)
+    for s in slots
+        s.label in allowed || error("Index label $(s.label) not in manifold $manifold indices")
+    end
+
+    sym = _parse_symmetry(symmetry_str, slots)
+    t = TensorObj(name, slots, manifold, sym)
+    _tensors[name] = t
+    push!(Tensors, name)
+    t
+end
+
+function def_tensor!(name::AbstractString, index_specs::Vector, manifold::AbstractString;
+                     symmetry_str::Union{String, Nothing}=nothing) :: TensorObj
+    sym_name = Symbol(name)
+    sym_manifold = Symbol(manifold)
+    str_specs = [string(s) for s in index_specs]
+    def_tensor!(sym_name, str_specs, sym_manifold; symmetry_str=symmetry_str)
+end
+
+"""    def_metric!(signdet, metric_expr, covd_name) → MetricObj
+Define a metric tensor and auto-create curvature tensors.
+metric_expr: e.g. "Cng[-cna,-cnb]"
+covd_name: e.g. "Cnd" (used as suffix for auto-created curvature tensors)
+"""
+function def_metric!(signdet::Int, metric_expr::AbstractString, covd_name::Symbol) :: MetricObj
+    # Parse metric_expr: extract name and slots
+    m = match(r"^(\w+)\[([^\]]*)\]$", metric_expr)
+    isnothing(m) && error("Cannot parse metric expression: $metric_expr")
+
+    metric_name = Symbol(m.captures[1])
+    slot_strs = String[strip(s) for s in split(m.captures[2], ",")]
+
+    # Determine manifold: find which manifold has these index labels
+    manifold_sym = _find_manifold_for_indices(slot_strs)
+    isnothing(manifold_sym) && error("Cannot determine manifold for metric indices: $slot_strs")
+
+    # Register the metric tensor (symmetric rank-2 covariant)
+    sym_str = "Symmetric[{$(join(slot_strs, ","))}]"
+    def_tensor!(metric_name, slot_strs, manifold_sym; symmetry_str=sym_str)
+
+    metric = MetricObj(metric_name, manifold_sym, covd_name, signdet)
+    _metrics[covd_name] = metric
+
+    # Auto-create curvature tensors
+    _auto_create_curvature!(manifold_sym, covd_name)
+
+    metric
+end
+
+function def_metric!(signdet::Int, metric_expr::AbstractString, covd_name::AbstractString) :: MetricObj
+    def_metric!(signdet, metric_expr, Symbol(covd_name))
+end
+
+"""Find which manifold has all of the given index labels (stripping '-')."""
+function _find_manifold_for_indices(slot_strs) :: Union{Symbol, Nothing}
+    # Strip '-' from each label
+    bare = Set([Symbol(startswith(s, "-") ? s[2:end] : string(s)) for s in slot_strs])
+    for (name, m) in _manifolds
+        if bare ⊆ Set(m.index_labels)
+            return name
+        end
+    end
+    nothing
+end
+
+"""Auto-create Riemann, Ricci, RicciScalar, Einstein tensors for a metric."""
+function _auto_create_curvature!(manifold::Symbol, covd::Symbol)
+    m = _manifolds[manifold]
+    idxs = m.index_labels
+    n = length(idxs)
+    covd_str = string(covd)
+
+    # Ricci scalar: always created (scalar, no indices)
+    ricci_scalar_name = Symbol("RicciScalar" * covd_str)
+    if !haskey(_tensors, ricci_scalar_name)
+        t = TensorObj(ricci_scalar_name, IndexSpec[], manifold, SymmetrySpec(:NoSymmetry, Int[]))
+        _tensors[ricci_scalar_name] = t
+        push!(Tensors, ricci_scalar_name)
+    end
+
+    # Need at least 2 indices for Ricci and Einstein
+    n >= 2 || return
+
+    i1, i2 = "-" * string(idxs[1]), "-" * string(idxs[2])
+
+    ricci_name = Symbol("Ricci" * covd_str)
+    if !haskey(_tensors, ricci_name)
+        slots2 = String[i1, i2]
+        sym2   = "Symmetric[{$i1,$i2}]"
+        def_tensor!(ricci_name, slots2, manifold; symmetry_str=sym2)
+    end
+
+    einstein_name = Symbol("Einstein" * covd_str)
+    if !haskey(_tensors, einstein_name)
+        slots2 = String[i1, i2]
+        sym2   = "Symmetric[{$i1,$i2}]"
+        def_tensor!(einstein_name, slots2, manifold; symmetry_str=sym2)
+    end
+
+    # Need at least 4 indices for Riemann
+    n >= 4 || return
+
+    i3, i4 = "-" * string(idxs[3]), "-" * string(idxs[4])
+
+    riemann_name = Symbol("Riemann" * covd_str)
+    if !haskey(_tensors, riemann_name)
+        slots4 = String[i1, i2, i3, i4]
+        sym4   = "RiemannSymmetric[{$i1,$i2,$i3,$i4}]"
+        def_tensor!(riemann_name, slots4, manifold; symmetry_str=sym4)
+    end
+
+    # Also register Weyl tensor (curvature_invariants.toml uses WeylCID)
+    weyl_name = Symbol("Weyl" * covd_str)
+    if !haskey(_tensors, weyl_name)
+        slots4 = String[i1, i2, i3, i4]
+        sym4   = "RiemannSymmetric[{$i1,$i2,$i3,$i4}]"
+        def_tensor!(weyl_name, slots4, manifold; symmetry_str=sym4)
+    end
+end
+
+# ============================================================
+# Tensor expression parser
+# ============================================================
+
+struct FactorAST
+    tensor_name::Symbol
+    indices::Vector{String}
+end
+
+struct TermAST
+    coeff::Int
+    factors::Vector{FactorAST}
+end
+
+"""    _parse_expression(expr_str) → Vector{TermAST}
+Parse a tensor expression string into a list of terms.
+"""
+function _parse_expression(expr_str::AbstractString) :: Vector{TermAST}
+    s = strip(expr_str)
+
+    # Special case: bare "0" or empty string
+    (s == "0" || isempty(s)) && return TermAST[]
+
+    terms = TermAST[]
+    # Tokenise into sign-separated chunks
+    # Split on '+' and '-' that are not inside brackets
+    _parse_sum!(terms, s)
+    terms
+end
+
+function _parse_sum!(terms::Vector{TermAST}, s::AbstractString)
+    # Walk through the string, splitting on top-level + and -
+    pos = 1
+    n = length(s)
+    current_start = 1
+    current_sign = 1
+
+    # Handle leading sign
+    if pos <= n && (s[pos] == '+' || s[pos] == '-')
+        current_sign = s[pos] == '-' ? -1 : 1
+        pos += 1
+        current_start = pos
+    end
+
+    while pos <= n
+        c = s[pos]
+        if c == '['
+            # Skip to matching ']'
+            depth = 1
+            pos += 1
+            while pos <= n && depth > 0
+                s[pos] == '[' && (depth += 1)
+                s[pos] == ']' && (depth -= 1)
+                pos += 1
+            end
+        elseif (c == '+' || c == '-') && pos > 1
+            # Top-level +/-: end current term
+            chunk = strip(s[current_start:pos-1])
+            if !isempty(chunk)
+                push!(terms, _parse_term(chunk, current_sign))
+            end
+            current_sign = c == '-' ? -1 : 1
+            pos += 1
+            current_start = pos
+        else
+            pos += 1
+        end
+    end
+
+    # Last chunk
+    chunk = strip(s[current_start:end])
+    if !isempty(chunk)
+        push!(terms, _parse_term(chunk, current_sign))
+    end
+end
+
+function _parse_term(chunk::AbstractString, outer_sign::Int) :: TermAST
+    s = strip(chunk)
+
+    # Extract leading coefficient
+    coeff = outer_sign
+    # Match leading integer (possibly with optional *)
+    m = match(r"^(-?\d+)\*?\s*", s)
+    if !isnothing(m)
+        coeff *= parse(Int, m.captures[1])
+        s = strip(s[length(m.match)+1:end])
+    end
+
+    # Parse monomial: one or more factor calls (Name[...])
+    factors = _parse_monomial(s)
+    TermAST(coeff, factors)
+end
+
+function _parse_monomial(s::AbstractString) :: Vector{FactorAST}
+    factors = FactorAST[]
+    pos = 1
+    n = length(s)
+
+    while pos <= n
+        # Skip whitespace
+        while pos <= n && isspace(s[pos])
+            pos += 1
+        end
+        pos > n && break
+
+        # Match tensor name: alphanumeric + underscore
+        name_start = pos
+        while pos <= n && (isletter(s[pos]) || isdigit(s[pos]) || s[pos] == '_')
+            pos += 1
+        end
+        name_end = pos - 1
+        name_start > name_end && break
+
+        tensor_name = Symbol(s[name_start:name_end])
+
+        # Skip whitespace
+        while pos <= n && isspace(s[pos])
+            pos += 1
+        end
+
+        # Must be followed by '['
+        pos > n || s[pos] != '[' && error("Expected '[' after tensor name $tensor_name at position $pos in: $s")
+        pos += 1  # consume '['
+
+        # Collect index list up to matching ']'
+        idx_start = pos
+        depth = 1
+        while pos <= n && depth > 0
+            s[pos] == '[' && (depth += 1)
+            s[pos] == ']' && (depth -= 1)
+            depth > 0 && (pos += 1)
+        end
+        idx_str = s[idx_start:pos-1]
+        pos += 1  # consume ']'
+
+        indices = _parse_index_list(idx_str)
+        push!(factors, FactorAST(tensor_name, indices))
+    end
+
+    factors
+end
+
+function _parse_index_list(s::AbstractString) :: Vector{String}
+    isempty(strip(s)) && return String[]
+    [strip(idx) for idx in split(s, ",")]
+end
+
+# ============================================================
+# Canonicalization pipeline
+# ============================================================
+
+"""    ToCanonical(expression::String) → String
+Canonicalize a tensor expression. Returns "0" if all terms cancel.
+"""
+function ToCanonical(expression::AbstractString) :: String
+    s = strip(expression)
+    (s == "0" || isempty(s)) && return "0"
+
+    terms = _parse_expression(s)
+    isempty(terms) && return "0"
+
+    # Canonicalize each term
+    canon_terms = TermAST[]
+    for term in terms
+        result = _canonicalize_term(term)
+        isnothing(result) || push!(canon_terms, result)
+    end
+
+    isempty(canon_terms) && return "0"
+
+    # Collect like terms: key = tuple of (name, frozen_indices)
+    coeff_map = Dict{Vector{Tuple{Symbol, Vector{String}}}, Int}()
+    key_order = Vector{Tuple{Symbol, Vector{String}}}[]
+
+    for term in canon_terms
+        key = [(f.tensor_name, copy(f.indices)) for f in term.factors]
+        if !haskey(coeff_map, key)
+            coeff_map[key] = 0
+            push!(key_order, key)
+        end
+        coeff_map[key] += term.coeff
+    end
+
+    # Drop zero-coefficient terms
+    keys_nonzero = filter(k -> coeff_map[k] != 0, key_order)
+    isempty(keys_nonzero) && return "0"
+
+    # Sort keys for deterministic output
+    sort!(keys_nonzero, by=k -> [(string(n), idxs) for (n, idxs) in k])
+
+    # Serialize
+    _serialize(keys_nonzero, coeff_map)
+end
+
+"""Canonicalize a single term; returns nothing if the term is zero."""
+function _canonicalize_term(term::TermAST) :: Union{TermAST, Nothing}
+    running_sign = term.coeff
+    new_factors = FactorAST[]
+
+    for f in term.factors
+        t = get(_tensors, f.tensor_name, nothing)
+        isnothing(t) && error("Unknown tensor: $(f.tensor_name)")
+
+        current = copy(f.indices)
+        sym = t.symmetry
+
+        if isempty(sym.slots) || sym.type == :NoSymmetry
+            push!(new_factors, FactorAST(f.tensor_name, current))
+            continue
+        end
+
+        (canon_indices, factor_sign) = canonicalize_slots(current, sym.type, sym.slots)
+
+        if factor_sign == 0
+            return nothing  # term is zero
+        end
+
+        running_sign *= factor_sign
+        push!(new_factors, FactorAST(f.tensor_name, canon_indices))
+    end
+
+    TermAST(running_sign, new_factors)
+end
+
+"""Serialize the canonical map to a Wolfram-style string."""
+function _serialize(keys::Vector{Vector{Tuple{Symbol, Vector{String}}}},
+                    coeff_map::Dict{Vector{Tuple{Symbol, Vector{String}}}, Int}) :: String
+    parts = Tuple{Int, String}[]
+
+    for key in keys
+        c = coeff_map[key]
+        c == 0 && continue
+
+        mono = join(["$(n)[$(join(idxs,","))]" for (n, idxs) in key], " ")
+        push!(parts, (c, mono))
+    end
+
+    isempty(parts) && return "0"
+
+    result = IOBuffer()
+    first = true
+    for (c, mono) in parts
+        if first
+            if c == 1
+                print(result, mono)
+            elseif c == -1
+                print(result, "-", mono)
+            else
+                print(result, c, " ", mono)
+            end
+            first = false
+        else
+            if c == 1
+                print(result, " + ", mono)
+            elseif c == -1
+                print(result, " - ", mono)
+            elseif c > 0
+                print(result, " + ", c, " ", mono)
+            else
+                print(result, " - ", abs(c), " ", mono)
+            end
+        end
+    end
+
+    String(take!(result))
+end
+
+end  # module XTensor

@@ -1,0 +1,212 @@
+# xtensor/canonicalization.toml
+# Layer 1 regression tests for ToCanonical on various tensor expressions.
+# Covers symmetric/antisymmetric swap rules, Riemann symmetries, idempotency,
+# and trivial scalar/zero cases.
+# Validates against schema: tests/schema/test-schema.json
+
+[meta]
+id              = "xtensor/canonicalization"
+description     = "ToCanonical: symmetry rules, Riemann identities, idempotency (layer 1)"
+tags            = ["xtensor", "canonicalization", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Setup: 4D Lorentzian manifold with metric, symmetric and antisymmetric tensors.
+# ---------------------------------------------------------------------------
+
+[[setup]]
+action   = "DefManifold"
+store_as = "Cnm"
+[setup.args]
+name      = "Cnm"
+dimension = 4
+indices   = ["cna", "cnb", "cnc", "cnd"]
+
+[[setup]]
+action   = "DefMetric"
+store_as = "Cng"
+[setup.args]
+signdet = -1
+metric  = "Cng[-cna,-cnb]"
+covd    = "Cnd"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "Cns"
+[setup.args]
+name     = "Cns"
+indices  = ["-cna", "-cnb"]
+manifold = "Cnm"
+symmetry = "Symmetric[{-cna,-cnb}]"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "Cna"
+[setup.args]
+name     = "Cna"
+indices  = ["-cna", "-cnb"]
+manifold = "Cnm"
+symmetry = "Antisymmetric[{-cna,-cnb}]"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "Cnv"
+[setup.args]
+name     = "Cnv"
+indices  = ["cna"]
+manifold = "Cnm"
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "symmetric_swap_zero"
+description = "Symmetric tensor: Cns[-cna,-cnb] - Cns[-cnb,-cna] == 0 after ToCanonical"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "Cns[-cna,-cnb] - Cns[-cnb,-cna]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Symmetric tensor index swap difference should canonicalize to 0"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "antisymmetric_sum_zero"
+description = "Antisymmetric tensor: Cna[-cna,-cnb] + Cna[-cnb,-cna] == 0 after ToCanonical"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "Cna[-cna,-cnb] + Cna[-cnb,-cna]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Antisymmetric tensor sum with index swap should canonicalize to 0"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "tocanonical_idempotent"
+description = "ToCanonical applied twice gives the same result as once"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "once"
+[tests.operations.args]
+expression = "Cns[-cna,-cnb] + Cnv[cna]"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "twice"
+[tests.operations.args]
+expression = "$once"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$once == $twice"
+message   = "ToCanonical should be idempotent"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "zero_stays_zero"
+description = "ToCanonical of 0 returns 0"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "0"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 0"
+message   = "ToCanonical[0] should return 0"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "riemann_first_pair_antisymmetry"
+description = "Riemann antisymmetry: RiemannCnd[-cna,-cnb,-cnc,-cnd] + RiemannCnd[-cnb,-cna,-cnc,-cnd] == 0"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "RiemannCnd[-cna,-cnb,-cnc,-cnd] + RiemannCnd[-cnb,-cna,-cnc,-cnd]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Riemann antisymmetry in first pair should give 0"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "riemann_second_pair_antisymmetry"
+description = "Riemann antisymmetry: RiemannCnd[-cna,-cnb,-cnc,-cnd] + RiemannCnd[-cna,-cnb,-cnd,-cnc] == 0"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "RiemannCnd[-cna,-cnb,-cnc,-cnd] + RiemannCnd[-cna,-cnb,-cnd,-cnc]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Riemann antisymmetry in second pair should give 0"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "riemann_pair_exchange"
+description = "Riemann pair exchange symmetry: R[-a,-b,-c,-d] - R[-c,-d,-a,-b] == 0"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "RiemannCnd[-cna,-cnb,-cnc,-cnd] - RiemannCnd[-cnc,-cnd,-cna,-cnb]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Riemann pair exchange symmetry should give 0"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1

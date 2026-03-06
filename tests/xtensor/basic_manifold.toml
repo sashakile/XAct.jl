@@ -1,0 +1,126 @@
+# xtensor/basic_manifold.toml
+# Layer 1 regression tests for DefManifold across different dimensions.
+# Verifies that manifolds can be defined with the correct dimension,
+# that the Manifolds registry is updated, and that index VBundles are created.
+# Validates against schema: tests/schema/test-schema.json
+
+[meta]
+id              = "xtensor/basic_manifold"
+description     = "DefManifold: dimension, registry, and VBundle checks (layer 1)"
+tags            = ["xtensor", "manifold", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Setup: define manifolds of dimension 2, 3, and 4.
+# ---------------------------------------------------------------------------
+
+[[setup]]
+action   = "DefManifold"
+store_as = "Bm2"
+[setup.args]
+name      = "Bm2"
+dimension = 2
+indices   = ["bm2i", "bm2j"]
+
+[[setup]]
+action   = "DefManifold"
+store_as = "Bm3"
+[setup.args]
+name      = "Bm3"
+dimension = 3
+indices   = ["bm3i", "bm3j", "bm3k"]
+
+[[setup]]
+action   = "DefManifold"
+store_as = "Bm4"
+[setup.args]
+name      = "Bm4"
+dimension = 4
+indices   = ["bm4a", "bm4b", "bm4c", "bm4d"]
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "dim_2d_manifold"
+description = "2D manifold has dimension 2"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "Dimension[Bm2] === 2"
+message   = "Bm2 should have dimension 2"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "dim_3d_manifold"
+description = "3D manifold has dimension 3"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "Dimension[Bm3] === 3"
+message   = "Bm3 should have dimension 3"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "dim_4d_manifold"
+description = "4D manifold has dimension 4"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "Dimension[Bm4] === 4"
+message   = "Bm4 should have dimension 4"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "manifold_in_registry"
+description = "Defined manifold appears in the Manifolds registry"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "MemberQ[Manifolds, Bm4]"
+message   = "Bm4 should be registered in the Manifolds list after DefManifold"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "manifold_q_true"
+description = "ManifoldQ returns True for a defined manifold"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "ManifoldQ[Bm4] === True"
+message   = "ManifoldQ should return True for Bm4"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "tangent_vbundle_created"
+description = "TangentBm4 VBundle exists after DefManifold"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "VBundleQ[TangentBm4] === True"
+message   = "DefManifold should create a TangentBm4 VBundle"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "indices_registered"
+description = "Indices bm4a and bm4b are registered in TangentBm4 VBundle"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "SubsetQ[IndicesOfVBundle[TangentBm4], {bm4a, bm4b}]"
+message   = "Indices bm4a and bm4b should be registered for TangentBm4"

@@ -1,22 +1,22 @@
-"""JuliaAdapter — concrete adapter backed by Julia XCore via juliacall.
+"""JuliaAdapter — concrete adapter backed by Julia XCore/XTensor via juliacall.
 
 Uses the Python xCore runtime (_runtime.py) to lazily initialise Julia and
 load XCore.jl once per process.  Evaluates Julia expressions translated from
 the TOML test vocabulary (Wolfram → Julia syntax).
 
-Per-file isolation is achieved by resetting XCore global state on teardown:
-  - _symbol_registry
-  - per-package name lists (xCoreNames, xTensorNames, …)
-  - _upvalue_store
-  - _xtensions
+Per-file isolation is achieved by resetting XCore and XTensor global state on
+teardown.
 
-Actions that require xTensor (DefManifold, DefMetric, DefTensor,
-ToCanonical, Contract, Simplify) return error Results since xTensor is not
-yet ported to Julia.
+Actions that require xTensor (DefManifold, DefMetric, DefTensor, ToCanonical)
+are now dispatched to the Julia XTensor module.  Contract and Simplify remain
+deferred (Tier 2).
 """
 
 from __future__ import annotations
 
+import re
+import threading
+from pathlib import Path
 from typing import Any
 
 from sxact.adapter.base import (
@@ -28,6 +28,37 @@ from sxact.adapter.base import (
 )
 from sxact.normalize import normalize as _normalize
 from sxact.oracle.result import Result
+
+
+# ---------------------------------------------------------------------------
+# XTensor lazy loader
+# ---------------------------------------------------------------------------
+
+_xtensor_lock = threading.Lock()
+_xtensor_loaded = False
+
+
+def _get_xtensor(jl: Any) -> None:
+    """Load XPerm.jl and XTensor.jl into Julia (idempotent)."""
+    global _xtensor_loaded
+    if _xtensor_loaded:
+        return
+    with _xtensor_lock:
+        if not _xtensor_loaded:
+            # src/sxact/adapter/julia_stub.py → parents[2] = src/ → src/julia/
+            julia_dir = (Path(__file__).parents[2] / "julia").resolve()
+            xtensor_path = julia_dir / "XTensor.jl"
+            if not xtensor_path.exists():
+                raise FileNotFoundError(f"XTensor.jl not found at {xtensor_path}")
+            jl.seval(f'include("{xtensor_path}")')
+            # `using .XTensor` imports all XTensor exports into Main scope
+            jl.seval("using .XTensor")
+            _xtensor_loaded = True
+
+
+def _jl_escape(s: str) -> str:
+    """Escape backslashes and double-quotes for Julia string literals."""
+    return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
 # ---------------------------------------------------------------------------
@@ -46,16 +77,15 @@ class _JuliaContext:
 # ---------------------------------------------------------------------------
 
 class JuliaAdapter(TestAdapter[_JuliaContext]):
-    """Concrete adapter for the Julia XCore backend.
+    """Concrete adapter for the Julia XCore + XTensor backend."""
 
-    Evaluates Julia expressions translated from the TOML action vocabulary.
-    Actions that require xTensor return error Results.
-    """
-
-    # Actions that require xTensor (not yet ported to Julia)
+    # Actions handled by XTensor
     _XTENSOR_ACTIONS = frozenset(
-        {"DefManifold", "DefMetric", "DefTensor", "ToCanonical", "Contract", "Simplify"}
+        {"DefManifold", "DefMetric", "DefTensor", "ToCanonical"}
     )
+
+    # Tier 2 deferred actions
+    _DEFERRED_ACTIONS = frozenset({"Contract", "Simplify"})
 
     # XCore module-level mutable state to reset on teardown
     _RESET_STMTS = [
@@ -111,6 +141,12 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 self._jl.seval(stmt)
             except Exception:
                 pass  # teardown must not raise
+        # Reset XTensor state if loaded
+        if _xtensor_loaded:
+            try:
+                self._jl.seval("XTensor.reset_state!()")
+            except Exception:
+                pass
 
     # ------------------------------------------------------------------
     # Execution
@@ -120,19 +156,28 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         if action not in self.supported_actions():
             raise ValueError(f"Unknown action: {action!r}")
 
-        if action in self._XTENSOR_ACTIONS:
+        if action in self._DEFERRED_ACTIONS:
             return Result(
                 status="error",
                 type="",
                 repr="",
                 normalized="",
-                error=f"action {action!r} requires xTensor (not yet ported to Julia)",
+                error=f"action {action!r} is deferred to Tier 2",
             )
 
         self._ensure_ready()
 
+        if action in self._XTENSOR_ACTIONS:
+            return self._execute_xtensor(action, args)
+
         if action == "Evaluate":
-            return self._execute_expr(args.get("expression", ""))
+            expr = args.get("expression", "")
+            # If it looks like a tensor expression (contains Name[...] with index syntax),
+            # return it as-is for later ToCanonical use — no Julia evaluation needed.
+            if _is_tensor_expr(expr):
+                return Result(status="ok", type="Expr", repr=expr,
+                              normalized=_normalize(expr))
+            return self._execute_expr(expr)
         if action == "Assert":
             return self._execute_assert(
                 args.get("condition", ""),
@@ -143,6 +188,81 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             status="error", type="", repr="", normalized="",
             error=f"unhandled action: {action!r}",
         )
+
+    def _execute_xtensor(self, action: str, args: dict[str, Any]) -> Result:
+        """Dispatch xTensor actions to Julia XTensor module."""
+        try:
+            _get_xtensor(self._jl)
+        except Exception as exc:
+            return Result(status="error", type="", repr="", normalized="",
+                          error=f"XTensor load failed: {exc}")
+
+        try:
+            if action == "DefManifold":
+                return self._def_manifold(args)
+            if action == "DefTensor":
+                return self._def_tensor(args)
+            if action == "DefMetric":
+                return self._def_metric(args)
+            if action == "ToCanonical":
+                return self._to_canonical(args)
+        except Exception as exc:
+            return Result(status="error", type="", repr="", normalized="",
+                          error=str(exc))
+        return Result(status="error", type="", repr="", normalized="",
+                      error=f"unhandled xTensor action: {action!r}")
+
+    def _def_manifold(self, args: dict[str, Any]) -> Result:
+        name    = str(args["name"])
+        dim     = int(args["dimension"])
+        indices = list(args["indices"])
+        idxs    = "[" + ", ".join(f':{i}' for i in indices) + "]"
+        self._jl.seval(f'XTensor.def_manifold!(:{name}, {dim}, {idxs})')
+        # Bind in Main scope as Symbols for Assert conditions:
+        #   Dimension(Bm4) → Dimension(:Bm4); ManifoldQ(Bm4) → ManifoldQ(:Bm4)
+        self._jl.seval(f'Main.eval(:(global {name} = :{name}))')
+        self._jl.seval(f'Main.eval(:(global Tangent{name} = :Tangent{name}))')
+        for idx in indices:
+            self._jl.seval(f'Main.eval(:(global {idx} = :{idx}))')
+        return Result(status="ok", type="Handle", repr=name, normalized=name)
+
+    def _def_tensor(self, args: dict[str, Any]) -> Result:
+        name     = str(args["name"])
+        indices  = args["indices"]
+        manifold = str(args["manifold"])
+        sym_str  = args.get("symmetry") or ""
+        idx_jl   = "[" + ", ".join(f'"{_jl_escape(i)}"' for i in indices) + "]"
+        sym_arg  = f', symmetry_str="{_jl_escape(sym_str)}"' if sym_str else ""
+        self._jl.seval(
+            f'XTensor.def_tensor!(:{name}, {idx_jl}, :{manifold}{sym_arg})'
+        )
+        # Bind tensor name in Main as a Symbol for TensorQ(Bts) etc.
+        self._jl.seval(f'Main.eval(:(global {name} = :{name}))')
+        return Result(status="ok", type="Handle", repr=name, normalized=name)
+
+    def _def_metric(self, args: dict[str, Any]) -> Result:
+        signdet    = int(args["signdet"])
+        metric_str = _jl_escape(str(args["metric"]))
+        covd       = str(args["covd"])
+        self._jl.seval(
+            f'XTensor.def_metric!({signdet}, "{metric_str}", :{covd})'
+        )
+        # Bind auto-created curvature tensor names in Main as Symbols
+        for prefix in ("Riemann", "Ricci", "RicciScalar", "Einstein", "Weyl"):
+            auto_name = f"{prefix}{covd}"
+            self._jl.seval(
+                f'if XTensor.TensorQ(:{auto_name})\n'
+                f'    Main.eval(:(global {auto_name} = :{auto_name}))\n'
+                f'end'
+            )
+        repr_str = str(args["metric"])
+        return Result(status="ok", type="Handle", repr=repr_str, normalized=repr_str)
+
+    def _to_canonical(self, args: dict[str, Any]) -> Result:
+        expr   = _jl_escape(str(args["expression"]))
+        result = self._jl.seval(f'XTensor.ToCanonical("{expr}")')
+        raw    = str(result)
+        return Result(status="ok", type="Expr", repr=raw, normalized=_normalize(raw))
 
     def _execute_expr(self, wolfram_expr: str) -> Result:
         julia_expr = _wl_to_jl(wolfram_expr)
@@ -165,6 +285,20 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             )
 
     def _execute_assert(self, wolfram_condition: str, message: str | None) -> Result:
+        # Check for tensor expression string comparisons first:
+        # "$once == $twice" after binding substitution becomes two tensor expr strings.
+        # These should be compared as strings, not evaluated as Julia.
+        tensor_cmp = _try_tensor_string_comparison(wolfram_condition)
+        if tensor_cmp is not None:
+            passed, lhs_str, rhs_str = tensor_cmp
+            if passed:
+                return Result(status="ok", type="Bool", repr="True", normalized="True")
+            msg = message or f"Assertion failed: {wolfram_condition!r}"
+            return Result(
+                status="error", type="Bool",
+                repr=str(passed), normalized=str(passed), error=msg,
+            )
+
         julia_cond = _wl_to_jl(wolfram_condition)
         try:
             val = self._jl.seval(julia_cond)
@@ -229,26 +363,128 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
 # Wolfram → Julia syntax translator
 # ---------------------------------------------------------------------------
 
+def _try_tensor_string_comparison(condition: str) -> tuple[bool, str, str] | None:
+    """If `condition` is a tensor-expression string comparison, return (passed, lhs, rhs).
+
+    Handles: "expr1 == expr2" where one or both sides are tensor expressions.
+    Returns None if not a tensor expression comparison (use Julia eval instead).
+    """
+    # Only handle conditions of the form "lhs == rhs" (exactly one == that is not ===)
+    # Split on " == " at top level
+    parts = _top_level_split(condition, " == ")
+    if len(parts) != 2:
+        return None
+    lhs, rhs = parts[0].strip(), parts[1].strip()
+    # If either side is a tensor expression, do string comparison
+    if _is_tensor_expr(lhs) or _is_tensor_expr(rhs):
+        # Normalize both sides: strip whitespace, treat "0" == "0"
+        lhs_n = _normalize(lhs)
+        rhs_n = _normalize(rhs)
+        return (lhs_n == rhs_n, lhs_n, rhs_n)
+    return None
+
+
 _WL_KEYWORDS: dict[str, str] = {
     "True": "true",
     "False": "false",
     "Null": "nothing",
+    "Length": "length",
 }
+
+# Regex that matches tensor index notation: Name[-abc, xyz, ...]
+_TENSOR_EXPR_RE = re.compile(r'\w+\[-?\w')
+
+
+def _is_tensor_expr(expr: str) -> bool:
+    """True if the expression looks like a tensor algebra expression (not a Julia predicate)."""
+    return bool(_TENSOR_EXPR_RE.search(expr))
+
+
+def _top_level_split(s: str, sep: str) -> list[str]:
+    """Split `s` on `sep` but only at depth 0 (not inside brackets)."""
+    parts = []
+    depth = 0
+    current = []
+    i = 0
+    n = len(s)
+    while i < n:
+        ch = s[i]
+        if ch in "([{":
+            depth += 1
+            current.append(ch)
+        elif ch in ")]}":
+            depth -= 1
+            current.append(ch)
+        elif s[i:i+len(sep)] == sep and depth == 0:
+            parts.append("".join(current))
+            current = []
+            i += len(sep)
+            continue
+        else:
+            current.append(ch)
+        i += 1
+    parts.append("".join(current))
+    return parts
+
+
+def _rewrite_postfix(expr: str) -> str:
+    """Rewrite Wolfram postfix // operator: 'expr // f' → 'f(expr)'.
+
+    Handles top-level occurrences only (not inside brackets).
+    Multiple chained applications are handled left-to-right.
+    """
+    # Find top-level // occurrences (not inside brackets)
+    while True:
+        depth = 0
+        pos = -1
+        for i, ch in enumerate(expr):
+            if ch in "([{":
+                depth += 1
+            elif ch in ")]}":
+                depth -= 1
+            elif ch == "/" and depth == 0 and i + 1 < len(expr) and expr[i+1] == "/":
+                pos = i
+                break
+        if pos == -1:
+            break
+        lhs = expr[:pos].rstrip()
+        rhs = expr[pos+2:].lstrip()
+        # rhs should be a function name (possibly with args), or just a name
+        # Wrap: f(lhs) if rhs is a bare name; f(lhs, ...) if rhs has args
+        m = re.match(r'^([A-Za-z_]\w*)$', rhs)
+        if m:
+            expr = f"{rhs}({lhs})"
+        else:
+            # Could be SubsetQ[...] or similar — just wrap the lhs as first arg
+            expr = f"({lhs}) |> {rhs}"
+        break  # one pass
+    return expr
 
 
 def _wl_to_jl(expr: str) -> str:
     """Translate basic Wolfram xCore notation to Julia syntax.
 
     Handles:
-    - f[args] → f(args)       (function application)
-    - {a, b}  → [a, b]        (list literals)
-    - ===     → ==             (structural equality → value equality)
+    - f[args] → f(args)          (function application)
+    - {a, b}  → [a, b]           (list literals)
+    - ===     → ==                (structural equality → value equality)
     - True / False / Null → true / false / nothing
+    - expr // f → f(expr)         (Wolfram postfix application)
+    - $Name   → Name              (dollar-prefix strip)
+    - SubsetQ[A, B] → issubset(B, A)  (note: args reversed in Julia)
 
     Abstract Wolfram symbols used as atoms (e.g. ``a``, ``b``) are left
     as-is; they will cause Julia ``UndefVarError`` for tests that rely on
     Wolfram's symbolic algebra — those tests correctly fail in Julia.
     """
+    # Handle // postfix operator: rewrite "expr // f" → "f(expr)"
+    # Apply before other translations to restructure correctly.
+    # This is a simple left-to-right rewrite (handles one level of nesting).
+    expr = _rewrite_postfix(expr)
+
+    # Strip dollar-prefix from $Name patterns
+    expr = re.sub(r'\$([A-Za-z_]\w*)', r'\1', expr)
+
     # Replace === before the character pass so the placeholder is unambiguous
     expr = expr.replace("===", "\x00")
 
@@ -281,10 +517,33 @@ def _wl_to_jl(expr: str) -> str:
                 j += 1
             name = expr[i:j]
             if j < n and expr[j] == '[':
-                # Function call: emit name( and push "call" context
-                out.append(name + '(')
-                stack.append('call')
-                i = j + 1
+                if name == "SubsetQ":
+                    # SubsetQ[A, B] → issubset(B, A): reverse args, emit placeholder
+                    # Find the matching ]
+                    depth2 = 1
+                    k = j + 1
+                    while k < n and depth2 > 0:
+                        if expr[k] == '[':
+                            depth2 += 1
+                        elif expr[k] == ']':
+                            depth2 -= 1
+                        k += 1
+                    inner = expr[j+1:k-1]
+                    # Split on top-level comma
+                    parts = _top_level_split(inner, ",")
+                    if len(parts) == 2:
+                        a_jl = _wl_to_jl(parts[0].strip())
+                        b_jl = _wl_to_jl(parts[1].strip())
+                        out.append(f"issubset({b_jl}, {a_jl})")
+                    else:
+                        out.append(f"issubset({_wl_to_jl(inner)})")
+                    i = k
+                else:
+                    # Function call: translate name if keyword-mapped, then emit name(
+                    translated = _WL_KEYWORDS.get(name, name)
+                    out.append(translated + '(')
+                    stack.append('call')
+                    i = j + 1
             else:
                 out.append(_WL_KEYWORDS.get(name, name))
                 i = j

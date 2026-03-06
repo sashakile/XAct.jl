@@ -1,0 +1,173 @@
+# xtensor/basic_tensor.toml
+# Layer 1 regression tests for DefTensor across rank/symmetry variants.
+# Tests rank-1 (vector), rank-2 symmetric, rank-2 antisymmetric, and rank-3
+# tensor definitions.  Verifies TensorQ, slot count, and registry membership.
+# Validates against schema: tests/schema/test-schema.json
+
+[meta]
+id              = "xtensor/basic_tensor"
+description     = "DefTensor: rank, symmetry, and TensorQ checks (layer 1)"
+tags            = ["xtensor", "tensor", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Setup: define a 4D manifold and common tensors.
+# ---------------------------------------------------------------------------
+
+[[setup]]
+action   = "DefManifold"
+store_as = "Btm"
+[setup.args]
+name      = "Btm"
+dimension = 4
+indices   = ["bta", "btb", "btc", "btd"]
+
+[[setup]]
+action   = "DefTensor"
+store_as = "Btv"
+[setup.args]
+name     = "Btv"
+indices  = ["bta"]
+manifold = "Btm"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "Bts"
+[setup.args]
+name     = "Bts"
+indices  = ["-bta", "-btb"]
+manifold = "Btm"
+symmetry = "Symmetric[{-bta,-btb}]"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "Bta"
+[setup.args]
+name     = "Bta"
+indices  = ["-bta", "-btb"]
+manifold = "Btm"
+symmetry = "Antisymmetric[{-bta,-btb}]"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "Bt3"
+[setup.args]
+name     = "Bt3"
+indices  = ["-bta", "-btb", "-btc"]
+manifold = "Btm"
+symmetry = "Antisymmetric[{-bta,-btb,-btc}]"
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "tensorq_vector"
+description = "TensorQ returns True for rank-1 tensor (vector)"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "TensorQ[Btv] === True"
+message   = "Btv should be recognized as a tensor by TensorQ"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "tensorq_symmetric"
+description = "TensorQ returns True for rank-2 symmetric tensor"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "TensorQ[Bts] === True"
+message   = "Bts should be recognized as a tensor by TensorQ"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "tensorq_antisymmetric"
+description = "TensorQ returns True for rank-2 antisymmetric tensor"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "TensorQ[Bta] === True"
+message   = "Bta should be recognized as a tensor by TensorQ"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "tensor_in_registry"
+description = "Defined tensors appear in the Tensors registry"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "MemberQ[Tensors, Btv] && MemberQ[Tensors, Bts] && MemberQ[Tensors, Bta]"
+message   = "All defined tensors should appear in the Tensors registry"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "vector_slot_count"
+description = "Vector has exactly one index slot"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "Length[SlotsOfTensor[Btv]] === 1"
+message   = "Rank-1 tensor should have exactly 1 slot"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "rank2_slot_count"
+description = "Rank-2 tensor has exactly two index slots"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "Length[SlotsOfTensor[Bts]] === 2"
+message   = "Rank-2 symmetric tensor should have exactly 2 slots"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "rank3_slot_count"
+description = "Rank-3 totally antisymmetric tensor has exactly three index slots"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "Length[SlotsOfTensor[Bt3]] === 3"
+message   = "Rank-3 antisymmetric tensor should have exactly 3 slots"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "symmetric_swap_is_zero"
+description = "Symmetric tensor: Bts[-bta,-btb] - Bts[-btb,-bta] canonicalizes to 0"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "sym_diff"
+[tests.operations.args]
+expression = "Bts[-bta,-btb] - Bts[-btb,-bta]"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "$sym_diff"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Symmetric tensor index swap should give zero difference"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1

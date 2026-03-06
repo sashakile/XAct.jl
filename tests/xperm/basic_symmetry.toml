@@ -1,0 +1,199 @@
+# xperm/basic_symmetry.toml
+# Layer 1 regression tests for xPerm symmetry declarations.
+# Tests Symmetric, Antisymmetric, and RiemannSymmetric group behavior
+# as expressed through tensor index canonicalization.
+# Validates against schema: tests/schema/test-schema.json
+
+[meta]
+id              = "xperm/basic_symmetry"
+description     = "xPerm symmetry group declarations: Symmetric, Antisymmetric, Riemann (layer 1)"
+tags            = ["xperm", "symmetry", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Setup: 4D manifold with symmetric, antisymmetric, rank-3 antisymmetric,
+# and Riemann-symmetric tensors.
+# ---------------------------------------------------------------------------
+
+[[setup]]
+action   = "DefManifold"
+store_as = "Spm"
+[setup.args]
+name      = "Spm"
+dimension = 4
+indices   = ["spa", "spb", "spc", "spd"]
+
+[[setup]]
+action   = "DefTensor"
+store_as = "Sps"
+[setup.args]
+name     = "Sps"
+indices  = ["-spa", "-spb"]
+manifold = "Spm"
+symmetry = "Symmetric[{-spa,-spb}]"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "Spa"
+[setup.args]
+name     = "Spa"
+indices  = ["-spa", "-spb"]
+manifold = "Spm"
+symmetry = "Antisymmetric[{-spa,-spb}]"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "Sp3"
+[setup.args]
+name     = "Sp3"
+indices  = ["-spa", "-spb", "-spc"]
+manifold = "Spm"
+symmetry = "Antisymmetric[{-spa,-spb,-spc}]"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "SpR"
+[setup.args]
+name     = "SpR"
+indices  = ["-spa", "-spb", "-spc", "-spd"]
+manifold = "Spm"
+symmetry = "RiemannSymmetric[{-spa,-spb,-spc,-spd}]"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "SpT"
+[setup.args]
+name     = "SpT"
+indices  = ["-spa", "-spb"]
+manifold = "Spm"
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "symmetric_group_swap"
+description = "Symmetric[{a,b}]: index swap is identity, difference is 0"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "Sps[-spa,-spb] - Sps[-spb,-spa]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Symmetric tensor: T[-a,-b] - T[-b,-a] should be 0"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "antisymmetric_group_swap"
+description = "Antisymmetric[{a,b}]: index swap negates, sum is 0"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "Spa[-spa,-spb] + Spa[-spb,-spa]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Antisymmetric tensor: T[-a,-b] + T[-b,-a] should be 0"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "rank3_antisymmetric_cyclic"
+description = "Totally antisymmetric 3-tensor: any two-index swap negates"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "Sp3[-spa,-spb,-spc] + Sp3[-spb,-spa,-spc]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Totally antisymmetric rank-3 tensor: swapping first two indices negates"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "riemann_symmetric_first_pair"
+description = "RiemannSymmetric: R[-a,-b,-c,-d] + R[-b,-a,-c,-d] == 0"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "SpR[-spa,-spb,-spc,-spd] + SpR[-spb,-spa,-spc,-spd]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "RiemannSymmetric tensor should be antisymmetric in first index pair"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "riemann_symmetric_pair_exchange"
+description = "RiemannSymmetric: R[-a,-b,-c,-d] - R[-c,-d,-a,-b] == 0 (pair exchange)"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "SpR[-spa,-spb,-spc,-spd] - SpR[-spc,-spd,-spa,-spb]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "RiemannSymmetric tensor should satisfy pair exchange symmetry"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "no_symmetry_swap_nonzero"
+description = "Generic tensor without symmetry: T[-a,-b] - T[-b,-a] is generally nonzero"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "TensorQ[SpT] && !SymmetricTensorQ[SpT, {-spa,-spb}]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "TensorQ[SpT] === True"
+message   = "SpT should be a valid tensor (with no imposed symmetry)"
