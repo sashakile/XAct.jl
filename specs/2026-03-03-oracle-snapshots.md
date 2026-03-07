@@ -45,7 +45,7 @@ tests/snapshots/
 ```
 
 ### 3. Implementation Plan
-- **`SnapshotMiddleware`:** 
+- **`SnapshotMiddleware`:**
     - Acts as a proxy between the `TestAdapter` and `OracleClient`.
     - Computes a unique key for each request as `sha256(json_serialize(request_args, sort_keys=True))`.
     - Handles multiple evaluations per test file by indexing snapshots by their request hash.

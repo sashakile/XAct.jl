@@ -6,15 +6,17 @@ import argparse
 import difflib
 import sys
 from pathlib import Path
+from typing import Any
 
 
-
-def _interactive_review(new_snapshots, added, removed, changed, store):
+def _interactive_review(
+    new_snapshots: Any, added: Any, removed: Any, changed: Any, store: Any
+) -> Any:
     """Prompt for each changed/added snapshot; return filtered FileSnapshot list or None on quit."""
     import dataclasses
 
     revert_keys: set[tuple[str, str]] = set()  # keep old snapshot
-    skip_keys: set[tuple[str, str]] = set()    # skip new addition
+    skip_keys: set[tuple[str, str]] = set()  # skip new addition
     accept_all = False
 
     for (meta_id, test_id), diff_lines in changed:
@@ -45,7 +47,11 @@ def _interactive_review(new_snapshots, added, removed, changed, store):
         print(f"\n+++ {meta_id}/{test_id} [NEW]")
         while True:
             try:
-                ans = input("Accept new snapshot? [y]es/[n]o/[a]ll/[q]uit: ").strip().lower()
+                ans = (
+                    input("Accept new snapshot? [y]es/[n]o/[a]ll/[q]uit: ")
+                    .strip()
+                    .lower()
+                )
             except (EOFError, KeyboardInterrupt):
                 return None
             if ans in ("y", "yes"):
@@ -157,13 +163,15 @@ def _cmd_regen_oracle(args: argparse.Namespace) -> int:
             if old is None:
                 added.append(key)
             elif old.normalized_output != snap.normalized_output:
-                diff_lines = list(difflib.unified_diff(
-                    old.normalized_output.splitlines(keepends=True),
-                    snap.normalized_output.splitlines(keepends=True),
-                    fromfile=f"{key[0]}/{key[1]} (old)",
-                    tofile=f"{key[0]}/{key[1]} (new)",
-                    lineterm="",
-                ))
+                diff_lines = list(
+                    difflib.unified_diff(
+                        old.normalized_output.splitlines(keepends=True),
+                        snap.normalized_output.splitlines(keepends=True),
+                        fromfile=f"{key[0]}/{key[1]} (old)",
+                        tofile=f"{key[0]}/{key[1]} (new)",
+                        lineterm="",
+                    )
+                )
                 changed.append((key, diff_lines))
             else:
                 unchanged += 1
@@ -199,7 +207,9 @@ def _cmd_regen_oracle(args: argparse.Namespace) -> int:
 
     print()
     if args.interactive:
-        accepted_snapshots = _interactive_review(new_snapshots, added, removed, changed, store)
+        accepted_snapshots = _interactive_review(
+            new_snapshots, added, removed, changed, store
+        )
         if accepted_snapshots is None:
             print("Aborted.")
             return 1

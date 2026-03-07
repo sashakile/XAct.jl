@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 
@@ -28,6 +28,7 @@ Symmetry = Literal["Symmetric", "Antisymmetric", None]
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Manifold:
@@ -73,13 +74,16 @@ class TensorField:
 # Random generation
 # ---------------------------------------------------------------------------
 
+
 def random_manifold(name: str = "M", rng: random.Random | None = None) -> Manifold:
     """Generate a Manifold with random dimension in [2, 4]."""
     r = rng or random.Random()
     return Manifold(name=name, dimension=r.randint(2, 4))
 
 
-def random_metric_array(metric: Metric, rng: np.random.Generator | None = None) -> np.ndarray:
+def random_metric_array(
+    metric: Metric, rng: np.random.Generator | None = None
+) -> np.ndarray[Any, np.dtype[Any]]:
     """Generate a random well-conditioned metric array.
 
     Uses the Cholesky construction: M = A^T A + eps*I to guarantee positive
@@ -108,7 +112,7 @@ def random_metric_array(metric: Metric, rng: np.random.Generator | None = None) 
 
 def random_tensor_array(
     tensor: TensorField, rng: np.random.Generator | None = None
-) -> np.ndarray:
+) -> np.ndarray[Any, np.dtype[Any]]:
     """Generate a random tensor component array respecting symmetry.
 
     Returns:
@@ -133,7 +137,7 @@ def random_tensor_array(
     return arr
 
 
-def _symmetrize(arr: np.ndarray) -> np.ndarray:
+def _symmetrize(arr: np.ndarray[Any, np.dtype[Any]]) -> np.ndarray[Any, np.dtype[Any]]:
     """Average over all permutations (exact for rank 2, approximate for higher)."""
     from itertools import permutations
 
@@ -146,7 +150,9 @@ def _symmetrize(arr: np.ndarray) -> np.ndarray:
     return result / count
 
 
-def _antisymmetrize(arr: np.ndarray) -> np.ndarray:
+def _antisymmetrize(
+    arr: np.ndarray[Any, np.dtype[Any]],
+) -> np.ndarray[Any, np.dtype[Any]]:
     """Antisymmetrize by averaging signed permutations."""
     from itertools import permutations
     from math import perm as _  # noqa: F401

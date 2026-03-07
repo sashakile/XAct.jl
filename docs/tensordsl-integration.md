@@ -44,7 +44,7 @@ Since the Parser is "thin," the math is performed by plugging in a Backend.
 
 ### Phase 2: Dual Native Parsers
 *   **Python:** Implement `tensordsl-py`. Focus on the EBNF string parser (`R{^a _b}`).
-*   **Julia:** Implement `TensorDSL.jl`. 
+*   **Julia:** Implement `TensorDSL.jl`.
 *   **Validation:** Create a test suite of `.tensor.toml` files that must produce bit-identical JSON ASTs in both implementations.
 
 ### Phase 3: Julia 1.12 AOT (Future)

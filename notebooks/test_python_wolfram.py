@@ -4,9 +4,6 @@ Example of using Wolfram Client for Python to interact with Wolfram Engine
 Note: This requires a running Wolfram Kernel with network access
 """
 
-from wolframclient.evaluation import WolframLanguageSession
-from wolframclient.language import wl, wlexpr
-
 # Start a Wolfram Language session
 # For now, this is just a template - actual connection would require
 # a running Wolfram Kernel accessible via network

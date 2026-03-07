@@ -52,7 +52,9 @@ class TestContextIdWrapping:
         km.evaluate("1 + 1", timeout_s=5, with_xact=False, context_id="abc-123")
         args, _ = km._session.evaluate.call_args
         wrapped = args[0]
-        assert wrapped != "1 + 1", "Expression should be wrapped when context_id is given"
+        assert wrapped != "1 + 1", (
+            "Expression should be wrapped when context_id is given"
+        )
 
     def test_context_id_value_appears_in_wrapped_expr(self):
         """The sanitized context_id value appears in the wrapped expression."""
@@ -94,7 +96,8 @@ class TestContextIdWrapping:
         # The context names in both wrappers should be identical
         # (check the context name portion, not the full expression with different bodies)
         import re
-        ctx_pattern = re.compile(r'SxAct\w+`')
+
+        ctx_pattern = re.compile(r"SxAct\w+`")
         ctx1 = ctx_pattern.findall(args1[0])
         ctx2 = ctx_pattern.findall(args2[0])
         assert ctx1 and ctx2, "Context name not found in wrapped expressions"

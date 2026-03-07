@@ -11,6 +11,7 @@ from . import _runtime
 # Internal helpers (used by this module and upvalues.py)
 # ---------------------------------------------------------------------------
 
+
 def _sym(s: str | Any) -> Any:
     """Convert a Python str to a Julia Symbol (pass-through for Julia values)."""
     if isinstance(s, str):
@@ -26,8 +27,12 @@ def _str(s: Any) -> str:
 def _sym_list(symbols: list[str | Any]) -> Any:
     """Convert a Python list of str/Symbols to a Julia Vector{Symbol}."""
     jl = _runtime.get_julia()
-    return jl.seval("Symbol[]") if not symbols else jl.seval(
-        "Symbol[" + ", ".join(f"Symbol({str(s)!r})" for s in symbols) + "]"
+    return (
+        jl.seval("Symbol[]")
+        if not symbols
+        else jl.seval(
+            "Symbol[" + ", ".join(f"Symbol({str(s)!r})" for s in symbols) + "]"
+        )
     )
 
 
@@ -39,6 +44,7 @@ def _str_list(vec: Any) -> list[str]:
 # ---------------------------------------------------------------------------
 # 4. Symbol naming and dagger / link characters
 # ---------------------------------------------------------------------------
+
 
 def symbol_join(*symbols: Any) -> str:
     """Concatenate *symbols* into a single symbol name.
@@ -58,6 +64,7 @@ def no_pattern(expr: Any) -> Any:
 
 # --- DaggerCharacter ---
 
+
 def dagger_character() -> str:
     """Return the current dagger character string.
 
@@ -71,7 +78,7 @@ def set_dagger_character(value: str) -> None:
 
     Julia: ``DaggerCharacter[] = value``
     """
-    _runtime.get_julia().seval(f'Main.XCore.DaggerCharacter[] = {value!r}')
+    _runtime.get_julia().seval(f"Main.XCore.DaggerCharacter[] = {value!r}")
 
 
 def has_dagger_character_q(s: str | Any) -> bool:
@@ -92,6 +99,7 @@ def make_dagger_symbol(s: str | Any) -> str:
 
 # --- LinkCharacter ---
 
+
 def link_character() -> str:
     """Return the current link character string.
 
@@ -105,7 +113,7 @@ def set_link_character(value: str) -> None:
 
     Julia: ``LinkCharacter[] = value``
     """
-    _runtime.get_julia().seval(f'Main.XCore.LinkCharacter[] = {value!r}')
+    _runtime.get_julia().seval(f"Main.XCore.LinkCharacter[] = {value!r}")
 
 
 def link_symbols(symbols: list[str | Any]) -> str:
@@ -127,6 +135,7 @@ def unlink_symbol(s: str | Any) -> list[str]:
 # ---------------------------------------------------------------------------
 # 10. Symbol registry and validation
 # ---------------------------------------------------------------------------
+
 
 def validate_symbol(name: str | Any) -> None:
     """Raise if *name* collides with an already-registered or Base symbol.
@@ -159,6 +168,7 @@ def register_symbol(name: str | Any, package: str) -> None:
 
 
 # --- Per-package name lists (read-only views) ---
+
 
 def x_perm_names() -> list[str]:
     """Return a copy of the xPerm symbol name list."""
@@ -211,6 +221,7 @@ def em_names() -> list[str]:
 
 
 # --- Mutable string refs ---
+
 
 def warning_from() -> str:
     """Return the current WarningFrom label."""

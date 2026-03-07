@@ -43,8 +43,10 @@ from sxact.oracle.result import Result
 # DummyAdapter — used when no external adapter_factory is provided
 # ---------------------------------------------------------------------------
 
+
 class _DummyContext:
     """Minimal opaque context for the DummyAdapter."""
+
     alive: bool = True
 
 
@@ -97,6 +99,7 @@ class DummyAdapter(TestAdapter[_DummyContext]):
 # Fixture — override in concrete adapter test modules
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def adapter_factory():
     """Return the adapter class (zero-arg constructor) under test.
@@ -127,6 +130,7 @@ def ctx(adapter):
 # ---------------------------------------------------------------------------
 # Conformance tests
 # ---------------------------------------------------------------------------
+
 
 class TestLifecycle:
     """initialize() and teardown() contract."""

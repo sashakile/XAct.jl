@@ -21,7 +21,6 @@ reported as deferred errors.
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from sxact.adapter.base import (
@@ -38,8 +37,10 @@ from sxact.oracle.result import Result
 # Wolfram symbolic expression data model
 # ===========================================================================
 
+
 class Sym:
     """A Wolfram Symbol (atomic)."""
+
     __slots__ = ("name",)
 
     def __init__(self, name: str) -> None:
@@ -57,6 +58,7 @@ class Sym:
 
 class WExpr:
     """A Wolfram compound expression: Head[arg1, arg2, ...]."""
+
     __slots__ = ("head", "args")
 
     def __init__(self, head: Any, args: list[Any]) -> None:
@@ -77,12 +79,12 @@ class WExpr:
 
 
 # Well-known symbol singletons
-_SYM_TRUE  = Sym("True")
+_SYM_TRUE = Sym("True")
 _SYM_FALSE = Sym("False")
-_SYM_NULL  = Sym("Null")
-_SYM_PLUS  = Sym("Plus")
-_SYM_LIST  = Sym("List")
-_SYM_PI    = Sym("Pi")
+_SYM_NULL = Sym("Null")
+_SYM_PLUS = Sym("Plus")
+_SYM_LIST = Sym("List")
+_SYM_PI = Sym("Pi")
 
 
 def _wl_repr(val: Any) -> str:
@@ -113,24 +115,50 @@ def _wl_repr(val: Any) -> str:
 # Per-file XCore state
 # ===========================================================================
 
+
 class _XCoreState:
     """Mutable xCore state for one test file (reset on teardown)."""
 
     DAGGER_CHAR = "†"
-    LINK_CHAR   = "⁀"
+    LINK_CHAR = "⁀"
 
     # Known XCore names that ValidateSymbol should reject
-    _XCORE_NAMES = frozenset({
-        "JustOne", "MapIfPlus", "ThreadArray", "SetNumberOfArguments",
-        "TrueOrFalse", "ReportSet", "ReportSetOption", "CheckOptions",
-        "SymbolJoin", "NoPattern", "HasDaggerCharacterQ", "MakeDaggerSymbol",
-        "LinkSymbols", "UnlinkSymbol", "SubHead",
-        "xUpSet", "xUpSetDelayed", "xUpAppendTo", "xUpDeleteCasesTo",
-        "xTagSet", "xTagSetDelayed", "push_unevaluated",
-        "xTension", "MakexTensions", "xEvaluateAt", "XHold",
-        "ValidateSymbol", "FindSymbols", "register_symbol",
-        "DeleteDuplicates", "DuplicateFreeQ", "Disclaimer",
-    })
+    _XCORE_NAMES = frozenset(
+        {
+            "JustOne",
+            "MapIfPlus",
+            "ThreadArray",
+            "SetNumberOfArguments",
+            "TrueOrFalse",
+            "ReportSet",
+            "ReportSetOption",
+            "CheckOptions",
+            "SymbolJoin",
+            "NoPattern",
+            "HasDaggerCharacterQ",
+            "MakeDaggerSymbol",
+            "LinkSymbols",
+            "UnlinkSymbol",
+            "SubHead",
+            "xUpSet",
+            "xUpSetDelayed",
+            "xUpAppendTo",
+            "xUpDeleteCasesTo",
+            "xTagSet",
+            "xTagSetDelayed",
+            "push_unevaluated",
+            "xTension",
+            "MakexTensions",
+            "xEvaluateAt",
+            "XHold",
+            "ValidateSymbol",
+            "FindSymbols",
+            "register_symbol",
+            "DeleteDuplicates",
+            "DuplicateFreeQ",
+            "Disclaimer",
+        }
+    )
 
     # Built-in numeric values — ValidateSymbol should reject these
     _NUMERIC_SYMS = frozenset({"Pi", "E", "I", "Infinity", "True", "False"})
@@ -145,7 +173,7 @@ class _XCoreState:
         self._vars: dict[str, Any] = {
             # Pre-defined XCore global refs
             "DaggerCharacter": _XCoreState.DAGGER_CHAR,
-            "LinkCharacter":   _XCoreState.LINK_CHAR,
+            "LinkCharacter": _XCoreState.LINK_CHAR,
         }
         # symbol registry: name → package
         self._symbol_registry: dict[str, str] = {}
@@ -179,9 +207,9 @@ class _XCoreState:
         d = self._upvalue_store.setdefault(tag, {})
         d[prop] = thunk
 
-    def x_up_append_to(self, prop: str, tag: str, element: Any) -> list:
+    def x_up_append_to(self, prop: str, tag: str, element: Any) -> list[Any]:
         d = self._upvalue_store.setdefault(tag, {})
-        lst = d.setdefault(prop, [])
+        lst: list[Any] = d.setdefault(prop, [])
         lst.append(element)
         return lst
 
@@ -220,7 +248,8 @@ class _XCoreState:
 # Helper: unwrap WExpr(List, [...]) to Python list
 # ===========================================================================
 
-def _unwrap_list(val: Any) -> list:
+
+def _unwrap_list(val: Any) -> list[Any]:
     """Convert WExpr(List, args) to Python list, or return list as-is."""
     if isinstance(val, list):
         return val
@@ -233,6 +262,7 @@ def _unwrap_list(val: Any) -> list:
 # ===========================================================================
 # Wolfram mini-evaluator
 # ===========================================================================
+
 
 def _wl_evaluate(expr: Any, state: _XCoreState) -> Any:
     """Recursively evaluate a Wolfram expression in the given state."""
@@ -287,7 +317,7 @@ def _wl_evaluate(expr: Any, state: _XCoreState) -> Any:
         val = _wl_evaluate(rhs, state)
         if isinstance(lhs, WExpr) and isinstance(lhs.head, Sym):
             prop = lhs.head.name
-            tag  = lhs.args[0].name if isinstance(lhs.args[0], Sym) else str(lhs.args[0])
+            tag = lhs.args[0].name if isinstance(lhs.args[0], Sym) else str(lhs.args[0])
             return state.x_up_set(prop, tag, val)
         return val
 
@@ -297,8 +327,8 @@ def _wl_evaluate(expr: Any, state: _XCoreState) -> Any:
         lhs, rhs_expr = args[0], args[1]
         if isinstance(lhs, WExpr) and isinstance(lhs.head, Sym):
             prop = lhs.head.name
-            tag  = lhs.args[0].name if isinstance(lhs.args[0], Sym) else str(lhs.args[0])
-            val  = _wl_evaluate(rhs_expr, state)
+            tag = lhs.args[0].name if isinstance(lhs.args[0], Sym) else str(lhs.args[0])
+            val = _wl_evaluate(rhs_expr, state)
             state.x_up_set(prop, tag, val)
         return _SYM_NULL
 
@@ -308,7 +338,7 @@ def _wl_evaluate(expr: Any, state: _XCoreState) -> Any:
         element_val = _wl_evaluate(element, state)
         if isinstance(lhs, WExpr) and isinstance(lhs.head, Sym):
             prop = lhs.head.name
-            tag  = lhs.args[0].name if isinstance(lhs.args[0], Sym) else str(lhs.args[0])
+            tag = lhs.args[0].name if isinstance(lhs.args[0], Sym) else str(lhs.args[0])
             return state.x_up_append_to(prop, tag, element_val)
         return []
 
@@ -318,7 +348,7 @@ def _wl_evaluate(expr: Any, state: _XCoreState) -> Any:
         value_val = _wl_evaluate(value, state)
         if isinstance(lhs, WExpr) and isinstance(lhs.head, Sym):
             prop = lhs.head.name
-            tag  = lhs.args[0].name if isinstance(lhs.args[0], Sym) else str(lhs.args[0])
+            tag = lhs.args[0].name if isinstance(lhs.args[0], Sym) else str(lhs.args[0])
             state.x_up_delete_cases_to(prop, tag, value_val)
         return _SYM_NULL
 
@@ -326,7 +356,11 @@ def _wl_evaluate(expr: Any, state: _XCoreState) -> Any:
         # xTagSet[{tag, lhs_expr}, value]
         tag_pair, value = args[0], args[1]
         val = _wl_evaluate(value, state)
-        if isinstance(tag_pair, WExpr) and tag_pair.head == _SYM_LIST and len(tag_pair.args) == 2:
+        if (
+            isinstance(tag_pair, WExpr)
+            and tag_pair.head == _SYM_LIST
+            and len(tag_pair.args) == 2
+        ):
             tag_sym = tag_pair.args[0]
             lhs_expr = tag_pair.args[1]
             tag = tag_sym.name if isinstance(tag_sym, Sym) else str(tag_sym)
@@ -337,7 +371,11 @@ def _wl_evaluate(expr: Any, state: _XCoreState) -> Any:
         # xTagSetDelayed[{tag, lhs_expr}, rhs]
         tag_pair, rhs_expr = args[0], args[1]
         val = _wl_evaluate(rhs_expr, state)
-        if isinstance(tag_pair, WExpr) and tag_pair.head == _SYM_LIST and len(tag_pair.args) == 2:
+        if (
+            isinstance(tag_pair, WExpr)
+            and tag_pair.head == _SYM_LIST
+            and len(tag_pair.args) == 2
+        ):
             tag_sym = tag_pair.args[0]
             lhs_expr = tag_pair.args[1]
             tag = tag_sym.name if isinstance(tag_sym, Sym) else str(tag_sym)
@@ -411,7 +449,7 @@ def _wl_evaluate(expr: Any, state: _XCoreState) -> Any:
             name = a.name.rstrip("_")
             # Also strip type suffix like _Integer: find first _ and truncate
             if "_" in name:
-                name = name[:name.index("_")]
+                name = name[: name.index("_")]
             return Sym(name) if name else a
         if isinstance(a, WExpr):
             # NoPattern[f[x_, y_]] → f[x, y]: recursively strip patterns from args
@@ -469,6 +507,7 @@ def _wl_evaluate(expr: Any, state: _XCoreState) -> Any:
         # FindSymbols[expr] → collect all symbols recursively
         if not eargs:
             return []
+
         def _collect_syms(x: Any) -> list[Sym]:
             if isinstance(x, Sym):
                 return [x]
@@ -485,6 +524,7 @@ def _wl_evaluate(expr: Any, state: _XCoreState) -> Any:
                     result.extend(_collect_syms(a))
                 return result
             return []
+
         return _collect_syms(eargs[0])
 
     if head_name == "JustOne":
@@ -511,7 +551,9 @@ def _wl_evaluate(expr: Any, state: _XCoreState) -> Any:
                     if isinstance(item, tuple) and len(item) == 2:
                         result.append(item)
                     else:
-                        raise RuntimeError(f"CheckOptions: expected rule, got {_wl_repr(item)}")
+                        raise RuntimeError(
+                            f"CheckOptions: expected rule, got {_wl_repr(item)}"
+                        )
             else:
                 raise RuntimeError(f"CheckOptions: expected rule, got {_wl_repr(a)}")
         return result
@@ -521,8 +563,8 @@ def _wl_evaluate(expr: Any, state: _XCoreState) -> Any:
 
     if head_name == "DeleteDuplicates":
         lst = _unwrap_list(eargs[0])
-        seen: set = set()
-        out: list = []
+        seen: set[str] = set()
+        out: list[Any] = []
         for x in lst:
             key = _wl_repr(x)
             if key not in seen:
@@ -618,7 +660,7 @@ def _sub_head(expr: Any) -> Any:
     return expr
 
 
-def _apply(f: Any, args: list, state: _XCoreState) -> Any:
+def _apply(f: Any, args: list[Any], state: _XCoreState) -> Any:
     """Apply f to args in the context of state."""
     if isinstance(f, Sym):
         return _wl_evaluate(WExpr(f, args), state)
@@ -630,6 +672,7 @@ def _apply(f: Any, args: list, state: _XCoreState) -> Any:
 # ===========================================================================
 # Wolfram expression parser
 # ===========================================================================
+
 
 def _parse(source: str) -> Any:
     """Parse a Wolfram expression string into a Python AST (Sym / WExpr / list / str / int).
@@ -658,7 +701,7 @@ class _Parser:
     def __init__(self, source: str) -> None:
         self.src = source
         self.pos = 0
-        self.n   = len(source)
+        self.n = len(source)
 
     def skip_ws(self) -> None:
         while self.pos < self.n and self.src[self.pos] in " \t\n\r":
@@ -677,8 +720,11 @@ class _Parser:
     def _parse_assign(self) -> Any:
         lhs = self._parse_rule()
         self.skip_ws()
-        if self.pos < self.n and self.src[self.pos] == '=' and \
-                (self.pos + 1 >= self.n or self.src[self.pos + 1] not in ('=', '>')):
+        if (
+            self.pos < self.n
+            and self.src[self.pos] == "="
+            and (self.pos + 1 >= self.n or self.src[self.pos + 1] not in ("=", ">"))
+        ):
             self.pos += 1
             rhs = self._parse_assign()
             return WExpr(Sym("Set"), [lhs, rhs])
@@ -687,7 +733,7 @@ class _Parser:
     def _parse_rule(self) -> Any:
         lhs = self._parse_or()
         self.skip_ws()
-        if self.pos + 1 < self.n and self.src[self.pos:self.pos+2] == '->':
+        if self.pos + 1 < self.n and self.src[self.pos : self.pos + 2] == "->":
             self.pos += 2
             rhs = self._parse_or()
             return (lhs, rhs)
@@ -697,7 +743,7 @@ class _Parser:
         lhs = self._parse_and()
         while True:
             self.skip_ws()
-            if self.pos + 1 < self.n and self.src[self.pos:self.pos+2] == '||':
+            if self.pos + 1 < self.n and self.src[self.pos : self.pos + 2] == "||":
                 self.pos += 2
                 rhs = self._parse_and()
                 lhs = WExpr(Sym("Or"), [lhs, rhs])
@@ -709,7 +755,7 @@ class _Parser:
         lhs = self._parse_eq()
         while True:
             self.skip_ws()
-            if self.pos + 1 < self.n and self.src[self.pos:self.pos+2] == '&&':
+            if self.pos + 1 < self.n and self.src[self.pos : self.pos + 2] == "&&":
                 self.pos += 2
                 rhs = self._parse_eq()
                 lhs = WExpr(Sym("And"), [lhs, rhs])
@@ -720,11 +766,11 @@ class _Parser:
     def _parse_eq(self) -> Any:
         lhs = self._parse_compare()
         self.skip_ws()
-        if self.pos + 2 < self.n and self.src[self.pos:self.pos+3] == '===':
+        if self.pos + 2 < self.n and self.src[self.pos : self.pos + 3] == "===":
             self.pos += 3
             rhs = self._parse_compare()
             return WExpr(Sym("SameQ"), [lhs, rhs])
-        if self.pos + 1 < self.n and self.src[self.pos:self.pos+2] == '==':
+        if self.pos + 1 < self.n and self.src[self.pos : self.pos + 2] == "==":
             self.pos += 2
             rhs = self._parse_compare()
             return WExpr(Sym("Equal"), [lhs, rhs])
@@ -733,7 +779,7 @@ class _Parser:
     def _parse_compare(self) -> Any:
         lhs = self._parse_postfix()
         self.skip_ws()
-        if self.pos < self.n and self.src[self.pos] == '>':
+        if self.pos < self.n and self.src[self.pos] == ">":
             self.pos += 1
             rhs = self._parse_postfix()
             return WExpr(Sym("Greater"), [lhs, rhs])
@@ -743,7 +789,7 @@ class _Parser:
         lhs = self._parse_add()
         while True:
             self.skip_ws()
-            if self.pos + 1 < self.n and self.src[self.pos:self.pos+2] == '//':
+            if self.pos + 1 < self.n and self.src[self.pos : self.pos + 2] == "//":
                 self.pos += 2
                 rhs = self._parse_atom_call()  # function to apply
                 # lhs // rhs → rhs[lhs]
@@ -756,7 +802,7 @@ class _Parser:
         lhs = self._parse_mul()
         while True:
             self.skip_ws()
-            if self.pos < self.n and self.src[self.pos] == '+':
+            if self.pos < self.n and self.src[self.pos] == "+":
                 self.pos += 1
                 rhs = self._parse_mul()
                 # Symbolic addition
@@ -764,8 +810,11 @@ class _Parser:
                     lhs = WExpr(_SYM_PLUS, lhs.args + [rhs])
                 else:
                     lhs = WExpr(_SYM_PLUS, [lhs, rhs])
-            elif self.pos < self.n and self.src[self.pos] == '-' and \
-                    (self.pos + 1 >= self.n or self.src[self.pos + 1] != '>'):
+            elif (
+                self.pos < self.n
+                and self.src[self.pos] == "-"
+                and (self.pos + 1 >= self.n or self.src[self.pos + 1] != ">")
+            ):
                 self.pos += 1
                 rhs = self._parse_mul()
                 lhs = WExpr(Sym("Subtract"), [lhs, rhs])
@@ -777,7 +826,7 @@ class _Parser:
         lhs = self._parse_unary()
         while True:
             self.skip_ws()
-            if self.pos < self.n and self.src[self.pos] == '*':
+            if self.pos < self.n and self.src[self.pos] == "*":
                 self.pos += 1
                 rhs = self._parse_unary()
                 lhs = WExpr(Sym("Times"), [lhs, rhs])
@@ -792,15 +841,15 @@ class _Parser:
         atom = self._parse_atom()
         # Check for f[...] application
         self.skip_ws()
-        while self.pos < self.n and self.src[self.pos] == '[':
+        while self.pos < self.n and self.src[self.pos] == "[":
             self.pos += 1  # consume [
-            args = self._parse_arg_list(']')
+            args = self._parse_arg_list("]")
             atom = WExpr(atom, args)
             self.skip_ws()
         return atom
 
-    def _parse_arg_list(self, close: str) -> list:
-        args = []
+    def _parse_arg_list(self, close: str) -> list[Any]:
+        args: list[Any] = []
         self.skip_ws()
         if self.pos < self.n and self.src[self.pos] == close:
             self.pos += 1
@@ -808,7 +857,7 @@ class _Parser:
         while True:
             args.append(self.parse_expr())
             self.skip_ws()
-            if self.pos < self.n and self.src[self.pos] == ',':
+            if self.pos < self.n and self.src[self.pos] == ",":
                 self.pos += 1
             elif self.pos < self.n and self.src[self.pos] == close:
                 self.pos += 1
@@ -830,13 +879,13 @@ class _Parser:
             buf = []
             while self.pos < self.n:
                 c = self.src[self.pos]
-                if c == '\\' and self.pos + 1 < self.n:
+                if c == "\\" and self.pos + 1 < self.n:
                     self.pos += 1
                     nc = self.src[self.pos]
-                    if nc == 'n':
-                        buf.append('\n')
-                    elif nc == 't':
-                        buf.append('\t')
+                    if nc == "n":
+                        buf.append("\n")
+                    elif nc == "t":
+                        buf.append("\t")
                     else:
                         buf.append(nc)
                     self.pos += 1
@@ -849,22 +898,22 @@ class _Parser:
             return "".join(buf)
 
         # List {a, b, ...}
-        if ch == '{':
+        if ch == "{":
             self.pos += 1
-            elems = self._parse_arg_list('}')
+            elems = self._parse_arg_list("}")
             return WExpr(_SYM_LIST, elems)
 
         # Parenthesised expression
-        if ch == '(':
+        if ch == "(":
             self.pos += 1
             inner = self.parse_expr()
             self.skip_ws()
-            if self.pos < self.n and self.src[self.pos] == ')':
+            if self.pos < self.n and self.src[self.pos] == ")":
                 self.pos += 1
             return inner
 
         # Negative number
-        if ch == '-':
+        if ch == "-":
             self.pos += 1
             self.skip_ws()
             num = self._parse_number()
@@ -880,11 +929,13 @@ class _Parser:
 
         # Symbol / identifier (may contain _ for Wolfram Pattern notation,
         # and Unicode non-ASCII chars like † ⁀ for dagger/link symbols)
-        if ch.isalpha() or ch == '_' or (ord(ch) > 127):
+        if ch.isalpha() or ch == "_" or (ord(ch) > 127):
             j = self.pos
-            while j < self.n and (self.src[j].isalnum() or self.src[j] == '_' or ord(self.src[j]) > 127):
+            while j < self.n and (
+                self.src[j].isalnum() or self.src[j] == "_" or ord(self.src[j]) > 127
+            ):
                 j += 1
-            name = self.src[self.pos:j]
+            name = self.src[self.pos : j]
             self.pos = j
             # Well-known atoms
             if name == "True":
@@ -902,12 +953,12 @@ class _Parser:
             return Sym(name)
 
         # Dollar reference $name (should be pre-substituted, but handle gracefully)
-        if ch == '$':
+        if ch == "$":
             self.pos += 1
             j = self.pos
-            while j < self.n and (self.src[j].isalnum() or self.src[j] == '_'):
+            while j < self.n and (self.src[j].isalnum() or self.src[j] == "_"):
                 j += 1
-            name = self.src[self.pos:j]
+            name = self.src[self.pos : j]
             self.pos = j
             return Sym(name)
 
@@ -924,12 +975,12 @@ class _Parser:
         while j < self.n and self.src[j].isdigit():
             j += 1
         is_float = False
-        if j < self.n and self.src[j] == '.':
+        if j < self.n and self.src[j] == ".":
             is_float = True
             j += 1
             while j < self.n and self.src[j].isdigit():
                 j += 1
-        text = self.src[self.pos:j]
+        text = self.src[self.pos : j]
         self.pos = j
         return float(text) if is_float else int(text)
 
@@ -937,6 +988,7 @@ class _Parser:
 # ===========================================================================
 # Evaluate a parsed Wolfram AST with special handling for structural equality
 # ===========================================================================
+
 
 def _eval_sameq(lhs: Any, rhs: Any, state: _XCoreState) -> bool:
     """Evaluate === (SameQ): structural/physical equality."""
@@ -950,7 +1002,7 @@ def _wl_same(a: Any, b: Any) -> bool:
     # Canonicalize True/False
     a = _canon(a)
     b = _canon(b)
-    if type(a) != type(b):
+    if type(a) is not type(b):
         # Allow int==float comparison
         if isinstance(a, (int, float)) and isinstance(b, (int, float)):
             return a == b
@@ -958,12 +1010,15 @@ def _wl_same(a: Any, b: Any) -> bool:
     if isinstance(a, list):
         return len(a) == len(b) and all(_wl_same(x, y) for x, y in zip(a, b))
     if isinstance(a, WExpr):
-        return (isinstance(b, WExpr) and _wl_same(a.head, b.head) and
-                len(a.args) == len(b.args) and
-                all(_wl_same(x, y) for x, y in zip(a.args, b.args)))
+        return (
+            isinstance(b, WExpr)
+            and _wl_same(a.head, b.head)
+            and len(a.args) == len(b.args)
+            and all(_wl_same(x, y) for x, y in zip(a.args, b.args))
+        )
     if isinstance(a, tuple) and isinstance(b, tuple):
         return len(a) == len(b) and all(_wl_same(x, y) for x, y in zip(a, b))
-    return a == b
+    return bool(a == b)
 
 
 def _canon(v: Any) -> Any:
@@ -994,7 +1049,7 @@ def _eval_bool_result(val: Any) -> bool:
 _orig_wl_evaluate = _wl_evaluate
 
 
-def _wl_evaluate(expr: Any, state: _XCoreState) -> Any:  # type: ignore[misc]
+def _wl_evaluate(expr: Any, state: _XCoreState) -> Any:  # type: ignore[no-redef]
     """Evaluate, with extra handling for SameQ, Equal, And, Or, Greater."""
     if not isinstance(expr, WExpr):
         return _orig_wl_evaluate(expr, state)
@@ -1056,6 +1111,7 @@ def _wl_evaluate(expr: Any, state: _XCoreState) -> Any:  # type: ignore[misc]
 # Context
 # ===========================================================================
 
+
 class _PythonContext:
     """Opaque per-file context for PythonAdapter."""
 
@@ -1068,6 +1124,7 @@ class _PythonContext:
 # Adapter
 # ===========================================================================
 
+
 class PythonAdapter(TestAdapter[_PythonContext]):
     """Concrete adapter for the Python XCore backend.
 
@@ -1076,10 +1133,16 @@ class PythonAdapter(TestAdapter[_PythonContext]):
     """
 
     # Tier 2 / xTensor deferred actions
-    _DEFERRED_ACTIONS = frozenset({
-        "DefManifold", "DefMetric", "DefTensor",
-        "ToCanonical", "Contract", "Simplify",
-    })
+    _DEFERRED_ACTIONS = frozenset(
+        {
+            "DefManifold",
+            "DefMetric",
+            "DefTensor",
+            "ToCanonical",
+            "Contract",
+            "Simplify",
+        }
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -1118,7 +1181,10 @@ class PythonAdapter(TestAdapter[_PythonContext]):
                 ctx.state,
             )
         return Result(
-            status="error", type="", repr="", normalized="",
+            status="error",
+            type="",
+            repr="",
+            normalized="",
             error=f"unhandled action: {action!r}",
         )
 
@@ -1151,7 +1217,10 @@ class PythonAdapter(TestAdapter[_PythonContext]):
             passed = _eval_bool_result(val)
             if passed:
                 return Result(status="ok", type="Bool", repr="True", normalized="True")
-            msg = message or f"Assertion failed: {wolfram_condition!r} (got {_wl_repr(val)!r})"
+            msg = (
+                message
+                or f"Assertion failed: {wolfram_condition!r} (got {_wl_repr(val)!r})"
+            )
             return Result(
                 status="error",
                 type="Bool",
@@ -1188,7 +1257,9 @@ class PythonAdapter(TestAdapter[_PythonContext]):
     # Introspection
     # ------------------------------------------------------------------
 
-    def get_properties(self, expr: str, ctx: _PythonContext | None = None) -> dict[str, Any]:
+    def get_properties(
+        self, expr: str, ctx: _PythonContext | None = None
+    ) -> dict[str, Any]:
         return {}
 
     def get_version(self) -> VersionInfo:

@@ -36,6 +36,7 @@ from sxact.runner.loader import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _ok(repr: str, normalized: str = "", properties: dict | None = None) -> Result:
     return Result(
         status="ok",
@@ -93,6 +94,7 @@ def _make_adapter(*results: Result) -> MagicMock:
 # _sub_refs / _substitute_bindings
 # ---------------------------------------------------------------------------
 
+
 class TestSubRefs:
     def test_no_refs(self):
         assert _sub_refs("ToCanonical[T]", {}) == "ToCanonical[T]"
@@ -126,6 +128,7 @@ class TestSubstituteBindings:
 # ---------------------------------------------------------------------------
 # Context manager protocol
 # ---------------------------------------------------------------------------
+
 
 class TestContextManager:
     def test_initialize_called_on_enter(self):
@@ -162,10 +165,13 @@ class TestContextManager:
 # Setup bindings
 # ---------------------------------------------------------------------------
 
+
 class TestSetupBindings:
     def test_setup_runs_before_tests(self):
         """Setup op is executed; its store_as value is available to tests."""
-        setup_op = Operation(action="DefManifold", args={"name": "M"}, store_as="manifold")
+        setup_op = Operation(
+            action="DefManifold", args={"name": "M"}, store_as="manifold"
+        )
         test_op = Operation(action="Evaluate", args={"expression": "$manifold"})
         tc = _make_tc(ops=[test_op])
         tf = _make_file(setup=[setup_op], tests=[tc])
@@ -189,8 +195,12 @@ class TestSetupBindings:
     def test_setup_bindings_available_to_all_tests(self):
         """Both tests can use the same setup binding."""
         setup_op = Operation(action="DefManifold", args={"name": "M"}, store_as="m")
-        tc1 = _make_tc(id="t1", ops=[Operation(action="Evaluate", args={"expression": "$m"})])
-        tc2 = _make_tc(id="t2", ops=[Operation(action="Evaluate", args={"expression": "$m"})])
+        tc1 = _make_tc(
+            id="t1", ops=[Operation(action="Evaluate", args={"expression": "$m"})]
+        )
+        tc2 = _make_tc(
+            id="t2", ops=[Operation(action="Evaluate", args={"expression": "$m"})]
+        )
         tf = _make_file(setup=[setup_op], tests=[tc1, tc2])
 
         captured: list[dict] = []
@@ -214,6 +224,7 @@ class TestSetupBindings:
 # ---------------------------------------------------------------------------
 # Per-test binding isolation
 # ---------------------------------------------------------------------------
+
 
 class TestBindingIsolation:
     def test_per_test_binding_does_not_leak(self):
@@ -269,6 +280,7 @@ class TestBindingIsolation:
 # Skip handling
 # ---------------------------------------------------------------------------
 
+
 class TestSkip:
     def test_skipped_test_returns_skip_status(self):
         tc = _make_tc(skip="not implemented yet")
@@ -296,6 +308,7 @@ class TestSkip:
 # ---------------------------------------------------------------------------
 # Adapter error handling
 # ---------------------------------------------------------------------------
+
 
 class TestAdapterErrors:
     def test_adapter_error_result_produces_error_status(self):
@@ -328,6 +341,7 @@ class TestAdapterErrors:
 # ---------------------------------------------------------------------------
 # Expected comparison
 # ---------------------------------------------------------------------------
+
 
 class TestExpectedComparison:
     def test_pass_when_no_expected(self):

@@ -81,10 +81,16 @@ def _cmd_benchmark(args: argparse.Namespace) -> int:
 
         for tc in test_file.tests:
             tag_filter = args.tag
-            if tag_filter and not _tc_matches_tag(tc.tags, test_file.meta.tags, tag_filter):
+            if tag_filter and not _tc_matches_tag(
+                tc.tags, test_file.meta.tags, tag_filter
+            ):
                 continue
 
-            print(f"  {test_file.meta.id}/{tc.id} ({adapter_name}) ... ", end="", flush=True)
+            print(
+                f"  {test_file.meta.id}/{tc.id} ({adapter_name}) ... ",
+                end="",
+                flush=True,
+            )
             try:
                 result = bench_test_case(
                     adapter,
@@ -116,7 +122,10 @@ def _cmd_benchmark(args: argparse.Namespace) -> int:
     if args.check:
         baseline = load_baseline(baseline_path)
         if not baseline:
-            print(f"warning: no baseline found at {baseline_path}; run with --record first", file=sys.stderr)
+            print(
+                f"warning: no baseline found at {baseline_path}; run with --record first",
+                file=sys.stderr,
+            )
             return 0
 
         regressions = check_regression(results, baseline)
@@ -138,7 +147,9 @@ def _cmd_benchmark(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_benchmark_compare(args, primary_adapter_name: str, baseline_path: Path) -> int:
+def _cmd_benchmark_compare(
+    args: argparse.Namespace, primary_adapter_name: str, baseline_path: Path
+) -> int:
     """Run all available adapters on the test dir and print a comparison table."""
     from sxact.benchmarks.runner import bench_test_case, BenchResult
     from sxact.runner.loader import load_test_file, LoadError
@@ -171,7 +182,9 @@ def _cmd_benchmark_compare(args, primary_adapter_name: str, baseline_path: Path)
                 print(f"  {test_file.meta.id}/{tc.id} ... ", end="", flush=True)
                 try:
                     result = bench_test_case(
-                        adapter, test_file, tc,
+                        adapter,
+                        test_file,
+                        tc,
                         n_warmup=args.n_warmup,
                         n_measure=args.n_measure,
                         adapter_name=name,
@@ -185,21 +198,40 @@ def _cmd_benchmark_compare(args, primary_adapter_name: str, baseline_path: Path)
     all_test_ids = sorted({r.test_id for rs in adapter_results.values() for r in rs})
 
     print("\n" + "=" * 70)
-    print(f"{'test_id':<30} {'wolfram':>10} {'julia':>10} {'python':>10} {'j/w':>6} {'p/w':>6}")
+    print(
+        f"{'test_id':<30} {'wolfram':>10} {'julia':>10} {'python':>10} {'j/w':>6} {'p/w':>6}"
+    )
     print("-" * 70)
 
     for tid in all_test_ids:
         row = f"{tid:<30}"
-        wms = next((r.median_ms for r in adapter_results.get("wolfram", []) if r.test_id == tid), None)
-        jms = next((r.median_ms for r in adapter_results.get("julia", []) if r.test_id == tid), None)
-        pms = next((r.median_ms for r in adapter_results.get("python", []) if r.test_id == tid), None)
+        wms = next(
+            (
+                r.median_ms
+                for r in adapter_results.get("wolfram", [])
+                if r.test_id == tid
+            ),
+            None,
+        )
+        jms = next(
+            (r.median_ms for r in adapter_results.get("julia", []) if r.test_id == tid),
+            None,
+        )
+        pms = next(
+            (
+                r.median_ms
+                for r in adapter_results.get("python", [])
+                if r.test_id == tid
+            ),
+            None,
+        )
 
         row += f" {f'{wms:.3f}ms':>10}" if wms is not None else f" {'—':>10}"
         row += f" {f'{jms:.3f}ms':>10}" if jms is not None else f" {'—':>10}"
         row += f" {f'{pms:.3f}ms':>10}" if pms is not None else f" {'—':>10}"
 
-        jw = f"{jms/wms:.1f}x" if jms is not None and wms else "—"
-        pw = f"{pms/wms:.1f}x" if pms is not None and wms else "—"
+        jw = f"{jms / wms:.1f}x" if jms is not None and wms else "—"
+        pw = f"{pms / wms:.1f}x" if pms is not None and wms else "—"
         row += f" {jw:>6} {pw:>6}"
         print(row)
 
@@ -210,6 +242,7 @@ def _cmd_benchmark_compare(args, primary_adapter_name: str, baseline_path: Path)
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -344,13 +377,15 @@ def main() -> None:
         help="Show diffs without writing any files",
     )
     regen.add_argument(
-        "--interactive", "-i",
+        "--interactive",
+        "-i",
         action="store_true",
         default=False,
         help="Review each changed snapshot interactively (y/n/a/q)",
     )
     regen.add_argument(
-        "--yes", "-y",
+        "--yes",
+        "-y",
         action="store_true",
         default=False,
         help="Skip confirmation prompt and overwrite immediately",

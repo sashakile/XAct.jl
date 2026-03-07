@@ -28,11 +28,12 @@ import tomli
 # Data model
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class GeneratorSpec:
     name: str
-    type: str          # "Symbol", "SymbolList"
-    strategy: str      # "fresh_symbol", "symbol_list"
+    type: str  # "Symbol", "SymbolList"
+    strategy: str  # "fresh_symbol", "symbol_list"
     length: int = 3
     allow_duplicates: bool = False
 
@@ -55,14 +56,14 @@ class PropertySpec:
 class PropertyFile:
     path: Path
     description: str
-    setup: list[dict[str, Any]]   # raw setup action dicts
+    setup: list[dict[str, Any]]  # raw setup action dicts
     properties: list[PropertySpec]
 
 
 @dataclass
 class Counterexample:
     sample_index: int
-    bindings: dict[str, str]       # generator name → generated value (Wolfram repr)
+    bindings: dict[str, str]  # generator name → generated value (Wolfram repr)
     lhs_expr: str
     rhs_expr: str
     lhs_result: str
@@ -73,7 +74,7 @@ class Counterexample:
 class PropertyResult:
     property_id: str
     name: str
-    status: str          # "pass", "fail", "error", "skip"
+    status: str  # "pass", "fail", "error", "skip"
     num_samples: int
     num_passed: int
     counterexample: Counterexample | None = None
@@ -90,6 +91,7 @@ class PropertyFileResult:
 # ---------------------------------------------------------------------------
 # TOML loader
 # ---------------------------------------------------------------------------
+
 
 class PropertyLoadError(ValueError):
     pass
@@ -116,28 +118,32 @@ def load_property_file(path: Path) -> PropertyFile:
         gens = []
         forall = p.get("forall", {})
         for g in forall.get("generators", []):
-            gens.append(GeneratorSpec(
-                name=g["name"],
-                type=g.get("type", "Symbol"),
-                strategy=g.get("strategy", "fresh_symbol"),
-                length=g.get("length", 3),
-                allow_duplicates=g.get("allow_duplicates", False),
-            ))
+            gens.append(
+                GeneratorSpec(
+                    name=g["name"],
+                    type=g.get("type", "Symbol"),
+                    strategy=g.get("strategy", "fresh_symbol"),
+                    length=g.get("length", 3),
+                    allow_duplicates=g.get("allow_duplicates", False),
+                )
+            )
 
         law = p.get("law", {})
         verification = p.get("verification", {})
-        props.append(PropertySpec(
-            id=p["id"],
-            name=p.get("name", p["id"]),
-            tags=p.get("tags", []),
-            generators=gens,
-            lhs=law.get("lhs", ""),
-            rhs=law.get("rhs", ""),
-            equivalence_type=law.get("equivalence_type", "identical"),
-            num_samples=verification.get("num_samples", 10),
-            random_seed=verification.get("random_seed", 0),
-            tolerance=verification.get("tolerance", 1e-10),
-        ))
+        props.append(
+            PropertySpec(
+                id=p["id"],
+                name=p.get("name", p["id"]),
+                tags=p.get("tags", []),
+                generators=gens,
+                lhs=law.get("lhs", ""),
+                rhs=law.get("rhs", ""),
+                equivalence_type=law.get("equivalence_type", "identical"),
+                num_samples=verification.get("num_samples", 10),
+                random_seed=verification.get("random_seed", 0),
+                tolerance=verification.get("tolerance", 1e-10),
+            )
+        )
 
     return PropertyFile(
         path=path,
@@ -189,6 +195,7 @@ def _generate_value(gen: GeneratorSpec, prefix: str, sample_idx: int) -> str:
         if gen.allow_duplicates:
             # Mix in some duplicates deterministically
             import random
+
             rng = random.Random(sample_idx)
             chosen = [rng.choice(pool) for _ in range(gen.length)]
         else:
@@ -207,11 +214,13 @@ _VAR_RE = re.compile(r"\$([a-zA-Z_][a-zA-Z0-9_]*)")
 
 def _substitute(expr: str, bindings: dict[str, str]) -> str:
     """Replace $name references with their bound values."""
-    def repl(m: re.Match) -> str:
+
+    def repl(m: re.Match[str]) -> str:
         name = m.group(1)
         if name not in bindings:
             raise KeyError(f"Unbound variable ${name} in expression: {expr!r}")
         return bindings[name]
+
     return _VAR_RE.sub(repl, expr)
 
 
@@ -219,9 +228,10 @@ def _substitute(expr: str, bindings: dict[str, str]) -> str:
 # Core runner
 # ---------------------------------------------------------------------------
 
+
 def run_property_file(
     prop_file: PropertyFile,
-    adapter,
+    adapter: Any,
     tag_filter: str | None = None,
 ) -> PropertyFileResult:
     """Run all properties in a PropertyFile against the given adapter."""
@@ -241,14 +251,16 @@ def run_property_file(
             except Exception as exc:
                 # Setup failure → all properties in file are errors
                 for spec in prop_file.properties:
-                    file_result.results.append(PropertyResult(
-                        property_id=spec.id,
-                        name=spec.name,
-                        status="error",
-                        num_samples=0,
-                        num_passed=0,
-                        message=f"setup action {action!r} failed: {exc}",
-                    ))
+                    file_result.results.append(
+                        PropertyResult(
+                            property_id=spec.id,
+                            name=spec.name,
+                            status="error",
+                            num_samples=0,
+                            num_passed=0,
+                            message=f"setup action {action!r} failed: {exc}",
+                        )
+                    )
                 return file_result
 
         for spec in prop_file.properties:
@@ -264,8 +276,8 @@ def run_property_file(
 
 def _run_property(
     spec: PropertySpec,
-    adapter,
-    ctx,
+    adapter: Any,
+    ctx: Any,
 ) -> PropertyResult:
     """Run a single property across all samples."""
     num_passed = 0
@@ -388,7 +400,7 @@ def _check_result(repr_str: str, equivalence_type: str, tolerance: float) -> boo
     return False
 
 
-def _eval_single(adapter, ctx, expr: str) -> str:
+def _eval_single(adapter: Any, ctx: Any, expr: str) -> str:
     """Evaluate a single expression and return its repr string."""
     try:
         result = adapter.execute(ctx, "Evaluate", {"expression": expr})

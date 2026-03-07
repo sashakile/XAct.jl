@@ -24,9 +24,11 @@ from typing import Union
 # AST node types
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Leaf:
     """An atomic value: a symbol name, number, or index literal like ``-a``."""
+
     value: str
 
     def __repr__(self) -> str:
@@ -40,6 +42,7 @@ class Node:
     ``head`` is either a plain name string or itself a :class:`Node` (for
     chained application like ``f[x][y]``).
     """
+
     head: Union[str, "Node"]
     args: list[Union["Node", Leaf]] = field(default_factory=list)
 
@@ -55,6 +58,7 @@ Expr = Union[Node, Leaf]
 # ---------------------------------------------------------------------------
 # Parser
 # ---------------------------------------------------------------------------
+
 
 class _Parser:
     """Tokenise and parse a FullForm WL string."""
@@ -74,9 +78,7 @@ class _Parser:
     )
 
     def __init__(self, text: str) -> None:
-        self._tokens: list[str] = [
-            m.group(1) for m in self._TOKEN_RE.finditer(text)
-        ]
+        self._tokens: list[str] = [m.group(1) for m in self._TOKEN_RE.finditer(text)]
         self._pos: int = 0
 
     def _peek(self) -> str | None:
@@ -97,9 +99,7 @@ class _Parser:
     def parse(self) -> Expr:
         result = self._parse_expr()
         if self._peek() is not None:
-            raise ValueError(
-                f"Unexpected token after expression: {self._peek()!r}"
-            )
+            raise ValueError(f"Unexpected token after expression: {self._peek()!r}")
         return result
 
     def _parse_expr(self) -> Expr:
@@ -131,7 +131,8 @@ class _Parser:
             if isinstance(atom, Leaf) and not atom.value.startswith("-"):
                 atom = Node(head=atom.value, args=args)
             else:
-                atom = Node(head=atom, args=args)
+                head: str | Node = atom.value if isinstance(atom, Leaf) else atom
+                atom = Node(head=head, args=args)
 
         return atom
 

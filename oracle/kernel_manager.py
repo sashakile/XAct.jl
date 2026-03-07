@@ -71,8 +71,8 @@ class KernelManager:
             'Unprotect["Global`*"]; '
             'ClearAll["Global`*"]; '
             'Remove["Global`*"]; '
-            'Manifolds = {}; '
-            'Tensors = {}; '
+            "Manifolds = {}; "
+            "Tensors = {}; "
             'If[NameQ["DefaultMetric"], ClearAll[DefaultMetric]]; '
             '"cleanup-ok"'
         )
@@ -101,8 +101,8 @@ class KernelManager:
         empty.  ``leaked_symbols`` lists the registry contents on failure.
         """
         check_wl = (
-            'Module[{m = If[ListQ[Manifolds], Manifolds, {}], '
-            '         t = If[ListQ[Tensors], Tensors, {}]}, '
+            "Module[{m = If[ListQ[Manifolds], Manifolds, {}], "
+            "         t = If[ListQ[Tensors], Tensors, {}]}, "
             '  StringJoin["M:", ToString[Length[m]], ",T:", ToString[Length[t]], '
             '    ",", StringRiffle[Join[ToString /@ m, ToString /@ t], ","]]]'
         )
@@ -127,8 +127,11 @@ class KernelManager:
                 return False, ["check_clean_state evaluation failed"]
 
     def evaluate(
-        self, expr: str, timeout_s: int, with_xact: bool = False,
-        context_id: str | None = None
+        self,
+        expr: str,
+        timeout_s: int,
+        with_xact: bool = False,
+        context_id: str | None = None,
     ) -> tuple[bool, str | None, str | None]:
         """
         Evaluate an expression.

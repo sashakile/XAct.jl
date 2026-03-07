@@ -11,6 +11,7 @@ from . import _runtime
 # 3. Options
 # ---------------------------------------------------------------------------
 
+
 def check_options(*opts: Any) -> list[tuple[Any, Any]]:
     """Validate and flatten option rules.
 

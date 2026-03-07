@@ -4,10 +4,16 @@ authors = ["sxAct contributors"]
 version = "0.1.0"
 
 [compat]
-julia = "1.9"
+Aqua = "0.8"
+JET = "0.10"
+JuliaFormatter = "2"
+julia = "1.10"
 
 [extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+JuliaFormatter = "98e50ef6-434e-11e9-1051-2b60c6c9e899"
 Test = "8dfed614-e22c-358a-b9bc-a3bc1af8b41a"
 
 [targets]
-test = ["Test"]
+test = ["Aqua", "JET", "JuliaFormatter", "Test"]

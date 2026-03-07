@@ -48,7 +48,9 @@ def evaluate_with_init():
     context_id = data.get("context_id")  # Optional context isolation
 
     start = time.time()
-    ok, result, error = km.evaluate(expr, timeout, with_xact=True, context_id=context_id)
+    ok, result, error = km.evaluate(
+        expr, timeout, with_xact=True, context_id=context_id
+    )
     elapsed_ms = int((time.time() - start) * 1000)
 
     if ok:
@@ -82,10 +84,12 @@ def restart():
 def check_state():
     """Return current xAct registry counts for leak detection."""
     is_clean, leaked = km.check_clean_state()
-    return jsonify({
-        "clean": is_clean,
-        "leaked": leaked,
-    })
+    return jsonify(
+        {
+            "clean": is_clean,
+            "leaked": leaked,
+        }
+    )
 
 
 if __name__ == "__main__":

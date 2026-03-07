@@ -275,14 +275,14 @@ interface TestAdapter:
     # Lifecycle
     initialize() -> Context
     teardown(ctx: Context) -> void
-    
+
     # Execution
     execute(ctx: Context, action: str, args: dict) -> Result
-    
+
     # Comparison
     normalize(expr: str) -> NormalizedExpr
     equals(a: NormalizedExpr, b: NormalizedExpr, mode: EqualityMode) -> bool
-    
+
     # Introspection
     get_properties(expr: str) -> dict
     get_version() -> VersionInfo
@@ -324,18 +324,18 @@ def compare(lhs: ExprResult, rhs: ExprResult, ctx: Context) -> CompareResult:
     # Tier 1: Fast normalized string comparison
     if lhs.normalized == rhs.normalized:
         return CompareResult(equal=True, tier=1)
-    
+
     # Tier 2: Semantic check (difference simplifies to zero)
     diff = ctx.execute("Simplify", {"expression": f"({lhs.repr}) - ({rhs.repr})"})
     if diff.normalized in ["0", "0."]:
         return CompareResult(equal=True, tier=2)
-    
+
     # Tier 3: Numeric sampling (if expressions contain free indices)
     if has_free_indices(lhs) or has_free_indices(rhs):
         samples = sample_numeric(lhs, rhs, n=10, seed=ctx.seed)
         if all(abs(s.lhs - s.rhs) < ctx.tolerance for s in samples):
             return CompareResult(equal=True, tier=3, confidence=0.99)
-    
+
     return CompareResult(equal=False, tier=3, diff=diff)
 ```
 
@@ -483,7 +483,7 @@ Reordered to attack biggest unknowns first:
    - Setup/teardown lifecycle
 
 8. **CLI runner** (3 days)
-   - `xact-test run tests/` 
+   - `xact-test run tests/`
    - `xact-test run --filter tag:critical`
    - JSON/terminal output
 

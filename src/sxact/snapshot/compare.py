@@ -21,7 +21,7 @@ Public API::
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from sxact.oracle.result import Result
 from sxact.snapshot.store import SnapshotStore
@@ -62,6 +62,7 @@ class SnapshotCompareResult:
 # ---------------------------------------------------------------------------
 # Comparator
 # ---------------------------------------------------------------------------
+
 
 class SnapshotComparator:
     """Compares actual adapter results against a :class:`~sxact.snapshot.store.SnapshotStore`.
@@ -164,7 +165,8 @@ class SnapshotComparator:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _check_properties(actual: dict, expected: dict) -> str:
+
+def _check_properties(actual: dict[str, Any], expected: dict[str, Any]) -> str:
     """Return a human-readable description of property mismatches, or empty string."""
     mismatches = []
     for key, exp_val in expected.items():

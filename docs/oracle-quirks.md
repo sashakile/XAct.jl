@@ -77,7 +77,7 @@ def context_id() -> str:
 
 ### Dummy Index Naming
 
-- xAct generates internal dummy indices like `$1234` 
+- xAct generates internal dummy indices like `$1234`
 - These may appear in output even for simple expressions
 - Normalization must canonicalize these to `$1, $2, ...`
 

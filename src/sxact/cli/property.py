@@ -6,6 +6,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 from sxact.runner.property_runner import (
     Counterexample,
@@ -21,6 +22,7 @@ from sxact.runner.property_runner import (
 # Output helpers
 # ---------------------------------------------------------------------------
 
+
 def _print_terminal(file_results: list[PropertyFileResult]) -> None:
     total_props = 0
     total_pass = 0
@@ -33,7 +35,9 @@ def _print_terminal(file_results: list[PropertyFileResult]) -> None:
         print(f"  {fr.description}")
         for r in fr.results:
             total_props += 1
-            icon = {"pass": "✓", "fail": "✗", "error": "!", "skip": "○"}.get(r.status, "?")
+            icon = {"pass": "✓", "fail": "✗", "error": "!", "skip": "○"}.get(
+                r.status, "?"
+            )
             line = f"  {icon} {r.property_id}  ({r.num_passed}/{r.num_samples})"
             if r.status == "pass":
                 total_pass += 1
@@ -72,7 +76,7 @@ def _print_json(file_results: list[PropertyFileResult]) -> None:
     for fr in file_results:
         props = []
         for r in fr.results:
-            obj: dict = {
+            obj: dict[str, Any] = {
                 "id": r.property_id,
                 "name": r.name,
                 "status": r.status,
@@ -92,17 +96,20 @@ def _print_json(file_results: list[PropertyFileResult]) -> None:
                     "rhs_result": cx.rhs_result,
                 }
             props.append(obj)
-        output.append({
-            "file": fr.file_path,
-            "description": fr.description,
-            "properties": props,
-        })
+        output.append(
+            {
+                "file": fr.file_path,
+                "description": fr.description,
+                "properties": props,
+            }
+        )
     print(json.dumps(output, indent=2))
 
 
 # ---------------------------------------------------------------------------
 # Command entry point
 # ---------------------------------------------------------------------------
+
 
 def _cmd_property(args: argparse.Namespace) -> int:
     from sxact.cli.run import _make_adapter
@@ -121,6 +128,7 @@ def _cmd_property(args: argparse.Namespace) -> int:
     for p in toml_files:
         try:
             import tomli
+
             raw = tomli.loads(p.read_text())
             if raw.get("layer") == "property":
                 property_files.append(p)
@@ -128,11 +136,13 @@ def _cmd_property(args: argparse.Namespace) -> int:
             pass  # non-TOML or unreadable files silently skipped
 
     if not property_files:
-        print(f"warning: no property TOML files found under {test_path}", file=sys.stderr)
+        print(
+            f"warning: no property TOML files found under {test_path}", file=sys.stderr
+        )
         return 0
 
     tag_filter: str | None = None
-    for f in (args.filter or []):
+    for f in args.filter or []:
         if f.startswith("tag:"):
             tag_filter = f[4:]
             break
@@ -158,14 +168,16 @@ def _cmd_property(args: argparse.Namespace) -> int:
             result = PropertyFileResult(
                 file_path=str(toml_path),
                 description="",
-                results=[PropertyResult(
-                    property_id="<runner>",
-                    name="<runner>",
-                    status="error",
-                    num_samples=0,
-                    num_passed=0,
-                    message=str(exc),
-                )],
+                results=[
+                    PropertyResult(
+                        property_id="<runner>",
+                        name="<runner>",
+                        status="error",
+                        num_samples=0,
+                        num_passed=0,
+                        message=str(exc),
+                    )
+                ],
             )
 
         file_results.append(result)
@@ -176,8 +188,6 @@ def _cmd_property(args: argparse.Namespace) -> int:
         _print_terminal(file_results)
 
     any_failure = any(
-        r.status in ("fail", "error")
-        for fr in file_results
-        for r in fr.results
+        r.status in ("fail", "error") for fr in file_results for r in fr.results
     )
     return 1 if any_failure else 0

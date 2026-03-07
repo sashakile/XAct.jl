@@ -34,4 +34,3 @@ Implement a numeric validation layer that treats tensor expressions as multi-dim
 - Correctly identifies equivalence for the First Bianchi Identity `R[a,b,c,d] + R[a,c,d,b] + R[a,d,b,c] == 0` without using `Simplify`.
 - Provides a "confidence score" based on 5+ random numeric realizations.
 - Handles tensors of rank up to 4 in a 4D manifold.
-

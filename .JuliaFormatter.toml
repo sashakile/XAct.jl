@@ -1,0 +1,8 @@
+# JuliaFormatter configuration
+# Docs: https://domluna.github.io/JuliaFormatter.jl/stable/config/
+
+style = "blue"          # BlueStyle: widely used in scientific Julia community
+indent = 4
+margin = 92             # line length (BlueStyle default)
+format_docstrings = true
+normalize_line_endings = "unix"

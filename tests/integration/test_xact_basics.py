@@ -21,8 +21,9 @@ from sxact.oracle import OracleClient
 from sxact.oracle.result import Result
 
 
-def xact_evaluate(oracle: OracleClient, expr: str,
-                  context_id: str | None = None) -> Result:
+def xact_evaluate(
+    oracle: OracleClient, expr: str, context_id: str | None = None
+) -> Result:
     """Evaluate an xAct expression and return a Result envelope.
 
     Uses /evaluate-with-init to ensure xAct is loaded.
@@ -47,7 +48,9 @@ class TestDefineManifold:
         assert "M1" in result.repr or result.repr != ""
 
     def test_manifold_dimension(self, oracle: OracleClient) -> None:
-        result = xact_evaluate(oracle, "DefManifold[M2, 3, {i2,j2,k2}]; DimOfManifold[M2]")
+        result = xact_evaluate(
+            oracle, "DefManifold[M2, 3, {i2,j2,k2}]; DimOfManifold[M2]"
+        )
         assert result.status == "ok", f"Failed: {result.error}"
         assert "3" in result.repr
 
@@ -65,7 +68,9 @@ class TestDefineMetric:
         """
         result = xact_evaluate(oracle, expr)
         assert result.status == "ok", f"Failed: {result.error}"
-        assert "-1" in result.repr, f"Expected -1 for Lorentzian signature, got: {result.repr}"
+        assert "-1" in result.repr, (
+            f"Expected -1 for Lorentzian signature, got: {result.repr}"
+        )
 
 
 @pytest.mark.oracle
@@ -81,7 +86,9 @@ class TestSymmetricTensor:
         """
         result = xact_evaluate(oracle, expr)
         assert result.status == "ok", f"Failed: {result.error}"
-        assert result.repr.strip() == "0", f"Expected 0 for symmetric tensor swap, got: {result.repr}"
+        assert result.repr.strip() == "0", (
+            f"Expected 0 for symmetric tensor swap, got: {result.repr}"
+        )
 
 
 @pytest.mark.oracle
@@ -138,8 +145,9 @@ class TestRiemannTensor:
 class TestSymbolicEquality:
     """Test 7: Two expressions that are symbolically equal."""
 
-    def test_symmetric_tensor_sum_equals_double(self, oracle: OracleClient,
-                                                context_id: str) -> None:
+    def test_symmetric_tensor_sum_equals_double(
+        self, oracle: OracleClient, context_id: str
+    ) -> None:
         # Define manifold and symmetric tensor, then test equality:
         # S[-a,-b] + S[-b,-a] should equal 2*S[-a,-b] for symmetric S
         # We apply ToCanonical to both sides since xAct needs explicit canonicalization
@@ -150,8 +158,12 @@ class TestSymbolicEquality:
         xact_evaluate(oracle, setup, context_id=context_id)
 
         # Apply ToCanonical to get canonical forms before comparison
-        lhs = xact_evaluate(oracle, "(S8[-a8,-b8] + S8[-b8,-a8]) // ToCanonical", context_id=context_id)
-        rhs = xact_evaluate(oracle, "(2*S8[-a8,-b8]) // ToCanonical", context_id=context_id)
+        lhs = xact_evaluate(
+            oracle, "(S8[-a8,-b8] + S8[-b8,-a8]) // ToCanonical", context_id=context_id
+        )
+        rhs = xact_evaluate(
+            oracle, "(2*S8[-a8,-b8]) // ToCanonical", context_id=context_id
+        )
 
         assert lhs.status == "ok", f"LHS failed: {lhs.error}"
         assert rhs.status == "ok", f"RHS failed: {rhs.error}"
@@ -166,7 +178,9 @@ class TestSymbolicEquality:
 class TestNumericSampling:
     """Test 8: Expression requiring numeric sampling."""
 
-    def test_numeric_evaluation_of_scalar_expression(self, oracle: OracleClient) -> None:
+    def test_numeric_evaluation_of_scalar_expression(
+        self, oracle: OracleClient
+    ) -> None:
         lhs = Result(
             status="ok",
             type="Scalar",
@@ -189,8 +203,9 @@ class TestNumericSampling:
 class TestAntisymmetricTensor:
     """Test 9: Antisymmetric tensor properties."""
 
-    def test_antisymmetric_tensor_swap_negates(self, oracle: OracleClient,
-                                               context_id: str) -> None:
+    def test_antisymmetric_tensor_swap_negates(
+        self, oracle: OracleClient, context_id: str
+    ) -> None:
         expr = """
         DefManifold[M9, 4, {a9,b9,c9,d9}];
         DefTensor[F9[-a9,-b9], M9, Antisymmetric[{-a9,-b9}]];
@@ -198,7 +213,9 @@ class TestAntisymmetricTensor:
         """
         result = xact_evaluate(oracle, expr, context_id=context_id)
         assert result.status == "ok", f"Failed: {result.error}"
-        assert result.repr.strip() == "0", f"Expected 0 for antisymmetric sum, got: {result.repr}"
+        assert result.repr.strip() == "0", (
+            f"Expected 0 for antisymmetric sum, got: {result.repr}"
+        )
 
 
 @pytest.mark.oracle
@@ -213,8 +230,9 @@ class TestBianchiIdentity:
     - Pair exchange symmetry: R[a,b,c,d] = R[c,d,a,b]
     """
 
-    def test_riemann_antisymmetry_first_pair(self, oracle: OracleClient,
-                                              context_id: str) -> None:
+    def test_riemann_antisymmetry_first_pair(
+        self, oracle: OracleClient, context_id: str
+    ) -> None:
         """R[a,b,c,d] + R[b,a,c,d] = 0 (antisymmetry in first pair)."""
         expr = """
         DefManifold[M10, 4, {a10,b10,c10,d10,e10,f10}];
@@ -223,10 +241,11 @@ class TestBianchiIdentity:
         """
         result = xact_evaluate(oracle, expr, context_id=context_id)
         assert result.status == "ok", f"Failed: {result.error}"
-        assert result.repr.strip() == "0", f"Riemann antisymmetry should give 0, got: {result.repr}"
+        assert result.repr.strip() == "0", (
+            f"Riemann antisymmetry should give 0, got: {result.repr}"
+        )
 
-    def test_riemann_pair_exchange(self, oracle: OracleClient,
-                                   context_id: str) -> None:
+    def test_riemann_pair_exchange(self, oracle: OracleClient, context_id: str) -> None:
         """R[a,b,c,d] - R[c,d,a,b] = 0 (pair exchange symmetry)."""
         expr = """
         DefManifold[M10b, 4, {a10b,b10b,c10b,d10b}];
@@ -235,4 +254,6 @@ class TestBianchiIdentity:
         """
         result = xact_evaluate(oracle, expr, context_id=context_id)
         assert result.status == "ok", f"Failed: {result.error}"
-        assert result.repr.strip() == "0", f"Riemann pair exchange should give 0, got: {result.repr}"
+        assert result.repr.strip() == "0", (
+            f"Riemann pair exchange should give 0, got: {result.repr}"
+        )

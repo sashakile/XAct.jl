@@ -11,6 +11,7 @@ from . import _runtime
 # 1. List utilities
 # ---------------------------------------------------------------------------
 
+
 def just_one(lst: Any) -> Any:
     """Return the single element of a one-element collection; raise otherwise.
 
@@ -39,6 +40,7 @@ def thread_array(head: Any, left: Any, right: Any) -> Any:
 # 2. Argument guards
 # ---------------------------------------------------------------------------
 
+
 def set_number_of_arguments(f: Any, n: int) -> None:
     """No-op shim; Julia enforces arity via method dispatch.
 
@@ -50,6 +52,7 @@ def set_number_of_arguments(f: Any, n: int) -> None:
 # ---------------------------------------------------------------------------
 # 7. Unevaluated append (alias for push!)
 # ---------------------------------------------------------------------------
+
 
 def push_unevaluated(collection: list[Any], value: Any) -> list[Any]:
     """Append *value* to *collection* (Julia evaluates eagerly; this is push!).
@@ -64,6 +67,7 @@ def push_unevaluated(collection: list[Any], value: Any) -> list[Any]:
 # 9. Expression evaluation
 # ---------------------------------------------------------------------------
 
+
 def x_evaluate_at(expr: Any, positions: Any) -> Any:
     """No-op shim (Julia evaluates eagerly).
 
@@ -75,6 +79,7 @@ def x_evaluate_at(expr: Any, positions: Any) -> Any:
 # ---------------------------------------------------------------------------
 # Category B: stdlib aliases
 # ---------------------------------------------------------------------------
+
 
 def delete_duplicates(lst: list[Any]) -> list[Any]:
     """Remove duplicates from *lst*, preserving order.

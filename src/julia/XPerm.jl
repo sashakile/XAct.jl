@@ -7,6 +7,7 @@ Permutations are 1-indexed image vectors (perm[i] = j means point i → j).
 Signed permutations extend to degree n+2 where positions n+1, n+2 encode sign.
 
 References:
+
   - xperm.c: C reference implementation (GPL, not used at runtime)
   - SymPy tensor_can.py: Python reference for Schreier-Sims
   - Butler (1991): "Fundamental Algorithms for Permutation Groups"
@@ -39,10 +40,10 @@ const SignedPerm = Vector{Int}  # 1-indexed, degree n+2; positions n+1,n+2 are s
 
 """
 Strong Generating Set for a permutation group G ≤ S_n.
-  base[i]  — a point moved by the i-th stabilizer but fixed by all later ones.
-  GS       — flat list of generators; each is a Perm (unsigned) or SignedPerm (signed).
-  n        — degree of the physical points (1..n).
-  signed   — true iff generators are signed (degree n+2); false iff unsigned (degree n).
+base[i]  — a point moved by the i-th stabilizer but fixed by all later ones.
+GS       — flat list of generators; each is a Perm (unsigned) or SignedPerm (signed).
+n        — degree of the physical points (1..n).
+signed   — true iff generators are signed (degree n+2); false iff unsigned (degree n).
 """
 struct StrongGenSet
     base::Vector{Int}
@@ -53,12 +54,12 @@ end
 
 """
 Schreier vector for orbit(root, generators, n).
-  orbit  — sorted list of points reachable from `root` under the generators.
-  nu     — length-n vector; nu[i] = index (1-based) into GS of the generator
-           that moved point i into the orbit tree, or 0 if i ∉ orbit.
-  w      — length-n vector; w[i] = the predecessor point from which i was reached
-           in BFS, or 0 if i ∉ orbit.
-  root   — the starting point.
+orbit  — sorted list of points reachable from `root` under the generators.
+nu     — length-n vector; nu[i] = index (1-based) into GS of the generator
+that moved point i into the orbit tree, or 0 if i ∉ orbit.
+w      — length-n vector; w[i] = the predecessor point from which i was reached
+in BFS, or 0 if i ∉ orbit.
+root   — the starting point.
 """
 struct SchreierVector
     orbit::Vector{Int}
@@ -71,26 +72,35 @@ end
 # Permutation utilities
 # ============================================================
 
-"""    identity_perm(n) → Perm
+"""
+    identity_perm(n) → Perm
+
 Return the identity permutation of degree n: [1, 2, ..., n].
 """
 identity_perm(n::Int) = collect(1:n)
 
-"""    identity_signed_perm(n) → SignedPerm
+"""
+    identity_signed_perm(n) → SignedPerm
+
 Return the identity signed permutation of degree n+2: [1, 2, ..., n, n+1, n+2].
 """
-identity_signed_perm(n::Int) = collect(1:n+2)
+identity_signed_perm(n::Int) = collect(1:(n + 2))
 
-"""    compose(p, q) → Perm
+"""
+    compose(p, q) → Perm
+
 Return the composition p∘q: (p∘q)[i] = p[q[i]].
 (Apply q first, then p.)
 """
 function compose(p::Vector{Int}, q::Vector{Int})
-    length(p) == length(q) || error("compose: mismatched degrees $(length(p)) vs $(length(q))")
+    length(p) == length(q) ||
+        error("compose: mismatched degrees $(length(p)) vs $(length(q))")
     [p[q[i]] for i in 1:length(p)]
 end
 
-"""    inverse_perm(p) → Perm
+"""
+    inverse_perm(p) → Perm
+
 Return the inverse of p: inv_p[p[i]] = i.
 """
 function inverse_perm(p::Vector{Int})
@@ -102,25 +112,35 @@ function inverse_perm(p::Vector{Int})
     inv_p
 end
 
-"""    on_point(p, i) → Int
+"""
+    on_point(p, i) → Int
+
 Return the image of point i under permutation p: p[i].
 """
 on_point(p::Vector{Int}, i::Int) = p[i]
 
-"""    on_list(p, lst) → Vector{Int}
+"""
+    on_list(p, lst) → Vector{Int}
+
 Return the image of each point in lst under p: [p[i] for i in lst].
 """
 on_list(p::Vector{Int}, lst::Vector{Int}) = [p[i] for i in lst]
 
-"""    is_identity(p) → Bool
+"""
+    is_identity(p) → Bool
+
 True iff p is the identity permutation.
 """
 is_identity(p::Vector{Int}) = all(p[i] == i for i in 1:length(p))
 
-"""    perm_equal(p, q) → Bool"""
+"""
+    perm_equal(p, q) → Bool
+"""
 perm_equal(p::Vector{Int}, q::Vector{Int}) = p == q
 
-"""    perm_sign(p) → Int
+"""
+    perm_sign(p) → Int
+
 Return the sign (+1 or -1) of an unsigned permutation p using cycle decomposition.
 """
 function perm_sign(p::Vector{Int})
@@ -148,13 +168,15 @@ end
 # Schreier vector and orbit computation
 # ============================================================
 
-"""    schreier_vector(root, GS, n) → SchreierVector
+"""
+    schreier_vector(root, GS, n) → SchreierVector
+
 Compute the Schreier vector for the orbit of `root` under the generators `GS`,
 where each generator acts on points 1..n (or 1..n+2 for signed; only 1..n matter).
 """
-function schreier_vector(root::Int, GS::Vector{Vector{Int}}, n::Int) :: SchreierVector
+function schreier_vector(root::Int, GS::Vector{Vector{Int}}, n::Int)::SchreierVector
     nu = zeros(Int, n)
-    w  = zeros(Int, n)
+    w = zeros(Int, n)
     in_orbit = falses(n)
 
     in_orbit[root] = true
@@ -172,7 +194,7 @@ function schreier_vector(root::Int, GS::Vector{Vector{Int}}, n::Int) :: Schreier
             if !in_orbit[img]
                 in_orbit[img] = true
                 nu[img] = gi
-                w[img]  = pt
+                w[img] = pt
                 push!(queue, img)
                 push!(orbit_pts, img)
             end
@@ -182,14 +204,16 @@ function schreier_vector(root::Int, GS::Vector{Vector{Int}}, n::Int) :: Schreier
     SchreierVector(sort(orbit_pts), nu, w, root)
 end
 
-"""    trace_schreier(sv, p, GS) → Perm
+"""
+    trace_schreier(sv, p, GS) → Perm
+
 Recover the group element (product of generators) that maps sv.root to point p,
 by tracing the Schreier tree backwards from p to root.
 Returns the permutation u such that u(root) = p.
 """
-function trace_schreier(sv::SchreierVector, p::Int, GS::Vector{Vector{Int}}) :: Vector{Int}
-    n = sv.root <= length(sv.nu) ? length(sv.nu) : length(GS[1])
-    deg = length(GS[1])  # n or n+2
+function trace_schreier(sv::SchreierVector, p::Int, GS::Vector{Vector{Int}})::Vector{Int}
+    n = length(sv.nu)
+    deg = isempty(GS) ? n : length(GS[1])  # n or n+2
 
     u = identity_perm(deg)
     cur = p
@@ -197,15 +221,17 @@ function trace_schreier(sv::SchreierVector, p::Int, GS::Vector{Vector{Int}}) :: 
         gi = sv.nu[cur]
         gi == 0 && error("trace_schreier: point $cur not in orbit of $(sv.root)")
         g = GS[gi]
-        # We need to find which generator moved w[cur] → cur
-        # u = GS[gi] ∘ u_prev  (compose generators back toward root)
-        u = compose(g, u)
+        # Append g: path is root →...→ w[cur] →(g)→ cur
+        # u accumulates left-to-right: u = u_prev ∘ g so u(root) = cur
+        u = compose(u, g)
         cur = sv.w[cur]
     end
     u
 end
 
-"""    orbit(root, GS, n) → Vector{Int}
+"""
+    orbit(root, GS, n) → Vector{Int}
+
 Return sorted list of all points reachable from `root` under generators `GS`.
 """
 orbit(root::Int, GS::Vector{Vector{Int}}, n::Int) = schreier_vector(root, GS, n).orbit
@@ -214,16 +240,25 @@ orbit(root::Int, GS::Vector{Vector{Int}}, n::Int) = schreier_vector(root, GS, n)
 # Schreier-Sims algorithm
 # ============================================================
 
-"""    _sift(p, sgs_levels, n) → (residual, depth)
+"""
+    _sift(p, sgs_levels, n) → (residual, depth)
+
 Sift permutation p through the partial BSGS represented by sgs_levels.
 Returns (residual, depth) where:
+
   - If residual is identity at depth == length(sgs_levels)+1, p ∈ group.
   - Otherwise, the residual is a new generator for level `depth`.
 """
-function _sift(p::Vector{Int}, base::Vector{Int}, level_GS::Vector{Vector{Vector{Int}}}, n::Int)
+function _sift(
+    p::Vector{Int}, base::Vector{Int}, level_GS::Vector{Vector{Vector{Int}}}, n::Int
+)
     cur = copy(p)
     for (i, b) in enumerate(base)
         img = cur[b]  # where does current permutation send base[i]?
+        if i > length(level_GS)
+            # No generators at this level yet — residual falls here
+            return cur, i
+        end
         GS_i = level_GS[i]
         sv = schreier_vector(b, GS_i, n)
         if !(img in sv.orbit)
@@ -236,13 +271,17 @@ function _sift(p::Vector{Int}, base::Vector{Int}, level_GS::Vector{Vector{Vector
     cur, length(base) + 1
 end
 
-"""    schreier_sims(initbase, generators, n) → StrongGenSet
-Build a Strong Generating Set via the basic Schreier-Sims algorithm.
-  initbase   — initial base (vector of points; extended during computation)
-  generators — initial generators (Perm or SignedPerm of degree n or n+2)
-  n          — number of physical points (1..n)
 """
-function schreier_sims(initbase::Vector{Int}, generators::Vector{Vector{Int}}, n::Int) :: StrongGenSet
+    schreier_sims(initbase, generators, n) → StrongGenSet
+
+Build a Strong Generating Set via the basic Schreier-Sims algorithm.
+initbase   — initial base (vector of points; extended during computation)
+generators — initial generators (Perm or SignedPerm of degree n or n+2)
+n          — number of physical points (1..n)
+"""
+function schreier_sims(
+    initbase::Vector{Int}, generators::Vector{Vector{Int}}, n::Int
+)::StrongGenSet
     if isempty(generators)
         return StrongGenSet(Int[], Vector{Int}[], n, false)
     end
@@ -302,12 +341,12 @@ function schreier_sims(initbase::Vector{Int}, generators::Vector{Vector{Int}}, n
                         push!(level_GS[depth], residual)
                     end
                     if depth > length(base)
-                        # Extend base
-                        moved = findfirst(j -> residual[j] != j, 1:n)
+                        # Extend base with a new (non-duplicate) moved point
+                        moved = findfirst(j -> residual[j] != j && !(j in base), 1:n)
                         !isnothing(moved) && push!(base, moved)
                     end
                     # Add residual as generator at all levels ≤ depth
-                    for k in 1:depth-1
+                    for k in 1:(depth - 1)
                         push!(level_GS[k], residual)
                     end
                 end
@@ -331,10 +370,12 @@ function schreier_sims(initbase::Vector{Int}, generators::Vector{Vector{Int}}, n
     StrongGenSet(base, all_gens, n, signed)
 end
 
-"""    perm_member_q(p, sgs) → Bool
+"""
+    perm_member_q(p, sgs) → Bool
+
 Test whether p belongs to the group described by sgs.
 """
-function perm_member_q(p::Vector{Int}, sgs::StrongGenSet) :: Bool
+function perm_member_q(p::Vector{Int}, sgs::StrongGenSet)::Bool
     if isempty(sgs.base)
         return is_identity(p)
     end
@@ -343,10 +384,12 @@ function perm_member_q(p::Vector{Int}, sgs::StrongGenSet) :: Bool
     is_identity(residual)
 end
 
-"""    order_of_group(sgs) → Int
+"""
+    order_of_group(sgs) → Int
+
 Compute |G| as product of orbit sizes at each base level.
 """
-function order_of_group(sgs::StrongGenSet) :: Int
+function order_of_group(sgs::StrongGenSet)::Int
     isempty(sgs.base) && return 1
     level_GS = _build_level_GS(sgs)
     prod = 1
@@ -358,12 +401,12 @@ function order_of_group(sgs::StrongGenSet) :: Int
 end
 
 # Helper: reconstruct per-level GS from the flat GS using base stabilisers
-function _build_level_GS(sgs::StrongGenSet) :: Vector{Vector{Vector{Int}}}
+function _build_level_GS(sgs::StrongGenSet)::Vector{Vector{Vector{Int}}}
     levels = Vector{Vector{Vector{Int}}}()
     # Level 1: all generators
     push!(levels, copy(sgs.GS))
     # Level i+1: generators that fix base[1], ..., base[i]
-    for i in 1:length(sgs.base)-1
+    for i in 1:(length(sgs.base) - 1)
         b_prev = sgs.base[i]
         prev = levels[i]
         stab = filter(g -> g[b_prev] == b_prev, prev)
@@ -376,14 +419,17 @@ end
 # Right coset representative
 # ============================================================
 
-"""    right_coset_rep(perm, sgs) → (Perm, Int)
+"""
+    right_coset_rep(perm, sgs) → (Perm, Int)
+
 Find the lex-minimum (by base order) element of the right coset S · perm,
 where S is the group described by sgs.
 Returns (canonical_perm, sign).
+
   - sign = +1 always for unsigned groups (sgs.signed == false)
   - sign extracted from position n+1 for signed groups
 """
-function right_coset_rep(perm::Vector{Int}, sgs::StrongGenSet) :: Tuple{Vector{Int}, Int}
+function right_coset_rep(perm::Vector{Int}, sgs::StrongGenSet)::Tuple{Vector{Int},Int}
     n = sgs.n
     isempty(sgs.base) && return (copy(perm), _extract_sign(perm, n, sgs.signed))
 
@@ -433,22 +479,25 @@ function right_coset_rep(perm::Vector{Int}, sgs::StrongGenSet) :: Tuple{Vector{I
     (result, sign)
 end
 
-function _extract_sign(perm::Vector{Int}, n::Int, signed::Bool) :: Int
+function _extract_sign(perm::Vector{Int}, n::Int, signed::Bool)::Int
     !signed && return 1
     length(perm) < n + 1 && return 1
-    perm[n+1] == n+1 ? 1 : -1
+    perm[n + 1] == n+1 ? 1 : -1
 end
 
 # ============================================================
 # Double coset representative
 # ============================================================
 
-"""    double_coset_rep(perm, sgs, dummy_groups) → (Perm, Int)
+"""
+    double_coset_rep(perm, sgs, dummy_groups) → (Perm, Int)
+
 Find the canonical representative of S · perm · D.
 For Tier 1 tests (no dummy indices), dummy_groups is empty → reduces to right_coset_rep.
 """
-function double_coset_rep(perm::Vector{Int}, sgs::StrongGenSet,
-                           dummy_groups::Vector{Vector{Int}}) :: Tuple{Vector{Int}, Int}
+function double_coset_rep(
+    perm::Vector{Int}, sgs::StrongGenSet, dummy_groups::Vector{Vector{Int}}
+)::Tuple{Vector{Int},Int}
     # For Tier 1: no dummy indices → dummy group is trivial
     isempty(dummy_groups) && return right_coset_rep(perm, sgs)
 
@@ -461,13 +510,18 @@ end
 # Main entry point
 # ============================================================
 
-"""    canonical_perm(perm, sgs, free_points, dummy_groups) → (Perm, Int)
+"""
+    canonical_perm(perm, sgs, free_points, dummy_groups) → (Perm, Int)
+
 Returns (canonical_perm, sign) where sign ∈ {-1, 0, +1}.
 Returns (Int[], 0) if the expression is zero (repeated antisymmetric index).
 """
-function canonical_perm(perm::Vector{Int}, sgs::StrongGenSet,
-                         free_points::Vector{Int},
-                         dummy_groups::Vector{Vector{Int}}) :: Tuple{Vector{Int}, Int}
+function canonical_perm(
+    perm::Vector{Int},
+    sgs::StrongGenSet,
+    free_points::Vector{Int},
+    dummy_groups::Vector{Vector{Int}},
+)::Tuple{Vector{Int},Int}
     isempty(sgs.base) && return (copy(perm[1:sgs.n]), 1)
     p1, s1 = right_coset_rep(perm, sgs)
     s1 == 0 && return (Int[], 0)
@@ -480,67 +534,73 @@ end
 # Predefined symmetry groups
 # ============================================================
 
-"""    symmetric_sgs(slots, n) → StrongGenSet
+"""
+    symmetric_sgs(slots, n) → StrongGenSet
+
 Symmetric group S_k on `slots` (1-indexed positions in 1..n).
 Generators: adjacent transpositions of consecutive slot positions.
 Returns unsigned StrongGenSet (signed=false).
 """
-function symmetric_sgs(slots::Vector{Int}, n::Int) :: StrongGenSet
+function symmetric_sgs(slots::Vector{Int}, n::Int)::StrongGenSet
     k = length(slots)
     k <= 1 && return StrongGenSet(Int[], Vector{Int}[], n, false)
 
     gens = Vector{Vector{Int}}()
-    for i in 1:k-1
+    for i in 1:(k - 1)
         g = identity_perm(n)
-        g[slots[i]], g[slots[i+1]] = slots[i+1], slots[i]
+        g[slots[i]], g[slots[i + 1]] = slots[i + 1], slots[i]
         push!(gens, g)
     end
-    base = slots[1:k-1]
+    base = slots[1:(k - 1)]
     StrongGenSet(base, gens, n, false)
 end
 
-"""    antisymmetric_sgs(slots, n) → StrongGenSet
+"""
+    antisymmetric_sgs(slots, n) → StrongGenSet
+
 Alternating-sign group A_k on `slots`.
 Adjacent transpositions each carry sign=-1 (transposed via n+1 ↔ n+2 in extended rep).
 Returns signed StrongGenSet (signed=true).
 """
-function antisymmetric_sgs(slots::Vector{Int}, n::Int) :: StrongGenSet
+function antisymmetric_sgs(slots::Vector{Int}, n::Int)::StrongGenSet
     k = length(slots)
     k <= 1 && return StrongGenSet(Int[], Vector{Int}[], n, true)
 
     gens = Vector{Vector{Int}}()
-    for i in 1:k-1
+    for i in 1:(k - 1)
         g = identity_signed_perm(n)  # degree n+2
         # Swap slots[i] and slots[i+1]
-        g[slots[i]], g[slots[i+1]] = slots[i+1], slots[i]
+        g[slots[i]], g[slots[i + 1]] = slots[i + 1], slots[i]
         # Flip sign bit: swap positions n+1 and n+2
-        g[n+1], g[n+2] = n+2, n+1
+        g[n + 1], g[n + 2] = n+2, n+1
         push!(gens, g)
     end
-    base = slots[1:k-1]
+    base = slots[1:(k - 1)]
     StrongGenSet(base, gens, n, true)
 end
 
-"""    riemann_sgs(slots, n) → StrongGenSet
+"""
+    riemann_sgs(slots, n) → StrongGenSet
+
 Riemann symmetry group on exactly 4 slots (i,j,k,l) (1-indexed).
 Generators (signed):
-  g1 = swap slots i,j with sign=-1  (antisym in first pair)
-  g2 = swap slots k,l with sign=-1  (antisym in second pair)
-  g3 = cycle (i↔k, j↔l) with sign=+1  (pair exchange)
+g1 = swap slots i,j with sign=-1  (antisym in first pair)
+g2 = swap slots k,l with sign=-1  (antisym in second pair)
+g3 = cycle (i↔k, j↔l) with sign=+1  (pair exchange)
 Group order = 8. Returns signed StrongGenSet.
 """
-function riemann_sgs(slots::NTuple{4,Int}, n::Int) :: StrongGenSet
+function riemann_sgs(slots::NTuple{4,Int}, n::Int)::StrongGenSet
     i, j, k, l = slots
 
     # g1: swap i↔j, flip sign
     g1 = identity_signed_perm(n)
     g1[i], g1[j] = j, i
-    g1[n+1], g1[n+2] = n+2, n+1
+    g1[n + 1], g1[n + 2] = n+2, n+1
 
     # g2: swap k↔l, flip sign
     g2 = identity_signed_perm(n)
     g2[k], g2[l] = l, k
-    g2[n+1], g2[n+2] = n+2, n+1
+    g2[n + 1], g2[n + 2] = n+2, n+1
 
     # g3: swap i↔k and j↔l, keep sign (+1, no flip)
     g3 = identity_signed_perm(n)
@@ -556,18 +616,24 @@ end
 # High-level canonicalization for specific symmetry types
 # ============================================================
 
-"""    _bare_label(s) → String
+"""
+    _bare_label(s) → String
+
 Strip leading '-' from an index label for comparison purposes.
 """
 _bare_label(s::AbstractString) = startswith(s, "-") ? s[2:end] : string(s)
 
-"""    _canonicalize_symmetric(indices, slots) → (Vector{String}, Int)
+"""
+    _canonicalize_symmetric(indices, slots) → (Vector{String}, Int)
+
 Niehoff shortcut for Symmetric groups: sort slot positions by bare label name.
 Returns (new_indices, sign=+1).
 """
-function _canonicalize_symmetric(indices::Vector{String}, slots::Vector{Int}) :: Tuple{Vector{String}, Int}
+function _canonicalize_symmetric(
+    indices::Vector{String}, slots::Vector{Int}
+)::Tuple{Vector{String},Int}
     vals = [indices[s] for s in slots]
-    order = sortperm(vals, by=_bare_label)
+    order = sortperm(vals; by=_bare_label)
     sorted = vals[order]
     new_indices = copy(indices)
     for (i, s) in enumerate(slots)
@@ -576,11 +642,15 @@ function _canonicalize_symmetric(indices::Vector{String}, slots::Vector{Int}) ::
     (new_indices, 1)
 end
 
-"""    _canonicalize_antisymmetric(indices, slots) → (Vector{String}, Int)
+"""
+    _canonicalize_antisymmetric(indices, slots) → (Vector{String}, Int)
+
 Niehoff shortcut for Antisymmetric groups: sort slot positions by bare label name.
 Returns (new_indices, sign) where sign=parity(sort_permutation), or ([], 0) if repeated.
 """
-function _canonicalize_antisymmetric(indices::Vector{String}, slots::Vector{Int}) :: Tuple{Vector{String}, Int}
+function _canonicalize_antisymmetric(
+    indices::Vector{String}, slots::Vector{Int}
+)::Tuple{Vector{String},Int}
     vals = [indices[s] for s in slots]
     bare = [_bare_label(v) for v in vals]
 
@@ -589,7 +659,7 @@ function _canonicalize_antisymmetric(indices::Vector{String}, slots::Vector{Int}
         return (String[], 0)
     end
 
-    order = sortperm(vals, by=_bare_label)
+    order = sortperm(vals; by=_bare_label)
     sorted = vals[order]
 
     # Compute parity of the sorting permutation
@@ -602,36 +672,42 @@ function _canonicalize_antisymmetric(indices::Vector{String}, slots::Vector{Int}
     (new_indices, sign)
 end
 
-"""    _riemann_8_elements(i, j, k, l) → Vector{Tuple{NTuple{4,Int}, Int}}
+"""
+    _riemann_8_elements(i, j, k, l) → Vector{Tuple{NTuple{4,Int}, Int}}
+
 Return all 8 elements of the Riemann symmetry group as (slot_image, sign) pairs.
 slot_image[m] = which original slot position goes to position m.
 """
 function _riemann_8_elements(i::Int, j::Int, k::Int, l::Int)
     # Each entry: (4-tuple of slot indices in positions [i,j,k,l], sign)
     [
-        ((i,j,k,l), +1),   # identity
-        ((j,i,k,l), -1),   # g1: swap ij
-        ((i,j,l,k), -1),   # g2: swap kl
-        ((j,i,l,k), +1),   # g1·g2
-        ((k,l,i,j), +1),   # g3: pair exchange
-        ((l,k,i,j), -1),   # g3·g1
-        ((k,l,j,i), -1),   # g3·g2
-        ((l,k,j,i), +1),   # g3·g1·g2
+        ((i, j, k, l), +1),   # identity
+        ((j, i, k, l), -1),   # g1: swap ij
+        ((i, j, l, k), -1),   # g2: swap kl
+        ((j, i, l, k), +1),   # g1·g2
+        ((k, l, i, j), +1),   # g3: pair exchange
+        ((l, k, i, j), -1),   # g3·g1
+        ((k, l, j, i), -1),   # g3·g2
+        ((l, k, j, i), +1),   # g3·g1·g2
     ]
 end
 
-"""    _canonicalize_riemann(indices, slots) → (Vector{String}, Int)
+"""
+    _canonicalize_riemann(indices, slots) → (Vector{String}, Int)
+
 Butler-Portugal via enumeration for the Riemann symmetry group (order 8).
 Finds the lex-min (by bare label) arrangement among the 8 group elements.
 """
-function _canonicalize_riemann(indices::Vector{String}, slots::Vector{Int}) :: Tuple{Vector{String}, Int}
+function _canonicalize_riemann(
+    indices::Vector{String}, slots::Vector{Int}
+)::Tuple{Vector{String},Int}
     length(slots) == 4 || error("RiemannSymmetric requires exactly 4 slots")
     i, j, k, l = slots[1], slots[2], slots[3], slots[4]
     elements = _riemann_8_elements(i, j, k, l)
 
     best_labels = nothing
-    best_sign   = 1
-    best_vals   = nothing
+    best_sign = 1
+    best_vals = nothing
 
     for (slot_img, sign) in elements
         # slot_img gives the indices at original slot positions i,j,k,l in this variant
@@ -642,25 +718,28 @@ function _canonicalize_riemann(indices::Vector{String}, slots::Vector{Int}) :: T
 
         if isnothing(best_labels) || variant_bare < best_labels
             best_labels = variant_bare
-            best_sign   = sign
-            best_vals   = variant_vals
+            best_sign = sign
+            best_vals = variant_vals
         end
     end
 
     new_indices = copy(indices)
-    for (m, s) in enumerate([i,j,k,l])
+    for (m, s) in enumerate([i, j, k, l])
         new_indices[s] = best_vals[m]
     end
     (new_indices, best_sign)
 end
 
-"""    canonicalize_slots(indices, sym_type, slots) → (Vector{String}, Int)
+"""
+    canonicalize_slots(indices, sym_type, slots) → (Vector{String}, Int)
+
 Apply symmetry canonicalization to `indices` at the given `slots`.
-  sym_type: one of :Symmetric, :Antisymmetric, :RiemannSymmetric, :NoSymmetry
+sym_type: one of :Symmetric, :Antisymmetric, :RiemannSymmetric, :NoSymmetry
 Returns (new_indices, sign) where sign ∈ {-1, 0, +1}.
 """
-function canonicalize_slots(indices::Vector{String}, sym_type::Symbol,
-                             slots::Vector{Int}) :: Tuple{Vector{String}, Int}
+function canonicalize_slots(
+    indices::Vector{String}, sym_type::Symbol, slots::Vector{Int}
+)::Tuple{Vector{String},Int}
     if sym_type == :NoSymmetry || isempty(slots)
         return (indices, 1)
     elseif sym_type == :Symmetric
@@ -675,5 +754,234 @@ function canonicalize_slots(indices::Vector{String}, sym_type::Symbol,
 end
 
 export canonicalize_slots
+
+# ============================================================
+# WL-Compatibility Layer
+# High-level API mirroring Wolfram xPerm function names.
+# Used by the Julia adapter when evaluating butler-example tests.
+# ============================================================
+
+export Cycles, GenSet, PermMemberQ, OrderOfGroup, Perm, PermDeg
+export Orbit, Orbits, Permute, TranslatePerm, SchreierSims, ID
+
+"""
+Identity permutation sentinel. `PermMemberQ(ID, sgs)` expands to identity_perm(sgs.n).
+"""
+struct _IDType end
+const ID = _IDType()
+
+"""
+    Cycles(cycle1, cycle2, ...) → Vector{Int}
+
+Create a permutation image-vector from cycle notation.
+`Cycles([1,2,3,4])` produces the 4-cycle 1→2→3→4→1.
+`Cycles()` returns `Int[]` (identity of degree 0).
+"""
+function Cycles(cycles::AbstractVector{<:Integer}...)
+    isempty(cycles) && return Int[]
+    nonempty = [c for c in cycles if !isempty(c)]
+    isempty(nonempty) && return Int[]
+    n = maximum(maximum(c) for c in nonempty)
+    img = collect(1:n)
+    for cyc in nonempty
+        k = length(cyc)
+        k <= 1 && continue
+        for i in 1:k
+            img[cyc[i]] = cyc[mod1(i + 1, k)]
+        end
+    end
+    return img
+end
+Cycles() = Int[]
+
+"""
+    GenSet(p1, p2, ...) → Vector{Vector{Int}}
+
+Collect permutations into a generator list.
+"""
+GenSet(perms::AbstractVector{<:Integer}...) = Vector{Int}[Vector{Int}(p) for p in perms]
+function GenSet(perms::AbstractVector{<:AbstractVector{<:Integer}})
+    Vector{Int}[Vector{Int}(p) for p in perms]
+end
+GenSet() = Vector{Int}[]
+
+"""
+    StrongGenSet(base, genset) → StrongGenSet
+
+WL-style constructor: build a strong generating set via Schreier-Sims
+from a base vector and a generator list.
+"""
+function StrongGenSet(base::AbstractVector{<:Integer}, genset::Vector{Vector{Int}})
+    b = Vector{Int}(base)
+    if isempty(genset)
+        return StrongGenSet(b, Vector{Int}[], 0, false)
+    end
+    # Normalize: pad shorter generators to max degree (identity extension)
+    deg = maximum(length(g) for g in genset)
+    padded = Vector{Vector{Int}}()
+    for g in genset
+        if length(g) < deg
+            p = copy(g)
+            append!(p, (length(g) + 1):deg)
+            push!(padded, p)
+        else
+            push!(padded, copy(g))
+        end
+    end
+    # Detect signed permutations: last 2 positions always map to {deg-1, deg}
+    n =
+        if deg >= 2 && all(
+            g ->
+                (g[deg - 1] == deg-1 || g[deg - 1] == deg) &&
+                (g[deg] == deg-1 || g[deg] == deg),
+            padded,
+        )
+            deg - 2   # physical degree; schreier_sims will detect signed=true
+        else
+            deg
+        end
+    return schreier_sims(b, padded, n)
+end
+# Fallback for base types like Vector{Any} (from WL {} translated to Julia [])
+function StrongGenSet(base::AbstractVector, genset::Vector{Vector{Int}})
+    StrongGenSet(Vector{Int}(base), genset)
+end
+
+"""
+    PermMemberQ(perm, sgs) → Bool
+
+Test whether `perm` is an element of the group described by `sgs`.
+`ID` is treated as the identity permutation of degree `sgs.n`.
+An empty permutation `Int[]` is also treated as identity.
+"""
+function PermMemberQ(perm, sgs::StrongGenSet)
+    if perm isa _IDType || isempty(perm)
+        p = sgs.n == 0 ? Int[] : identity_perm(sgs.n)
+    else
+        p = Vector{Int}(perm)
+    end
+    return perm_member_q(p, sgs)
+end
+# WL xPerm order: PermMemberQ[sgs, perm]
+PermMemberQ(sgs::StrongGenSet, perm) = PermMemberQ(perm, sgs)
+
+"""
+    OrderOfGroup(sgs) → Int
+"""
+OrderOfGroup(sgs::StrongGenSet) = order_of_group(sgs)
+
+"""
+    Orbit(pt, genset_or_sgs) → Vector{Int}
+
+Return the orbit of `pt` under the generators, in BFS discovery order
+(matching xPerm's Mathematica output).
+"""
+function Orbit(pt::Integer, GS::Vector{Vector{Int}})
+    isempty(GS) && return [Int(pt)]
+    n = max(Int(pt), maximum(maximum(g) for g in GS))
+    _orbit_bfs(Int(pt), GS, n)
+end
+function Orbit(pt::Integer, sgs::StrongGenSet)
+    _orbit_bfs(Int(pt), sgs.GS, sgs.n)
+end
+
+function _orbit_bfs(root::Int, GS::Vector{Vector{Int}}, n::Int)
+    in_orbit = falses(n)
+    in_orbit[root] = true
+    queue = [root]
+    head = 1
+    while head <= length(queue)
+        cur = queue[head];
+        head += 1
+        for g in GS
+            img = g[cur]
+            img > n && continue
+            if !in_orbit[img]
+                in_orbit[img] = true
+                push!(queue, img)
+            end
+        end
+    end
+    queue
+end
+
+"""
+    Orbits(genset_or_sgs [, n]) → Vector{Vector{Int}}
+
+Return all orbits of the generators, each in BFS discovery order.
+"""
+function Orbits(GS::Vector{Vector{Int}}, n::Integer)
+    n = Int(n)
+    seen = falses(n)
+    result = Vector{Vector{Int}}()
+    for i in 1:n
+        seen[i] && continue
+        orb = _orbit_bfs(i, GS, n)
+        for p in orb
+            ;
+            seen[p] = true;
+        end
+        push!(result, orb)
+    end
+    result
+end
+function Orbits(GS::Vector{Vector{Int}})
+    isempty(GS) && return Vector{Vector{Int}}()
+    n = maximum(maximum(g) for g in GS)
+    Orbits(GS, n)
+end
+function Orbits(sgs::StrongGenSet)
+    Orbits(sgs.GS, sgs.n)
+end
+
+"""
+    Permute(a, b, ...) → Vector{Int}
+
+Compose permutations left-to-right: `Permute(a, b)` means apply `a` first,
+then `b`, i.e. `compose(b, a)` in right-to-left convention.
+"""
+function Permute(a::AbstractVector{<:Integer}, b::AbstractVector{<:Integer})
+    compose(Vector{Int}(b), Vector{Int}(a))
+end
+function Permute(perms::AbstractVector{<:Integer}...)
+    length(perms) == 0 && return Int[]
+    result = Vector{Int}(perms[1])
+    for p in perms[2:end]
+        result = Permute(result, Vector{Int}(p))
+    end
+    result
+end
+
+"""
+    TranslatePerm(perm, format) → Vector{Int}
+
+Identity conversion: the image vector is already in the right format.
+"""
+TranslatePerm(perm::AbstractVector{<:Integer}, ::Any) = Vector{Int}(perm)
+TranslatePerm(::_IDType, ::Any) = Int[]
+
+"""
+    SchreierSims(base, genset, n) → StrongGenSet
+    SchreierSims(genset) → StrongGenSet
+
+WL-style Schreier-Sims wrapper.
+"""
+function SchreierSims(
+    base::AbstractVector{<:Integer}, genset::Vector{Vector{Int}}, n::Integer
+)
+    schreier_sims(Vector{Int}(base), genset, Int(n))
+end
+function SchreierSims(genset::Vector{Vector{Int}})
+    isempty(genset) && return StrongGenSet(Int[], Vector{Int}[], 0, false)
+    n = maximum(maximum(g) for g in genset)
+    schreier_sims(Int[], genset, n)
+end
+
+"""
+    PermDeg(sgs) → Int
+
+Return the physical degree (number of non-sign points) of the group.
+"""
+PermDeg(sgs::StrongGenSet) = sgs.n
 
 end  # module XPerm

@@ -28,6 +28,7 @@ from sxact.runner.loader import Operation, TestCase, TestFile
 # Value objects
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TestSnapshot:
     """Captured oracle output for a single test case, matching the spec §5.6 JSON."""
@@ -51,7 +52,7 @@ class FileSnapshot:
 
     __test__ = False
 
-    meta_id: str        # TestFile.meta.id, e.g. "xcore/basic"
+    meta_id: str  # TestFile.meta.id, e.g. "xcore/basic"
     source_path: Path
     tests: list[TestSnapshot] = field(default_factory=list)
 
@@ -59,6 +60,7 @@ class FileSnapshot:
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+
 
 def run_file(test_file: TestFile, adapter: WolframAdapter) -> FileSnapshot:
     """Run every test case in *test_file* against the oracle and capture snapshots.
@@ -129,6 +131,7 @@ def run_file(test_file: TestFile, adapter: WolframAdapter) -> FileSnapshot:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _snapshot_test(
     tc: TestCase,
     *,
@@ -193,7 +196,9 @@ def _run_op(
     return expr, result
 
 
-def _substitute_bindings(args: dict[str, Any], bindings: dict[str, str]) -> dict[str, Any]:
+def _substitute_bindings(
+    args: dict[str, Any], bindings: dict[str, str]
+) -> dict[str, Any]:
     """Return a copy of *args* with ``$name`` references replaced by bound values."""
     return {
         key: _sub_refs(val, bindings) if isinstance(val, str) else val
@@ -216,6 +221,7 @@ def _utc_now() -> str:
 # ---------------------------------------------------------------------------
 # Hash computation (spec §5.6)
 # ---------------------------------------------------------------------------
+
 
 def compute_oracle_hash(normalized_output: str, properties: dict[str, Any]) -> str:
     """Compute the snapshot hash as specified in §5.6.

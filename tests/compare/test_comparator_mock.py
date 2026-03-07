@@ -22,9 +22,11 @@ class TestTier2WithMock:
 
     def test_equal_expressions_simplify_to_zero(self) -> None:
         diff_expr = "Simplify[(a^2 + 2*a*b + b^2) - ((a+b)^2)]"
-        oracle = MockOracleClient({
-            diff_expr: Result(status="ok", type="Expr", repr="0", normalized="0"),
-        })
+        oracle = MockOracleClient(
+            {
+                diff_expr: Result(status="ok", type="Expr", repr="0", normalized="0"),
+            }
+        )
         lhs = _ok("a^2 + 2*a*b + b^2", "a^2 + 2 a b + b^2")
         rhs = _ok("(a+b)^2", "(a + b)^2")
         result = compare(lhs, rhs, oracle)
@@ -34,9 +36,11 @@ class TestTier2WithMock:
 
     def test_unequal_expressions_nonzero_diff(self) -> None:
         diff_expr = "Simplify[(x) - (2*x)]"
-        oracle = MockOracleClient({
-            diff_expr: Result(status="ok", type="Expr", repr="-x", normalized="-x"),
-        })
+        oracle = MockOracleClient(
+            {
+                diff_expr: Result(status="ok", type="Expr", repr="-x", normalized="-x"),
+            }
+        )
         lhs = _ok("x", "x")
         rhs = _ok("2*x", "2 x")
         result = compare(lhs, rhs, oracle)
@@ -46,10 +50,17 @@ class TestTier2WithMock:
 
     def test_oracle_error_propagates_as_not_equal(self) -> None:
         diff_expr = "Simplify[(T[-a,-b]) - (S[-a,-b])]"
-        oracle = MockOracleClient({
-            diff_expr: Result(status="error", type="", repr="", normalized="",
-                              error="kernel crash"),
-        })
+        oracle = MockOracleClient(
+            {
+                diff_expr: Result(
+                    status="error",
+                    type="",
+                    repr="",
+                    normalized="",
+                    error="kernel crash",
+                ),
+            }
+        )
         lhs = _ok("T[-a,-b]", "T[-$1,-$2]")
         rhs = _ok("S[-a,-b]", "S[-$1,-$2]")
         result = compare(lhs, rhs, oracle)
@@ -85,9 +96,11 @@ class TestTier2WithMock:
 
     def test_mock_records_calls(self) -> None:
         expr = "Simplify[(a) - (a)]"
-        oracle = MockOracleClient({
-            expr: Result(status="ok", type="Expr", repr="0", normalized="0"),
-        })
+        oracle = MockOracleClient(
+            {
+                expr: Result(status="ok", type="Expr", repr="0", normalized="0"),
+            }
+        )
         lhs = _ok("a", "a_diff")
         rhs = _ok("a", "a")
         compare(lhs, rhs, oracle)
@@ -100,9 +113,13 @@ class TestTier2WithMock:
         assert result.error is not None
 
     def test_evaluate_with_xact_uses_responses(self) -> None:
-        oracle = MockOracleClient({
-            "SomeExpr": Result(status="ok", type="Expr", repr="42", normalized="42"),
-        })
+        oracle = MockOracleClient(
+            {
+                "SomeExpr": Result(
+                    status="ok", type="Expr", repr="42", normalized="42"
+                ),
+            }
+        )
         result = oracle.evaluate_with_xact("SomeExpr", context_id="test")
         assert result.status == "ok"
         assert result.repr == "42"

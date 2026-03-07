@@ -1,0 +1,307 @@
+# tests/properties/tensor_algebra_laws.toml
+# Layer 2: General tensor algebra invariants.
+#
+# Tests fundamental algebraic laws (commutativity of addition, distributivity,
+# scalar multiplication, and contraction properties) that hold for any tensor
+# expression in any consistent tensor algebra implementation.
+# All use equivalence_type = "numerical_tolerance".
+#
+# Design spec: specs/2026-03-05-property-test-design.md §Q5
+
+version     = "1.0"
+layer       = "property"
+description = "General tensor algebra laws: commutativity, distributivity, scalar multiplication"
+
+[[setup]]
+action = "DefManifold"
+[setup.args]
+name      = "ALG4"
+dimension = 4
+indices   = ["aa", "ab", "ac", "ad"]
+
+[[setup]]
+action = "DefTensor"
+[setup.args]
+name     = "AlgT"
+indices  = ["-aa", "-ab"]
+manifold = "ALG4"
+
+[[setup]]
+action = "DefTensor"
+[setup.args]
+name     = "AlgS"
+indices  = ["-aa", "-ab"]
+manifold = "ALG4"
+symmetry = "Symmetric[{-aa,-ab}]"
+
+[[setup]]
+action = "DefTensor"
+[setup.args]
+name     = "AlgV"
+indices  = ["aa"]
+manifold = "ALG4"
+
+# ---------------------------------------------------------------------------
+# Property 1: Addition commutativity for tensors
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "addition_commutative"
+name = "Tensor addition is commutative: T + S == S + T"
+tags = ["xtensor", "algebra", "commutativity", "property"]
+
+[properties.mathematical_basis]
+law_name  = "Commutativity of tensor addition"
+reference = "Standard multilinear algebra"
+statement = "T_{ab} + S_{ab} = S_{ab} + T_{ab} for any same-rank tensors T, S"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "T"
+type     = "Tensor"
+manifold = "ALG4"
+rank     = 2
+symmetry = "none"
+
+[[properties.forall.generators]]
+name     = "S"
+type     = "Tensor"
+manifold = "ALG4"
+rank     = 2
+symmetry = "none"
+
+[properties.law]
+lhs              = "$T[-aa,-ab] + $S[-aa,-ab]"
+rhs              = "$S[-aa,-ab] + $T[-aa,-ab]"
+equivalence_type = "numerical_tolerance"
+tolerance        = 1e-12
+
+[properties.verification]
+num_samples = 30
+random_seed = 200
+
+# ---------------------------------------------------------------------------
+# Property 2: Addition associativity for tensors
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "addition_associative"
+name = "Tensor addition is associative: (T + S) + U == T + (S + U)"
+tags = ["xtensor", "algebra", "associativity", "property"]
+
+[properties.mathematical_basis]
+law_name  = "Associativity of tensor addition"
+reference = "Standard multilinear algebra"
+statement = "(T_{ab} + S_{ab}) + U_{ab} = T_{ab} + (S_{ab} + U_{ab})"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "T"
+type     = "Tensor"
+manifold = "ALG4"
+rank     = 2
+symmetry = "none"
+
+[[properties.forall.generators]]
+name     = "S"
+type     = "Tensor"
+manifold = "ALG4"
+rank     = 2
+symmetry = "none"
+
+[[properties.forall.generators]]
+name     = "U"
+type     = "Tensor"
+manifold = "ALG4"
+rank     = 2
+symmetry = "none"
+
+[properties.law]
+lhs              = "($T[-aa,-ab] + $S[-aa,-ab]) + $U[-aa,-ab]"
+rhs              = "$T[-aa,-ab] + ($S[-aa,-ab] + $U[-aa,-ab])"
+equivalence_type = "numerical_tolerance"
+tolerance        = 1e-12
+
+[properties.verification]
+num_samples = 20
+random_seed = 201
+
+# ---------------------------------------------------------------------------
+# Property 3: Distributivity of scalar multiplication over addition
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "scalar_distributivity"
+name = "Scalar multiplication distributes over tensor addition"
+tags = ["xtensor", "algebra", "distributivity", "property"]
+
+[properties.mathematical_basis]
+law_name  = "Distributivity of scalar over tensor sum"
+reference = "Standard multilinear algebra"
+statement = "λ(T_{ab} + S_{ab}) = λ T_{ab} + λ S_{ab}"
+
+[properties.forall]
+[[properties.forall.generators]]
+name         = "lam"
+type         = "Scalar"
+distribution = "uniform"
+range        = [-5.0, 5.0]
+
+[[properties.forall.generators]]
+name     = "T"
+type     = "Tensor"
+manifold = "ALG4"
+rank     = 2
+symmetry = "none"
+
+[[properties.forall.generators]]
+name     = "S"
+type     = "Tensor"
+manifold = "ALG4"
+rank     = 2
+symmetry = "none"
+
+[properties.law]
+lhs              = "$lam * ($T[-aa,-ab] + $S[-aa,-ab])"
+rhs              = "$lam * $T[-aa,-ab] + $lam * $S[-aa,-ab]"
+equivalence_type = "numerical_tolerance"
+tolerance        = 1e-12
+
+[properties.verification]
+num_samples = 30
+random_seed = 202
+
+# ---------------------------------------------------------------------------
+# Property 4: Additive identity (zero tensor)
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "additive_identity"
+name = "Adding zero tensor leaves expression unchanged"
+tags = ["xtensor", "algebra", "identity", "property"]
+
+[properties.mathematical_basis]
+law_name  = "Additive identity for tensors"
+reference = "Standard multilinear algebra"
+statement = "T_{ab} + 0 = T_{ab}"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "T"
+type     = "Tensor"
+manifold = "ALG4"
+rank     = 2
+symmetry = "none"
+
+[properties.law]
+lhs              = "$T[-aa,-ab] + 0"
+rhs              = "$T[-aa,-ab]"
+equivalence_type = "numerical_tolerance"
+tolerance        = 1e-12
+
+[properties.verification]
+num_samples = 20
+random_seed = 203
+
+# ---------------------------------------------------------------------------
+# Property 5: Scalar multiplicative identity
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "multiplicative_identity"
+name = "Multiplying by 1 leaves tensor unchanged"
+tags = ["xtensor", "algebra", "identity", "property"]
+
+[properties.mathematical_basis]
+law_name  = "Multiplicative identity for scalar-tensor product"
+reference = "Standard multilinear algebra"
+statement = "1 * T_{ab} = T_{ab}"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "T"
+type     = "Tensor"
+manifold = "ALG4"
+rank     = 2
+symmetry = "none"
+
+[properties.law]
+lhs              = "1 * $T[-aa,-ab]"
+rhs              = "$T[-aa,-ab]"
+equivalence_type = "numerical_tolerance"
+tolerance        = 1e-12
+
+[properties.verification]
+num_samples = 20
+random_seed = 204
+
+# ---------------------------------------------------------------------------
+# Property 6: Scalar multiplication negation
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "negation_self_inverse"
+name = "Negating twice gives original: -(-T) == T"
+tags = ["xtensor", "algebra", "property"]
+
+[properties.mathematical_basis]
+law_name  = "Double negation for tensor expressions"
+reference = "Standard multilinear algebra"
+statement = "-(-T_{ab}) = T_{ab}"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "T"
+type     = "Tensor"
+manifold = "ALG4"
+rank     = 2
+symmetry = "none"
+
+[properties.law]
+lhs              = "-(-$T[-aa,-ab])"
+rhs              = "$T[-aa,-ab]"
+equivalence_type = "numerical_tolerance"
+tolerance        = 1e-12
+
+[properties.verification]
+num_samples = 20
+random_seed = 205
+
+# ---------------------------------------------------------------------------
+# Property 7: Contraction associativity (outer-product then contract order)
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "contraction_order_independent"
+name = "Contracting T^a V_a gives a scalar independent of contraction order"
+tags = ["xtensor", "contraction", "property"]
+
+[properties.mathematical_basis]
+law_name  = "Scalar invariance of full contraction"
+reference = "Standard tensor algebra"
+statement = "T^a V_a is a scalar; its numeric value is independent of index order"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "T"
+type     = "Tensor"
+manifold = "ALG4"
+rank     = 1
+symmetry = "none"
+
+[[properties.forall.generators]]
+name     = "V"
+type     = "Tensor"
+manifold = "ALG4"
+rank     = 1
+symmetry = "none"
+
+[properties.law]
+lhs              = "$T[aa] $V[-aa]"
+rhs              = "$V[-aa] $T[aa]"
+equivalence_type = "numerical_tolerance"
+tolerance        = 1e-12
+
+[properties.verification]
+num_samples = 30
+random_seed = 206

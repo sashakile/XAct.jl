@@ -20,7 +20,7 @@ import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from sxact.adapter.base import TestAdapter
@@ -31,14 +31,15 @@ N_WARMUP_DEFAULT = 10
 N_MEASURE_DEFAULT = 30
 
 # Regression thresholds (ratio vs Wolfram baseline)
-THRESHOLD_WARNING = 5.0   # warn
-THRESHOLD_FAIL = 10.0     # CI gate
-THRESHOLD_CRITICAL = 50.0 # blocker
+THRESHOLD_WARNING = 5.0  # warn
+THRESHOLD_FAIL = 10.0  # CI gate
+THRESHOLD_CRITICAL = 50.0  # blocker
 
 
 # ---------------------------------------------------------------------------
 # Result dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class BenchResult:
@@ -55,11 +56,11 @@ class BenchResult:
     max_ms: float
     timestamp: str
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "BenchResult":
+    def from_dict(cls, d: dict[str, Any]) -> "BenchResult":
         return cls(**d)
 
 
@@ -67,8 +68,9 @@ class BenchResult:
 # Core timing function
 # ---------------------------------------------------------------------------
 
+
 def bench_test_case(
-    adapter: "TestAdapter",
+    adapter: "TestAdapter[Any]",
     test_file: "TestFile",
     tc: "TestCase",
     *,
@@ -129,6 +131,7 @@ def bench_test_case(
 # Baseline I/O
 # ---------------------------------------------------------------------------
 
+
 def load_baseline(path: Path) -> dict[str, BenchResult]:
     """Load baseline JSON; returns mapping of ``"adapter/test_id"`` → result."""
     if not path.exists():
@@ -163,6 +166,7 @@ def _key(adapter: str, test_id: str) -> str:
 # Regression check
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RegressionResult:
     test_id: str
@@ -192,14 +196,16 @@ def check_regression(
             continue
         ratio = r.median_ms / base.median_ms
         level = _regression_level(ratio)
-        results.append(RegressionResult(
-            test_id=r.test_id,
-            adapter=r.adapter,
-            current_median_ms=r.median_ms,
-            baseline_median_ms=base.median_ms,
-            ratio=ratio,
-            level=level,
-        ))
+        results.append(
+            RegressionResult(
+                test_id=r.test_id,
+                adapter=r.adapter,
+                current_median_ms=r.median_ms,
+                baseline_median_ms=base.median_ms,
+                ratio=ratio,
+                level=level,
+            )
+        )
 
     if wolfram_baseline:
         for r in current:
@@ -211,14 +217,16 @@ def check_regression(
                 continue
             ratio = r.median_ms / wb.median_ms
             level = _cross_adapter_level(ratio)
-            results.append(RegressionResult(
-                test_id=r.test_id,
-                adapter=f"{r.adapter}/vs_wolfram",
-                current_median_ms=r.median_ms,
-                baseline_median_ms=wb.median_ms,
-                ratio=ratio,
-                level=level,
-            ))
+            results.append(
+                RegressionResult(
+                    test_id=r.test_id,
+                    adapter=f"{r.adapter}/vs_wolfram",
+                    current_median_ms=r.median_ms,
+                    baseline_median_ms=wb.median_ms,
+                    ratio=ratio,
+                    level=level,
+                )
+            )
 
     return results
 

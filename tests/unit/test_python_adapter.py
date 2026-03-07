@@ -15,6 +15,7 @@ from sxact.adapter.base import AdapterError
 # Conformance suite
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def adapter_factory():
     return PythonAdapter
@@ -28,8 +29,8 @@ from tests.test_adapter_conformance import *  # noqa: F401, F403, E402
 # PythonAdapter-specific tests
 # ---------------------------------------------------------------------------
 
-class TestPythonAdapterSpecific:
 
+class TestPythonAdapterSpecific:
     def test_cas_name_is_python(self):
         adapter = PythonAdapter()
         version = adapter.get_version()
@@ -47,13 +48,28 @@ class TestPythonAdapterSpecific:
         except AdapterError:
             pytest.skip("Julia runtime unavailable")
 
-        xtensor_actions = ["DefManifold", "DefMetric", "DefTensor", "ToCanonical", "Contract", "Simplify"]
+        xtensor_actions = [
+            "DefManifold",
+            "DefMetric",
+            "DefTensor",
+            "ToCanonical",
+            "Contract",
+            "Simplify",
+        ]
         for action in xtensor_actions:
-            result = adapter.execute(ctx, action, {
-                "name": "M", "dimension": 4, "indices": ["a", "b"],
-                "metric": "g", "covd": "CD", "signdet": 1,
-                "expression": "T[-a]",
-            })
+            result = adapter.execute(
+                ctx,
+                action,
+                {
+                    "name": "M",
+                    "dimension": 4,
+                    "indices": ["a", "b"],
+                    "metric": "g",
+                    "covd": "CD",
+                    "signdet": 1,
+                    "expression": "T[-a]",
+                },
+            )
             assert result.status == "error", f"{action} should return error Result"
             assert "xTensor" in result.error or "not yet ported" in result.error
 

@@ -19,6 +19,7 @@ from sxact.snapshot.store import SnapshotStore
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _write_snapshot(
     oracle_dir: Path,
     meta_id: str,
@@ -68,6 +69,7 @@ def _make_comparator(oracle_dir: Path) -> SnapshotComparator:
 # SnapshotCompareResult helpers
 # ---------------------------------------------------------------------------
 
+
 class TestSnapshotCompareResultHelpers:
     def test_passed_true_on_pass(self):
         r = SnapshotCompareResult("t", "pass", "x", "x", "")
@@ -90,6 +92,7 @@ class TestSnapshotCompareResultHelpers:
 # missing snapshot
 # ---------------------------------------------------------------------------
 
+
 class TestMissingSnapshot:
     def test_missing_snapshot_gives_missing_outcome(self, tmp_path):
         cmp = _make_comparator(tmp_path)
@@ -107,6 +110,7 @@ class TestMissingSnapshot:
 # ---------------------------------------------------------------------------
 # hash mismatch
 # ---------------------------------------------------------------------------
+
 
 class TestHashMismatch:
     def test_corrupted_hash_gives_hash_mismatch(self, tmp_path):
@@ -126,6 +130,7 @@ class TestHashMismatch:
 # adapter error result
 # ---------------------------------------------------------------------------
 
+
 class TestAdapterError:
     def test_error_result_gives_fail(self, tmp_path):
         _write_snapshot(tmp_path, "p/q", "tc")
@@ -139,6 +144,7 @@ class TestAdapterError:
 # ---------------------------------------------------------------------------
 # pass cases
 # ---------------------------------------------------------------------------
+
 
 class TestPass:
     def test_matching_normalized_passes(self, tmp_path):
@@ -180,6 +186,7 @@ class TestPass:
 # fail cases — normalized mismatch
 # ---------------------------------------------------------------------------
 
+
 class TestNormalizedMismatch:
     def test_different_normalized_fails(self, tmp_path):
         _write_snapshot(tmp_path, "a/b", "tc", normalized_output="T[-$1,-$2]")
@@ -206,16 +213,21 @@ class TestNormalizedMismatch:
 # fail cases — property mismatch
 # ---------------------------------------------------------------------------
 
+
 class TestPropertyMismatch:
     def test_wrong_rank_fails(self, tmp_path):
-        _write_snapshot(tmp_path, "a/b", "tc", normalized_output="X", properties={"rank": 2})
+        _write_snapshot(
+            tmp_path, "a/b", "tc", normalized_output="X", properties={"rank": 2}
+        )
         cmp = _make_comparator(tmp_path)
         result = cmp.compare("a/b", "tc", _ok("X", {"rank": 4}))
         assert result.outcome == "fail"
         assert "rank" in result.details
 
     def test_missing_property_key_fails(self, tmp_path):
-        _write_snapshot(tmp_path, "a/b", "tc", normalized_output="X", properties={"rank": 2})
+        _write_snapshot(
+            tmp_path, "a/b", "tc", normalized_output="X", properties={"rank": 2}
+        )
         cmp = _make_comparator(tmp_path)
         # actual has no properties at all
         result = cmp.compare("a/b", "tc", _ok("X", {}))
@@ -223,7 +235,9 @@ class TestPropertyMismatch:
 
     def test_multiple_property_mismatches_reported(self, tmp_path):
         snap_props = {"rank": 2, "type": "Tensor"}
-        _write_snapshot(tmp_path, "a/b", "tc", normalized_output="X", properties=snap_props)
+        _write_snapshot(
+            tmp_path, "a/b", "tc", normalized_output="X", properties=snap_props
+        )
         cmp = _make_comparator(tmp_path)
         result = cmp.compare("a/b", "tc", _ok("X", {"rank": 4, "type": "Scalar"}))
         assert "rank" in result.details
@@ -231,7 +245,9 @@ class TestPropertyMismatch:
 
     def test_extra_actual_properties_ignored(self, tmp_path):
         """Actual having MORE properties than snapshot should still pass."""
-        _write_snapshot(tmp_path, "a/b", "tc", normalized_output="X", properties={"rank": 2})
+        _write_snapshot(
+            tmp_path, "a/b", "tc", normalized_output="X", properties={"rank": 2}
+        )
         cmp = _make_comparator(tmp_path)
         result = cmp.compare("a/b", "tc", _ok("X", {"rank": 2, "manifold": "M"}))
         assert result.outcome == "pass"
@@ -240,6 +256,7 @@ class TestPropertyMismatch:
 # ---------------------------------------------------------------------------
 # test_id field
 # ---------------------------------------------------------------------------
+
 
 class TestTestId:
     def test_result_carries_test_id(self, tmp_path):

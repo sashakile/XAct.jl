@@ -45,9 +45,7 @@ def _init_julia() -> None:
     # XCore.jl lives at src/julia/XCore.jl relative to the repo root.
     # From this file: src/sxact/xcore/_runtime.py → go up 3 levels → src/
     # then into julia/XCore.jl.
-    xcore_path = (
-        Path(__file__).parent.parent.parent / "julia" / "XCore.jl"
-    ).resolve()
+    xcore_path = (Path(__file__).parent.parent.parent / "julia" / "XCore.jl").resolve()
 
     if not xcore_path.exists():
         raise FileNotFoundError(

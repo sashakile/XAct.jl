@@ -32,6 +32,7 @@ from sxact.oracle.result import Result
 # Context
 # ---------------------------------------------------------------------------
 
+
 class _PythonContext:
     """Opaque per-file context for PythonAdapter."""
 
@@ -89,15 +90,14 @@ class PythonAdapter(TestAdapter[_PythonContext]):
             return
         try:
             from sxact.xcore._runtime import get_julia, get_xcore
+
             self._jl = get_julia()
             get_xcore()
             raw_jl = self._jl.seval("string(VERSION)")
             self._julia_version = str(raw_jl).strip()
             # Try to get XCore package version
             try:
-                raw_xc = self._jl.seval(
-                    'string(pkgversion(XCore))'
-                )
+                raw_xc = self._jl.seval("string(pkgversion(XCore))")
                 self._xcore_version = str(raw_xc).strip()
             except Exception:
                 self._xcore_version = "dev"
@@ -156,7 +156,10 @@ class PythonAdapter(TestAdapter[_PythonContext]):
                 args.get("message"),
             )
         return Result(
-            status="error", type="", repr="", normalized="",
+            status="error",
+            type="",
+            repr="",
+            normalized="",
             error=f"unhandled action: {action!r}",
         )
 
@@ -224,7 +227,9 @@ class PythonAdapter(TestAdapter[_PythonContext]):
     # Introspection
     # ------------------------------------------------------------------
 
-    def get_properties(self, expr: str, ctx: _PythonContext | None = None) -> dict[str, Any]:
+    def get_properties(
+        self, expr: str, ctx: _PythonContext | None = None
+    ) -> dict[str, Any]:
         return {}
 
     def get_version(self) -> VersionInfo:

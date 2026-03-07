@@ -11,6 +11,7 @@ Passes (applied in order by :func:`ast_normalize`):
 from __future__ import annotations
 
 import re
+from typing import cast
 
 from sxact.normalize.ast_parser import Expr, Leaf, Node
 
@@ -41,9 +42,7 @@ def _structural_key(expr: Expr) -> str:
     else:
         # For Node, use head name + recursive structural keys of args
         head_key = (
-            expr.head
-            if isinstance(expr.head, str)
-            else _structural_key(expr.head)
+            expr.head if isinstance(expr.head, str) else _structural_key(expr.head)
         )
         args_key = ",".join(_structural_key(a) for a in expr.args)
         return f"{head_key}[{args_key}]"
@@ -67,10 +66,10 @@ def sort_commutative(expr: Expr) -> Expr:
 
     # Recurse first (bottom-up)
     new_args = [sort_commutative(a) for a in expr.args]
-    new_head = (
+    new_head: str | Node = (
         expr.head
         if isinstance(expr.head, str)
-        else sort_commutative(expr.head)
+        else cast(Node, sort_commutative(expr.head))
     )
 
     if isinstance(expr.head, str) and expr.head in _COMMUTATIVE_HEADS:
@@ -82,6 +81,7 @@ def sort_commutative(expr: Expr) -> Expr:
 # ---------------------------------------------------------------------------
 # Pass 2: canonicalize indices
 # ---------------------------------------------------------------------------
+
 
 def canonicalize_indices(expr: Expr) -> Expr:
     """Rename abstract index leaves to ``$1``, ``$2``, … in DFS order.
@@ -110,10 +110,10 @@ def canonicalize_indices(expr: Expr) -> Expr:
             return node
         else:
             new_args = [_visit(a) for a in node.args]
-            new_head = (
+            new_head: str | Node = (
                 node.head
                 if isinstance(node.head, str)
-                else _visit(node.head)
+                else cast(Node, _visit(node.head))
             )
             return Node(head=new_head, args=new_args)
 
@@ -123,6 +123,7 @@ def canonicalize_indices(expr: Expr) -> Expr:
 # ---------------------------------------------------------------------------
 # Pass 3: coefficient flattening
 # ---------------------------------------------------------------------------
+
 
 def flatten_coefficients(expr: Expr) -> Expr:
     """Simplify trivial numeric coefficients in ``Times`` nodes.
@@ -138,10 +139,10 @@ def flatten_coefficients(expr: Expr) -> Expr:
         return expr
 
     new_args = [flatten_coefficients(a) for a in expr.args]
-    new_head = (
+    new_head: str | Node = (
         expr.head
         if isinstance(expr.head, str)
-        else flatten_coefficients(expr.head)
+        else cast(Node, flatten_coefficients(expr.head))
     )
 
     # Times[1, x] → x  (when exactly two args and the first is Leaf("1"))

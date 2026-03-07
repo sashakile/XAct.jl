@@ -14,4 +14,3 @@ RUN wolframscript -code 'PacletInstall["CodeParser"] PacletInstall["CodeInspecto
 # temporary workaround for bug(413167)
 RUN apt-get update -y && \
     apt-get install -y libglib2.0-0
-

@@ -34,7 +34,10 @@ from sxact.snapshot.runner import (
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _ok_result(repr: str, normalized: str = "", properties: dict | None = None) -> Result:
+
+def _ok_result(
+    repr: str, normalized: str = "", properties: dict | None = None
+) -> Result:
     return Result(
         status="ok",
         type="Expr",
@@ -88,6 +91,7 @@ def _make_adapter(results: list[Result]) -> MagicMock:
 # compute_oracle_hash
 # ---------------------------------------------------------------------------
 
+
 class TestComputeOracleHash:
     def test_matches_spec_formula(self):
         """Hash must match the spec §5.6 formula exactly."""
@@ -119,6 +123,7 @@ class TestComputeOracleHash:
 # _sub_refs / _substitute_bindings
 # ---------------------------------------------------------------------------
 
+
 class TestSubRefs:
     def test_no_refs(self):
         assert _sub_refs("ToCanonical[T[-a,-b]]", {}) == "ToCanonical[T[-a,-b]]"
@@ -138,7 +143,10 @@ class TestSubRefs:
         assert _sub_refs("$lhs2", {"lhs": "X"}) == "$lhs2"
 
     def test_ref_in_middle(self):
-        assert _sub_refs("ToCanonical[$expr]", {"expr": "T[-a,-b]"}) == "ToCanonical[T[-a,-b]]"
+        assert (
+            _sub_refs("ToCanonical[$expr]", {"expr": "T[-a,-b]"})
+            == "ToCanonical[T[-a,-b]]"
+        )
 
 
 class TestSubstituteBindings:
@@ -161,6 +169,7 @@ class TestSubstituteBindings:
 # ---------------------------------------------------------------------------
 # run_file
 # ---------------------------------------------------------------------------
+
 
 class TestRunFile:
     def test_returns_file_snapshot(self):
@@ -210,16 +219,20 @@ class TestRunFile:
 
     def test_setup_commands_included_in_test_commands(self):
         """The commands field must contain setup + test expressions."""
-        setup_op = Operation(action="DefManifold", args={"name": "M", "dimension": 4, "indices": ["a"]})
+        setup_op = Operation(
+            action="DefManifold", args={"name": "M", "dimension": 4, "indices": ["a"]}
+        )
         test_op = Operation(action="Evaluate", args={"expression": "M"})
         tc = _make_test_case(id="tc", ops=[test_op])
         tf = _make_test_file(setup=[setup_op], tests=[tc])
 
         # Two results: one for setup, one for test
-        adapter = _make_adapter([
-            _ok_result("M"),
-            _ok_result("M", "M"),
-        ])
+        adapter = _make_adapter(
+            [
+                _ok_result("M"),
+                _ok_result("M", "M"),
+            ]
+        )
         # Let _build_expr return recognisable strings
         adapter._build_expr.side_effect = lambda action, args: (
             "DefManifold[M,4,{a}]" if action == "DefManifold" else "M"
@@ -232,7 +245,9 @@ class TestRunFile:
 
     def test_store_as_bindings_propagate(self):
         """store_as from one op should be substitutable in the next."""
-        op1 = Operation(action="Evaluate", args={"expression": "T[-a,-b]"}, store_as="lhs")
+        op1 = Operation(
+            action="Evaluate", args={"expression": "T[-a,-b]"}, store_as="lhs"
+        )
         op2 = Operation(action="ToCanonical", args={"expression": "$lhs"})
 
         tc = _make_test_case(id="tc", ops=[op1, op2])
@@ -240,6 +255,7 @@ class TestRunFile:
 
         # Capture what args were passed to execute
         captured_args: list[dict] = []
+
         def fake_execute(ctx, action, args):
             captured_args.append(dict(args))
             return _ok_result("result", "result")
@@ -257,7 +273,9 @@ class TestRunFile:
         assert captured_args[1]["expression"] == "result"
 
     def test_teardown_called_on_success(self):
-        tc = _make_test_case(id="tc", ops=[Operation(action="Evaluate", args={"expression": "1"})])
+        tc = _make_test_case(
+            id="tc", ops=[Operation(action="Evaluate", args={"expression": "1"})]
+        )
         tf = _make_test_file(tests=[tc])
         adapter = _make_adapter([_ok_result("1")])
 
@@ -266,7 +284,9 @@ class TestRunFile:
 
     def test_teardown_called_on_adapter_error(self):
         """teardown must run even if execute raises."""
-        tc = _make_test_case(id="tc", ops=[Operation(action="Evaluate", args={"expression": "1"})])
+        tc = _make_test_case(
+            id="tc", ops=[Operation(action="Evaluate", args={"expression": "1"})]
+        )
         tf = _make_test_file(tests=[tc])
 
         adapter = MagicMock()
@@ -281,8 +301,12 @@ class TestRunFile:
         adapter.teardown.assert_called_once()
 
     def test_multiple_test_cases(self):
-        tc1 = _make_test_case(id="t1", ops=[Operation(action="Evaluate", args={"expression": "1"})])
-        tc2 = _make_test_case(id="t2", ops=[Operation(action="Evaluate", args={"expression": "2"})])
+        tc1 = _make_test_case(
+            id="t1", ops=[Operation(action="Evaluate", args={"expression": "1"})]
+        )
+        tc2 = _make_test_case(
+            id="t2", ops=[Operation(action="Evaluate", args={"expression": "2"})]
+        )
         tf = _make_test_file(tests=[tc1, tc2])
         adapter = _make_adapter([_ok_result("1", "1"), _ok_result("2", "2")])
 
@@ -297,10 +321,12 @@ class TestRunFile:
         op2 = Operation(action="ToCanonical", args={"expression": "second"})
         tc = _make_test_case(id="tc", ops=[op1, op2])
         tf = _make_test_file(tests=[tc])
-        adapter = _make_adapter([
-            _ok_result("first_result", "first_norm"),
-            _ok_result("second_result", "second_norm"),
-        ])
+        adapter = _make_adapter(
+            [
+                _ok_result("first_result", "first_norm"),
+                _ok_result("second_result", "second_norm"),
+            ]
+        )
 
         snap = run_file(tf, adapter)
         assert snap.tests[0].raw_output == "second_result"

@@ -53,6 +53,9 @@ def _get_xtensor(jl: Any) -> None:
             jl.seval(f'include("{xtensor_path}")')
             # `using .XTensor` imports all XTensor exports into Main scope
             jl.seval("using .XTensor")
+            # Bring XPerm WL compat functions into Main scope
+            jl.seval("using .XTensor: XPerm")  # expose XPerm module in Main
+            jl.seval("using .XPerm")  # expose XPerm exports in Main
             _xtensor_loaded = True
 
 
@@ -65,6 +68,7 @@ def _jl_escape(s: str) -> str:
 # Context
 # ---------------------------------------------------------------------------
 
+
 class _JuliaContext:
     """Opaque per-file context for JuliaAdapter."""
 
@@ -75,6 +79,7 @@ class _JuliaContext:
 # ---------------------------------------------------------------------------
 # Adapter
 # ---------------------------------------------------------------------------
+
 
 class JuliaAdapter(TestAdapter[_JuliaContext]):
     """Concrete adapter for the Julia XCore + XTensor backend."""
@@ -113,6 +118,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             return
         try:
             from sxact.xcore._runtime import get_julia
+
             self._jl = get_julia()
             raw = self._jl.seval("string(VERSION)")
             self._julia_version = str(raw).strip()
@@ -166,6 +172,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             )
 
         self._ensure_ready()
+        _get_xtensor(self._jl)
 
         if action in self._XTENSOR_ACTIONS:
             return self._execute_xtensor(action, args)
@@ -177,8 +184,9 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             # Exception: if the expression contains a comparison operator (===) it is a
             # law-check from the property runner and must be evaluated in Julia.
             if _is_tensor_expr(expr) and "===" not in expr:
-                return Result(status="ok", type="Expr", repr=expr,
-                              normalized=_normalize(expr))
+                return Result(
+                    status="ok", type="Expr", repr=expr, normalized=_normalize(expr)
+                )
             return self._execute_expr(expr)
         if action == "Assert":
             return self._execute_assert(
@@ -187,7 +195,10 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             )
         # Unreachable if supported_actions() is correct
         return Result(
-            status="error", type="", repr="", normalized="",
+            status="error",
+            type="",
+            repr="",
+            normalized="",
             error=f"unhandled action: {action!r}",
         )
 
@@ -196,8 +207,13 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         try:
             _get_xtensor(self._jl)
         except Exception as exc:
-            return Result(status="error", type="", repr="", normalized="",
-                          error=f"XTensor load failed: {exc}")
+            return Result(
+                status="error",
+                type="",
+                repr="",
+                normalized="",
+                error=f"XTensor load failed: {exc}",
+            )
 
         try:
             if action == "DefManifold":
@@ -211,74 +227,77 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             if action == "Contract":
                 return self._contract(args)
         except Exception as exc:
-            return Result(status="error", type="", repr="", normalized="",
-                          error=str(exc))
-        return Result(status="error", type="", repr="", normalized="",
-                      error=f"unhandled xTensor action: {action!r}")
+            return Result(
+                status="error", type="", repr="", normalized="", error=str(exc)
+            )
+        return Result(
+            status="error",
+            type="",
+            repr="",
+            normalized="",
+            error=f"unhandled xTensor action: {action!r}",
+        )
 
     def _def_manifold(self, args: dict[str, Any]) -> Result:
-        name    = str(args["name"])
-        dim     = int(args["dimension"])
+        name = str(args["name"])
+        dim = int(args["dimension"])
         indices = list(args["indices"])
-        idxs    = "[" + ", ".join(f':{i}' for i in indices) + "]"
-        self._jl.seval(f'XTensor.def_manifold!(:{name}, {dim}, {idxs})')
+        idxs = "[" + ", ".join(f":{i}" for i in indices) + "]"
+        self._jl.seval(f"XTensor.def_manifold!(:{name}, {dim}, {idxs})")
         # Bind in Main scope as Symbols for Assert conditions:
         #   Dimension(Bm4) → Dimension(:Bm4); ManifoldQ(Bm4) → ManifoldQ(:Bm4)
-        self._jl.seval(f'Main.eval(:(global {name} = :{name}))')
-        self._jl.seval(f'Main.eval(:(global Tangent{name} = :Tangent{name}))')
+        self._jl.seval(f"Main.eval(:(global {name} = :{name}))")
+        self._jl.seval(f"Main.eval(:(global Tangent{name} = :Tangent{name}))")
         for idx in indices:
-            self._jl.seval(f'Main.eval(:(global {idx} = :{idx}))')
+            self._jl.seval(f"Main.eval(:(global {idx} = :{idx}))")
         return Result(status="ok", type="Handle", repr=name, normalized=name)
 
     def _def_tensor(self, args: dict[str, Any]) -> Result:
-        name     = str(args["name"])
-        indices  = args["indices"]
+        name = str(args["name"])
+        indices = args["indices"]
         manifold = str(args["manifold"])
-        sym_str  = args.get("symmetry") or ""
-        idx_jl   = "[" + ", ".join(f'"{_jl_escape(i)}"' for i in indices) + "]"
-        sym_arg  = f', symmetry_str="{_jl_escape(sym_str)}"' if sym_str else ""
-        self._jl.seval(
-            f'XTensor.def_tensor!(:{name}, {idx_jl}, :{manifold}{sym_arg})'
-        )
+        sym_str = args.get("symmetry") or ""
+        idx_jl = "[" + ", ".join(f'"{_jl_escape(i)}"' for i in indices) + "]"
+        sym_arg = f', symmetry_str="{_jl_escape(sym_str)}"' if sym_str else ""
+        self._jl.seval(f"XTensor.def_tensor!(:{name}, {idx_jl}, :{manifold}{sym_arg})")
         # Bind tensor name in Main as a Symbol for TensorQ(Bts) etc.
-        self._jl.seval(f'Main.eval(:(global {name} = :{name}))')
+        self._jl.seval(f"Main.eval(:(global {name} = :{name}))")
         return Result(status="ok", type="Handle", repr=name, normalized=name)
 
     def _def_metric(self, args: dict[str, Any]) -> Result:
         import re as _re
-        signdet    = int(args["signdet"])
+
+        signdet = int(args["signdet"])
         metric_raw = str(args["metric"])
         metric_str = _jl_escape(metric_raw)
-        covd       = str(args["covd"])
-        self._jl.seval(
-            f'XTensor.def_metric!({signdet}, "{metric_str}", :{covd})'
-        )
+        covd = str(args["covd"])
+        self._jl.seval(f'XTensor.def_metric!({signdet}, "{metric_str}", :{covd})')
         # Bind the metric tensor name in Main as a Symbol (for SignDetOfMetric assertions)
-        m_name_match = _re.match(r'^(\w+)', metric_raw)
+        m_name_match = _re.match(r"^(\w+)", metric_raw)
         if m_name_match:
             metric_name = m_name_match.group(1)
-            self._jl.seval(f'Main.eval(:(global {metric_name} = :{metric_name}))')
+            self._jl.seval(f"Main.eval(:(global {metric_name} = :{metric_name}))")
         # Bind auto-created curvature tensor names in Main as Symbols
         for prefix in ("Riemann", "Ricci", "RicciScalar", "Einstein", "Weyl"):
             auto_name = f"{prefix}{covd}"
             self._jl.seval(
-                f'if XTensor.TensorQ(:{auto_name})\n'
-                f'    Main.eval(:(global {auto_name} = :{auto_name}))\n'
-                f'end'
+                f"if XTensor.TensorQ(:{auto_name})\n"
+                f"    Main.eval(:(global {auto_name} = :{auto_name}))\n"
+                f"end"
             )
         repr_str = metric_raw
         return Result(status="ok", type="Handle", repr=repr_str, normalized=repr_str)
 
     def _to_canonical(self, args: dict[str, Any]) -> Result:
-        expr   = _jl_escape(str(args["expression"]))
+        expr = _jl_escape(str(args["expression"]))
         result = self._jl.seval(f'XTensor.ToCanonical("{expr}")')
-        raw    = str(result)
+        raw = str(result)
         return Result(status="ok", type="Expr", repr=raw, normalized=_normalize(raw))
 
     def _contract(self, args: dict[str, Any]) -> Result:
-        expr   = _jl_escape(str(args["expression"]))
+        expr = _jl_escape(str(args["expression"]))
         result = self._jl.seval(f'XTensor.Contract("{expr}")')
-        raw    = str(result)
+        raw = str(result)
         return Result(status="ok", type="Expr", repr=raw, normalized=_normalize(raw))
 
     def _execute_expr(self, wolfram_expr: str) -> Result:
@@ -313,8 +332,11 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 return Result(status="ok", type="Bool", repr="True", normalized="True")
             msg = message or f"Assertion failed: {wolfram_condition!r}"
             return Result(
-                status="error", type="Bool",
-                repr=str(passed), normalized=str(passed), error=msg,
+                status="error",
+                type="Bool",
+                repr=str(passed),
+                normalized=str(passed),
+                error=msg,
             )
 
         # Check for tensor // ToCanonical === value patterns (with optional || prefix).
@@ -328,8 +350,11 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 return Result(status="ok", type="Bool", repr="True", normalized="True")
             msg = message or f"Assertion failed: {wolfram_condition!r}"
             return Result(
-                status="error", type="Bool",
-                repr=str(passed), normalized=str(passed), error=msg,
+                status="error",
+                type="Bool",
+                repr=str(passed),
+                normalized=str(passed),
+                error=msg,
             )
 
         julia_cond = _wl_to_jl(wolfram_condition)
@@ -377,7 +402,9 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
     # Introspection
     # ------------------------------------------------------------------
 
-    def get_properties(self, expr: str, ctx: _JuliaContext | None = None) -> dict[str, Any]:
+    def get_properties(
+        self, expr: str, ctx: _JuliaContext | None = None
+    ) -> dict[str, Any]:
         return {}
 
     def get_version(self) -> VersionInfo:
@@ -396,6 +423,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
 # ---------------------------------------------------------------------------
 # Wolfram → Julia syntax translator
 # ---------------------------------------------------------------------------
+
 
 def _try_tensor_string_comparison(condition: str) -> tuple[bool, str, str] | None:
     """If `condition` is a tensor-expression string comparison, return (passed, lhs, rhs).
@@ -418,7 +446,9 @@ def _try_tensor_string_comparison(condition: str) -> tuple[bool, str, str] | Non
     return None
 
 
-def _try_to_canonical_comparison(condition: str, jl: Any) -> tuple[bool, str, str] | None:
+def _try_to_canonical_comparison(
+    condition: str, jl: Any
+) -> tuple[bool, str, str] | None:
     """Handle conditions of the form: tensor_expr // ToCanonical === value.
 
     Also handles OR conditions: "clause1 || tensor_expr // ToCanonical === value"
@@ -458,7 +488,7 @@ def _try_to_canonical_comparison(condition: str, jl: Any) -> tuple[bool, str, st
     return _try_single_to_canonical_comparison(condition, jl)
 
 
-_TENSOR_Q_RE = re.compile(r'^TensorQ\[(\w+)(?:\[.*\])?\]$')
+_TENSOR_Q_RE = re.compile(r"^TensorQ\[(\w+)(?:\[.*\])?\]$")
 
 
 def _try_tensor_q(condition: str, jl: Any) -> tuple[bool, str, str] | None:
@@ -474,7 +504,7 @@ def _try_tensor_q(condition: str, jl: Any) -> tuple[bool, str, str] | None:
         return None
     tensor_name = m.group(1)
     try:
-        val = jl.seval(f'XTensor.TensorQ(:{tensor_name})')
+        val = jl.seval(f"XTensor.TensorQ(:{tensor_name})")
         if val is True or str(val).lower() == "true":
             return (True, "True", "True")
         return (False, "False", "True")
@@ -482,7 +512,9 @@ def _try_tensor_q(condition: str, jl: Any) -> tuple[bool, str, str] | None:
         return None
 
 
-def _try_single_to_canonical_comparison(condition: str, jl: Any) -> tuple[bool, str, str] | None:
+def _try_single_to_canonical_comparison(
+    condition: str, jl: Any
+) -> tuple[bool, str, str] | None:
     """Handle a single (no ||) condition of the form: tensor_expr // ToCanonical === value."""
     # Pattern: something // ToCanonical === something_else
     # Split on " === " first to find the comparison value
@@ -525,7 +557,7 @@ def _try_single_to_canonical_comparison(condition: str, jl: Any) -> tuple[bool, 
 # Regex matching fresh property-test symbols generated by property_runner.py.
 # Pattern: "px" + one-or-more uppercase letters + generator name (lowercase) + suffix (lowercase).
 # Examples: pxBAGsbq, pxKBIsbr, pxBKYsbt, pxLYPabu
-_FRESH_SYMBOL_RE = re.compile(r'\bpx[A-Z]+[a-z]+\b')
+_FRESH_SYMBOL_RE = re.compile(r"\bpx[A-Z]+[a-z]+\b")
 
 
 def _bind_fresh_symbols(jl: Any, julia_expr: str) -> None:
@@ -538,7 +570,7 @@ def _bind_fresh_symbols(jl: Any, julia_expr: str) -> None:
     ``Symbol`` arguments receive the right value.
     """
     for sym in _FRESH_SYMBOL_RE.findall(julia_expr):
-        jl.seval(f'Main.eval(:(global {sym} = :{sym}))')
+        jl.seval(f"Main.eval(:(global {sym} = :{sym}))")
 
 
 _WL_KEYWORDS: dict[str, str] = {
@@ -548,8 +580,12 @@ _WL_KEYWORDS: dict[str, str] = {
     "Length": "length",
 }
 
-# Regex that matches tensor index notation: Name[-abc, xyz, ...]
-_TENSOR_EXPR_RE = re.compile(r'\w+\[-?\w')
+# Regex that matches tensor index notation.
+# Two patterns combined (either is sufficient):
+#   1. `-[a-z]`         — covariant index: Sps[-spa], Riemann[-a,-b]
+#   2. `\w+\[[a-z]{2,}` — contravariant multi-letter index: Conv[coa], QGTorsion[qga,...]
+# xPerm uses integers, single-letter lowercase, or capitalized names — none match.
+_TENSOR_EXPR_RE = re.compile(r"-[a-z]|\w+\[[a-z]{2,}")
 
 
 def _is_tensor_expr(expr: str) -> bool:
@@ -572,7 +608,7 @@ def _top_level_split(s: str, sep: str) -> list[str]:
         elif ch in ")]}":
             depth -= 1
             current.append(ch)
-        elif s[i:i+len(sep)] == sep and depth == 0:
+        elif s[i : i + len(sep)] == sep and depth == 0:
             parts.append("".join(current))
             current = []
             i += len(sep)
@@ -599,16 +635,16 @@ def _rewrite_postfix(expr: str) -> str:
                 depth += 1
             elif ch in ")]}":
                 depth -= 1
-            elif ch == "/" and depth == 0 and i + 1 < len(expr) and expr[i+1] == "/":
+            elif ch == "/" and depth == 0 and i + 1 < len(expr) and expr[i + 1] == "/":
                 pos = i
                 break
         if pos == -1:
             break
         lhs = expr[:pos].rstrip()
-        rhs = expr[pos+2:].lstrip()
+        rhs = expr[pos + 2 :].lstrip()
         # rhs should be a function name (possibly with args), or just a name
         # Wrap: f(lhs) if rhs is a bare name; f(lhs, ...) if rhs has args
-        m = re.match(r'^([A-Za-z_]\w*)$', rhs)
+        m = re.match(r"^([A-Za-z_]\w*)$", rhs)
         if m:
             expr = f"{rhs}({lhs})"
         else:
@@ -640,7 +676,7 @@ def _wl_to_jl(expr: str) -> str:
     expr = _rewrite_postfix(expr)
 
     # Strip dollar-prefix from $Name patterns
-    expr = re.sub(r'\$([A-Za-z_]\w*)', r'\1', expr)
+    expr = re.sub(r"\$([A-Za-z_]\w*)", r"\1", expr)
 
     # Replace === before the character pass so the placeholder is unambiguous
     expr = expr.replace("===", "\x00")
@@ -657,35 +693,35 @@ def _wl_to_jl(expr: str) -> str:
         if ch == '"':
             j = i + 1
             while j < n:
-                if expr[j] == '\\':
+                if expr[j] == "\\":
                     j += 2
                     continue
                 if expr[j] == '"':
                     break
                 j += 1
-            out.append(expr[i:j + 1])
+            out.append(expr[i : j + 1])
             i = j + 1
             continue
 
         # Identifier: may be a keyword-mapped name or a function call
-        if ch.isalpha() or ch == '_':
+        if ch.isalpha() or ch == "_":
             j = i
-            while j < n and (expr[j].isalnum() or expr[j] == '_'):
+            while j < n and (expr[j].isalnum() or expr[j] == "_"):
                 j += 1
             name = expr[i:j]
-            if j < n and expr[j] == '[':
+            if j < n and expr[j] == "[":
                 if name == "SubsetQ":
                     # SubsetQ[A, B] → issubset(B, A): reverse args, emit placeholder
                     # Find the matching ]
                     depth2 = 1
                     k = j + 1
                     while k < n and depth2 > 0:
-                        if expr[k] == '[':
+                        if expr[k] == "[":
                             depth2 += 1
-                        elif expr[k] == ']':
+                        elif expr[k] == "]":
                             depth2 -= 1
                         k += 1
-                    inner = expr[j+1:k-1]
+                    inner = expr[j + 1 : k - 1]
                     # Split on top-level comma
                     parts = _top_level_split(inner, ",")
                     if len(parts) == 2:
@@ -698,8 +734,8 @@ def _wl_to_jl(expr: str) -> str:
                 else:
                     # Function call: translate name if keyword-mapped, then emit name(
                     translated = _WL_KEYWORDS.get(name, name)
-                    out.append(translated + '(')
-                    stack.append('call')
+                    out.append(translated + "(")
+                    stack.append("call")
                     i = j + 1
             else:
                 out.append(_WL_KEYWORDS.get(name, name))
@@ -707,46 +743,46 @@ def _wl_to_jl(expr: str) -> str:
             continue
 
         # List open {
-        if ch == '{':
-            out.append('[')
-            stack.append('list')
+        if ch == "{":
+            out.append("[")
+            stack.append("list")
             i += 1
             continue
 
         # List close }
-        if ch == '}':
-            out.append(']')
-            if stack and stack[-1] == 'list':
+        if ch == "}":
+            out.append("]")
+            if stack and stack[-1] == "list":
                 stack.pop()
             i += 1
             continue
 
         # Close bracket ] — closes a function call or a bare list
-        if ch == ']':
-            if stack and stack[-1] == 'call':
-                out.append(')')
+        if ch == "]":
+            if stack and stack[-1] == "call":
+                out.append(")")
                 stack.pop()
             else:
-                out.append(']')
-                if stack and stack[-1] == 'list':
+                out.append("]")
+                if stack and stack[-1] == "list":
                     stack.pop()
             i += 1
             continue
 
         # Bare open bracket [ (shouldn't appear in Wolfram, but handle safely)
-        if ch == '[':
-            out.append('[')
-            stack.append('list')
+        if ch == "[":
+            out.append("[")
+            stack.append("list")
             i += 1
             continue
 
         # Equality placeholder (was ===)
-        if ch == '\x00':
-            out.append('==')
+        if ch == "\x00":
+            out.append("==")
             i += 1
             continue
 
         out.append(ch)
         i += 1
 
-    return ''.join(out)
+    return "".join(out)

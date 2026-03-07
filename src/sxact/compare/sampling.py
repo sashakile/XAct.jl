@@ -20,8 +20,9 @@ from __future__ import annotations
 
 import random
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -35,11 +36,12 @@ if TYPE_CHECKING:
 # Sample — single realization
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Sample:
     """Result of a single numeric sample comparison."""
 
-    substitution: dict[str, float | np.ndarray]
+    substitution: Mapping[str, float | np.ndarray[Any, np.dtype[Any]]]
     lhs_value: float | None
     rhs_value: float | None
     match: bool
@@ -49,6 +51,7 @@ class Sample:
 # ---------------------------------------------------------------------------
 # SamplingResult — aggregate of multiple realizations
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SamplingResult:
@@ -73,12 +76,15 @@ class SamplingResult:
             return cls(samples=[], confidence=0.0, equal=False)
         matches = sum(1 for s in samples if s.match)
         confidence = matches / len(samples)
-        return cls(samples=samples, confidence=confidence, equal=confidence >= threshold)
+        return cls(
+            samples=samples, confidence=confidence, equal=confidence >= threshold
+        )
 
 
 # ---------------------------------------------------------------------------
 # Tensor substitution context
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class TensorContext:
@@ -94,8 +100,12 @@ class TensorContext:
     """
 
     manifolds: dict[str, "Manifold"] = field(default_factory=dict)
-    metric_arrays: dict[str, np.ndarray] = field(default_factory=dict)
-    tensor_arrays: dict[str, np.ndarray] = field(default_factory=dict)
+    metric_arrays: dict[str, np.ndarray[Any, np.dtype[Any]]] = field(
+        default_factory=dict
+    )
+    tensor_arrays: dict[str, np.ndarray[Any, np.dtype[Any]]] = field(
+        default_factory=dict
+    )
 
 
 def build_tensor_context(
@@ -134,6 +144,7 @@ def build_tensor_context(
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def sample_numeric(
     lhs: "Result",
@@ -191,14 +202,43 @@ def sample_numeric(
 _MATH_CONSTANTS = frozenset({"e", "i", "E", "I", "Pi"})
 
 # Wolfram built-in operator heads whose arguments are free expressions (not indices).
-_WOLFRAM_OPERATORS = frozenset({
-    "Plus", "Times", "Power", "Subtract", "Minus", "Divide",
-    "Sin", "Cos", "Tan", "ArcSin", "ArcCos", "ArcTan",
-    "Sinh", "Cosh", "Tanh", "ArcSinh", "ArcCosh", "ArcTanh",
-    "Exp", "Log", "Log10", "Log2", "Sqrt", "Abs",
-    "Re", "Im", "Conjugate", "Factorial",
-    "N", "Simplify", "FullSimplify", "Expand", "Factor",
-})
+_WOLFRAM_OPERATORS = frozenset(
+    {
+        "Plus",
+        "Times",
+        "Power",
+        "Subtract",
+        "Minus",
+        "Divide",
+        "Sin",
+        "Cos",
+        "Tan",
+        "ArcSin",
+        "ArcCos",
+        "ArcTan",
+        "Sinh",
+        "Cosh",
+        "Tanh",
+        "ArcSinh",
+        "ArcCosh",
+        "ArcTanh",
+        "Exp",
+        "Log",
+        "Log10",
+        "Log2",
+        "Sqrt",
+        "Abs",
+        "Re",
+        "Im",
+        "Conjugate",
+        "Factorial",
+        "N",
+        "Simplify",
+        "FullSimplify",
+        "Expand",
+        "Factor",
+    }
+)
 
 _IDENT_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]*$")
 
@@ -238,6 +278,7 @@ def _extract_variables(expr: str) -> set[str]:
     """
     try:
         from sxact.normalize.ast_parser import parse
+
         tree = parse(expr)
         return _collect_ast_vars(tree) - _MATH_CONSTANTS
     except Exception:
@@ -293,6 +334,7 @@ def _evaluate_numeric_diff(
 # Internal helpers — tensors
 # ---------------------------------------------------------------------------
 
+
 def _evaluate_with_tensor_ctx(
     lhs_expr: str,
     rhs_expr: str,
@@ -315,7 +357,7 @@ def _evaluate_with_tensor_ctx(
         wl_array = _numpy_to_wl(arr)
         rules_parts.append(f"{name} -> {wl_array}")
 
-    substitution_repr: dict[str, float | np.ndarray] = {
+    substitution_repr: dict[str, float | np.ndarray[Any, np.dtype[Any]]] = {
         **ctx.metric_arrays,
         **ctx.tensor_arrays,
     }
@@ -345,7 +387,7 @@ def _evaluate_with_tensor_ctx(
         return None
 
 
-def _numpy_to_wl(arr: np.ndarray) -> str:
+def _numpy_to_wl(arr: np.ndarray[Any, np.dtype[Any]]) -> str:
     """Convert a numpy array to a Wolfram List literal.
 
     Examples:

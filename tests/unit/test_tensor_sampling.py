@@ -28,6 +28,7 @@ from sxact.compare.sampling import (
 # Manifold / Metric / TensorField dataclasses
 # ---------------------------------------------------------------------------
 
+
 class TestManifold:
     def test_basic_creation(self):
         m = Manifold("M", 4)
@@ -42,6 +43,7 @@ class TestManifold:
 class TestRandomManifold:
     def test_dimension_in_range(self):
         import random
+
         rng = random.Random(42)
         for _ in range(20):
             m = random_manifold(rng=rng)
@@ -76,7 +78,9 @@ class TestRandomMetricArray:
         metric = Metric("g", m, signature=1)
         arr = random_metric_array(metric, np.random.default_rng(2))
         eigenvalues = np.linalg.eigvalsh(arr)
-        assert (eigenvalues < 0).sum() == 1, "Lorentzian metric should have 1 negative eigenvalue"
+        assert (eigenvalues < 0).sum() == 1, (
+            "Lorentzian metric should have 1 negative eigenvalue"
+        )
 
 
 class TestRandomTensorArray:
@@ -117,6 +121,7 @@ class TestRandomTensorArray:
 # Symmetrize / Antisymmetrize internals
 # ---------------------------------------------------------------------------
 
+
 class TestSymmetrize:
     def test_rank2_result_symmetric(self):
         arr = np.array([[1.0, 2.0], [3.0, 4.0]])
@@ -145,6 +150,7 @@ class TestAntisymmetrize:
 # SamplingResult
 # ---------------------------------------------------------------------------
 
+
 class TestSamplingResult:
     def test_empty_samples(self):
         r = SamplingResult.from_samples([])
@@ -164,10 +170,9 @@ class TestSamplingResult:
         assert r.confidence == 0.0
 
     def test_partial_confidence(self):
-        samples = (
-            [Sample({}, None, None, True) for _ in range(9)]
-            + [Sample({}, None, None, False)]
-        )
+        samples = [Sample({}, None, None, True) for _ in range(9)] + [
+            Sample({}, None, None, False)
+        ]
         r = SamplingResult.from_samples(samples, threshold=0.95)
         # 9/10 = 0.9 < 0.95 threshold → not equal
         assert not r.equal
@@ -177,6 +182,7 @@ class TestSamplingResult:
 # ---------------------------------------------------------------------------
 # TensorContext / build_tensor_context
 # ---------------------------------------------------------------------------
+
 
 class TestBuildTensorContext:
     def test_empty_context(self):
@@ -204,6 +210,7 @@ class TestBuildTensorContext:
 # _numpy_to_wl
 # ---------------------------------------------------------------------------
 
+
 class TestNumpyToWl:
     def test_scalar(self):
         arr = np.array(3.14)
@@ -227,6 +234,7 @@ class TestNumpyToWl:
 # ---------------------------------------------------------------------------
 # _extract_variables (regression: unchanged behavior)
 # ---------------------------------------------------------------------------
+
 
 class TestExtractVariables:
     def test_single_letter(self):

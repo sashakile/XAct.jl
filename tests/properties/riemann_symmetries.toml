@@ -1,0 +1,339 @@
+# tests/properties/riemann_symmetries.toml
+# Layer 2: Riemann curvature tensor symmetry invariants.
+#
+# These encode the four fundamental Riemann tensor symmetries from
+# Wald (1984) Section 3.2, verified via numeric sampling with random metrics.
+# All properties use equivalence_type = "numerical_tolerance".
+#
+# Design spec: specs/2026-03-05-property-test-design.md §Q5
+
+version     = "1.0"
+layer       = "property"
+description = "Riemann curvature tensor symmetry invariants (Layer 2 research contribution)"
+
+# Setup: 4D Lorentzian manifold with metric for Riemann tensor tests.
+[[setup]]
+action = "DefManifold"
+[setup.args]
+name      = "PM4"
+dimension = 4
+indices   = ["pa", "pb", "pc", "pd", "pe", "pf"]
+
+[[setup]]
+action = "DefMetric"
+[setup.args]
+signdet = -1
+metric  = "Pg[-pa,-pb]"
+covd    = "PCD"
+
+# ---------------------------------------------------------------------------
+# Property 1: Riemann antisymmetry in first index pair
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "riemann_antisymmetric_first_pair"
+name = "Riemann is antisymmetric in its first index pair"
+tags = ["xtensor", "riemann", "symmetry", "property", "critical"]
+
+[properties.mathematical_basis]
+law_name  = "Riemann first-pair antisymmetry"
+reference = "Wald, General Relativity (1984), Eq. 3.2.14"
+statement = "R_{abcd} = -R_{bacd}  ↔  R_{abcd} + R_{bacd} = 0"
+
+[properties.forall]
+[[properties.forall.generators]]
+name      = "g"
+type      = "Metric"
+manifold  = "PM4"
+signature = "Lorentzian"
+
+[properties.law]
+lhs              = "RiemannPCD[-pa,-pb,-pc,-pd] + RiemannPCD[-pb,-pa,-pc,-pd]"
+rhs              = "0"
+equivalence_type = "numerical_tolerance"
+tolerance        = 1e-12
+
+[properties.verification]
+num_samples = 30
+random_seed = 100
+
+# ---------------------------------------------------------------------------
+# Property 2: Riemann antisymmetry in second index pair
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "riemann_antisymmetric_second_pair"
+name = "Riemann is antisymmetric in its second index pair"
+tags = ["xtensor", "riemann", "symmetry", "property", "critical"]
+
+[properties.mathematical_basis]
+law_name  = "Riemann second-pair antisymmetry"
+reference = "Wald, General Relativity (1984), Eq. 3.2.15"
+statement = "R_{abcd} = -R_{abdc}  ↔  R_{abcd} + R_{abdc} = 0"
+
+[properties.forall]
+[[properties.forall.generators]]
+name      = "g"
+type      = "Metric"
+manifold  = "PM4"
+signature = "Lorentzian"
+
+[properties.law]
+lhs              = "RiemannPCD[-pa,-pb,-pc,-pd] + RiemannPCD[-pa,-pb,-pd,-pc]"
+rhs              = "0"
+equivalence_type = "numerical_tolerance"
+tolerance        = 1e-12
+
+[properties.verification]
+num_samples = 30
+random_seed = 101
+
+# ---------------------------------------------------------------------------
+# Property 3: Riemann pair-exchange symmetry
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "riemann_pair_exchange"
+name = "Riemann tensor is symmetric under exchange of index pairs"
+tags = ["xtensor", "riemann", "symmetry", "property", "critical"]
+
+[properties.mathematical_basis]
+law_name  = "Riemann pair exchange symmetry"
+reference = "Wald, General Relativity (1984), Eq. 3.2.16"
+statement = "R_{abcd} = R_{cdab}"
+
+[properties.forall]
+[[properties.forall.generators]]
+name      = "g"
+type      = "Metric"
+manifold  = "PM4"
+signature = "Lorentzian"
+
+[properties.law]
+lhs              = "RiemannPCD[-pa,-pb,-pc,-pd] - RiemannPCD[-pc,-pd,-pa,-pb]"
+rhs              = "0"
+equivalence_type = "numerical_tolerance"
+tolerance        = 1e-12
+
+[properties.verification]
+num_samples = 30
+random_seed = 102
+
+# ---------------------------------------------------------------------------
+# Property 4: First Bianchi identity (algebraic Bianchi identity)
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "first_bianchi_identity"
+name = "First Bianchi identity: R_{abcd} + R_{acdb} + R_{adbc} = 0"
+tags = ["xtensor", "riemann", "bianchi", "property", "critical"]
+
+[properties.mathematical_basis]
+law_name  = "Algebraic Bianchi identity (first Bianchi)"
+reference = "Wald, General Relativity (1984), Eq. 3.2.12"
+statement = "R_{a[bcd]} = 0  ↔  R_{abcd} + R_{acdb} + R_{adbc} = 0"
+
+[properties.forall]
+[[properties.forall.generators]]
+name      = "g"
+type      = "Metric"
+manifold  = "PM4"
+signature = "Lorentzian"
+
+[properties.law]
+lhs              = "RiemannPCD[-pa,-pb,-pc,-pd] + RiemannPCD[-pa,-pc,-pd,-pb] + RiemannPCD[-pa,-pd,-pb,-pc]"
+rhs              = "0"
+equivalence_type = "numerical_tolerance"
+tolerance        = 1e-12
+
+[properties.verification]
+num_samples = 30
+random_seed = 103
+
+# ---------------------------------------------------------------------------
+# Property 5: Ricci tensor symmetry (derived from Riemann pair exchange)
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "ricci_symmetry"
+name = "Ricci tensor is symmetric: Ric_{ab} = Ric_{ba}"
+tags = ["xtensor", "ricci", "symmetry", "property"]
+
+[properties.mathematical_basis]
+law_name  = "Ricci tensor symmetry"
+reference = "Wald, General Relativity (1984), Section 3.2"
+statement = "Ric_{ab} = R^c{}_{acb} is symmetric: Ric_{ab} = Ric_{ba}"
+
+[properties.forall]
+[[properties.forall.generators]]
+name      = "g"
+type      = "Metric"
+manifold  = "PM4"
+signature = "Lorentzian"
+
+[properties.law]
+lhs              = "RicciPCD[-pa,-pb] - RicciPCD[-pb,-pa]"
+rhs              = "0"
+equivalence_type = "numerical_tolerance"
+tolerance        = 1e-12
+
+[properties.verification]
+num_samples = 30
+random_seed = 104
+
+# ---------------------------------------------------------------------------
+# Property 6: Metric symmetry (g_{ab} = g_{ba})
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "metric_symmetry"
+name = "Metric tensor is symmetric"
+tags = ["xtensor", "metric", "symmetry", "property"]
+
+[properties.mathematical_basis]
+law_name  = "Metric symmetry"
+reference = "Wald, General Relativity (1984), Appendix B.1"
+statement = "g_{ab} = g_{ba}: the metric tensor is a symmetric bilinear form"
+
+[properties.forall]
+[[properties.forall.generators]]
+name      = "g"
+type      = "Metric"
+manifold  = "PM4"
+signature = "Lorentzian"
+
+[properties.law]
+lhs              = "Pg[-pa,-pb] - Pg[-pb,-pa]"
+rhs              = "0"
+equivalence_type = "numerical_tolerance"
+tolerance        = 1e-12
+
+[properties.verification]
+num_samples = 30
+random_seed = 105
+
+# ---------------------------------------------------------------------------
+# Property 7: ToCanonical idempotency
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "tocanonical_idempotent"
+name = "ToCanonical applied twice equals applied once"
+tags = ["xtensor", "canonicalization", "property"]
+
+[properties.mathematical_basis]
+law_name  = "ToCanonical idempotency"
+reference = "xAct xTensor documentation"
+statement = "ToCanonical(ToCanonical(e)) == ToCanonical(e) for any tensor expression e"
+
+[properties.forall]
+[[properties.forall.generators]]
+name      = "T"
+type      = "Tensor"
+manifold  = "PM4"
+rank      = 2
+symmetry  = "none"
+
+[properties.law]
+lhs              = "ToCanonical[ToCanonical[$T[-pa,-pb]]]"
+rhs              = "ToCanonical[$T[-pa,-pb]]"
+equivalence_type = "numerical_tolerance"
+tolerance        = 1e-12
+
+[properties.verification]
+num_samples = 20
+random_seed = 106
+
+# ---------------------------------------------------------------------------
+# Property 8: Kronecker delta contraction is identity
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "kronecker_delta_contraction"
+name = "Contracting with Kronecker delta is identity: T^a delta_a^b == T^b"
+tags = ["xtensor", "contraction", "delta", "property"]
+
+[properties.mathematical_basis]
+law_name  = "Kronecker delta identity property"
+reference = "Standard tensor algebra"
+statement = "For any vector V^a, V^a delta_a^b = V^b"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "V"
+type     = "Tensor"
+manifold = "PM4"
+rank     = 1
+symmetry = "none"
+
+[properties.law]
+lhs              = "Pg[pa,pb] Pg[-pa,-pc] $V[pc]"
+rhs              = "$V[pb]"
+equivalence_type = "numerical_tolerance"
+tolerance        = 1e-12
+
+[properties.verification]
+num_samples = 30
+random_seed = 107
+
+# ---------------------------------------------------------------------------
+# Property 9: Metric compatibility (covariant derivative of metric is zero)
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "metric_compatibility"
+name = "Covariant derivative of metric vanishes: ∇_c g_{ab} = 0"
+tags = ["xtensor", "covariant-derivative", "metric", "property", "critical"]
+
+[properties.mathematical_basis]
+law_name  = "Metric compatibility (Levi-Civita condition)"
+reference = "Wald, General Relativity (1984), Eq. 3.1.14"
+statement = "∇_c g_{ab} = 0 for the Levi-Civita connection associated with g"
+
+[properties.forall]
+[[properties.forall.generators]]
+name      = "g"
+type      = "Metric"
+manifold  = "PM4"
+signature = "Lorentzian"
+
+[properties.law]
+lhs              = "PCD[-pc][Pg[-pa,-pb]]"
+rhs              = "0"
+equivalence_type = "numerical_tolerance"
+tolerance        = 1e-12
+
+[properties.verification]
+num_samples = 20
+random_seed = 108
+
+# ---------------------------------------------------------------------------
+# Property 10: Second Bianchi identity (differential Bianchi identity)
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "second_bianchi_identity"
+name = "Second Bianchi identity: ∇_e R_{abcd} + ∇_c R_{abde} + ∇_d R_{abec} = 0"
+tags = ["xtensor", "riemann", "bianchi", "covariant-derivative", "property", "critical"]
+
+[properties.mathematical_basis]
+law_name  = "Differential Bianchi identity (second Bianchi)"
+reference = "Wald, General Relativity (1984), Eq. 3.2.12"
+statement = "∇_{[e} R_{ab|cd]} = 0, i.e., ∇_e R_{abcd} + ∇_c R_{abde} + ∇_d R_{abec} = 0"
+
+[properties.forall]
+[[properties.forall.generators]]
+name      = "g"
+type      = "Metric"
+manifold  = "PM4"
+signature = "Lorentzian"
+
+[properties.law]
+lhs              = "PCD[-pe][RiemannPCD[-pa,-pb,-pc,-pd]] + PCD[-pc][RiemannPCD[-pa,-pb,-pd,-pe]] + PCD[-pd][RiemannPCD[-pa,-pb,-pe,-pc]]"
+rhs              = "0"
+equivalence_type = "numerical_tolerance"
+tolerance        = 1e-12
+
+[properties.verification]
+num_samples = 15
+random_seed = 109

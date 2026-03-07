@@ -32,13 +32,17 @@ using .XTensor
         def_manifold!(:Tm4, 4, [:tma, :tmb, :tmc, :tmd])
 
         # Symmetric tensor
-        ts = def_tensor!(:TmS, ["-tma", "-tmb"], :Tm4; symmetry_str="Symmetric[{-tma,-tmb}]")
+        ts = def_tensor!(
+            :TmS, ["-tma", "-tmb"], :Tm4; symmetry_str="Symmetric[{-tma,-tmb}]"
+        )
         @test TensorQ(:TmS)
         @test ts.symmetry.type == :Symmetric
         @test ts.symmetry.slots == [1, 2]
 
         # Antisymmetric tensor
-        ta = def_tensor!(:TmA, ["-tma", "-tmb"], :Tm4; symmetry_str="Antisymmetric[{-tma,-tmb}]")
+        ta = def_tensor!(
+            :TmA, ["-tma", "-tmb"], :Tm4; symmetry_str="Antisymmetric[{-tma,-tmb}]"
+        )
         @test ta.symmetry.type == :Antisymmetric
 
         # No symmetry
@@ -111,7 +115,7 @@ using .XTensor
         def_tensor!(:Cnv, ["cna"], :Cnm)
 
         expr = "Cns[-cna,-cnb] + Cnv[cna]"
-        once  = ToCanonical(expr)
+        once = ToCanonical(expr)
         twice = ToCanonical(once)
         @test once == twice
     end
@@ -122,15 +126,21 @@ using .XTensor
         def_metric!(-1, "Cng[-cna,-cnb]", :Cnd)
 
         # R[-a,-b,-c,-d] + R[-b,-a,-c,-d] == 0
-        result = ToCanonical("RiemannCnd[-cna,-cnb,-cnc,-cnd] + RiemannCnd[-cnb,-cna,-cnc,-cnd]")
+        result = ToCanonical(
+            "RiemannCnd[-cna,-cnb,-cnc,-cnd] + RiemannCnd[-cnb,-cna,-cnc,-cnd]"
+        )
         @test result == "0"
 
         # R[-a,-b,-c,-d] + R[-a,-b,-d,-c] == 0
-        result2 = ToCanonical("RiemannCnd[-cna,-cnb,-cnc,-cnd] + RiemannCnd[-cna,-cnb,-cnd,-cnc]")
+        result2 = ToCanonical(
+            "RiemannCnd[-cna,-cnb,-cnc,-cnd] + RiemannCnd[-cna,-cnb,-cnd,-cnc]"
+        )
         @test result2 == "0"
 
         # R[-a,-b,-c,-d] - R[-c,-d,-a,-b] == 0 (pair exchange)
-        result3 = ToCanonical("RiemannCnd[-cna,-cnb,-cnc,-cnd] - RiemannCnd[-cnc,-cnd,-cna,-cnb]")
+        result3 = ToCanonical(
+            "RiemannCnd[-cna,-cnb,-cnc,-cnd] - RiemannCnd[-cnc,-cnd,-cna,-cnb]"
+        )
         @test result3 == "0"
     end
 
@@ -139,8 +149,8 @@ using .XTensor
         def_manifold!(:Cnm, 4, [:cna, :cnb, :cnc, :cnd])
         def_metric!(-1, "Cng[-cna,-cnb]", :Cnd)
 
-        expr  = "RiemannCnd[-cna,-cnb,-cnc,-cnd]"
-        once  = ToCanonical(expr)
+        expr = "RiemannCnd[-cna,-cnb,-cnc,-cnd]"
+        once = ToCanonical(expr)
         twice = ToCanonical(once)
         @test once == twice
     end
@@ -152,15 +162,21 @@ using .XTensor
 
         # Kretschner: R[-a,-b,-c,-d] R[a,b,c,d] - R[-c,-d,-a,-b] R[c,d,a,b] = 0
         # (dummy relabeling + pair exchange)
-        result = ToCanonical("RiemannCID[-cia,-cib,-cic,-cid] RiemannCID[cia,cib,cic,cid] - RiemannCID[-cic,-cid,-cia,-cib] RiemannCID[cic,cid,cia,cib]")
+        result = ToCanonical(
+            "RiemannCID[-cia,-cib,-cic,-cid] RiemannCID[cia,cib,cic,cid] - RiemannCID[-cic,-cid,-cia,-cib] RiemannCID[cic,cid,cia,cib]",
+        )
         @test result == "0"
     end
 
     @testset "ToCanonical — torsion partial-slot antisymmetry" begin
         reset_state!()
         def_manifold!(:QGM4, 4, [:qga, :qgb, :qgc, :qgd, :qge, :qgf])
-        def_tensor!(:QGTorsion, ["qga", "-qgb", "-qgc"], :QGM4;
-                    symmetry_str="Antisymmetric[{-qgb,-qgc}]")
+        def_tensor!(
+            :QGTorsion,
+            ["qga", "-qgb", "-qgc"],
+            :QGM4;
+            symmetry_str="Antisymmetric[{-qgb,-qgc}]",
+        )
 
         # QGTorsion[a,-b,-c] + QGTorsion[a,-c,-b] == 0
         result = ToCanonical("QGTorsion[qga,-qgb,-qgc] + QGTorsion[qga,-qgc,-qgb]")
@@ -213,5 +229,4 @@ using .XTensor
             Contract("CIg[cxa,cxb] EinsteinCxD[-cxa,-cxb]") * " + RicciScalarCxD[]"
         ) == "0"
     end
-
 end

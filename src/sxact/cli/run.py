@@ -18,6 +18,7 @@ from typing import Any
 # Shared internal types
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class _RunResult:
     """Outcome of a single test case within xact-test run."""
@@ -37,7 +38,7 @@ class _RunResult:
 _REF_RE = re.compile(r"\$(\w+)")
 
 
-def _make_adapter(args: argparse.Namespace):
+def _make_adapter(args: argparse.Namespace) -> Any:
     """Instantiate the adapter specified by args.adapter."""
     name = getattr(args, "adapter", "wolfram")
     oracle_url = getattr(args, "oracle_url", "http://localhost:8765")
@@ -45,29 +46,35 @@ def _make_adapter(args: argparse.Namespace):
 
     if name == "wolfram":
         from sxact.adapter.wolfram import WolframAdapter
+
         return WolframAdapter(base_url=oracle_url, timeout=timeout)
     elif name == "julia":
         from sxact.adapter.julia_stub import JuliaAdapter
+
         return JuliaAdapter()
     elif name == "python":
         from sxact.adapter.python_stub import PythonAdapter
+
         return PythonAdapter()
     else:
         raise ValueError(f"Unknown adapter: {name!r}")
 
 
-def _make_adapter_by_name(name: str, args):
+def _make_adapter_by_name(name: str, args: argparse.Namespace) -> Any:
     """Create an adapter by explicit name, using args for URL/timeout."""
     oracle_url = getattr(args, "oracle_url", "http://localhost:8765")
     timeout = getattr(args, "timeout", 60)
     if name == "wolfram":
         from sxact.adapter.wolfram import WolframAdapter
+
         return WolframAdapter(base_url=oracle_url, timeout=timeout)
     elif name == "julia":
         from sxact.adapter.julia_stub import JuliaAdapter
+
         return JuliaAdapter()
     elif name == "python":
         from sxact.adapter.python_stub import PythonAdapter
+
         return PythonAdapter()
     else:
         raise ValueError(f"Unknown adapter: {name!r}")
@@ -88,28 +95,37 @@ def _sub_bindings(args: dict[str, Any], bindings: dict[str, str]) -> dict[str, A
 # File runners
 # ---------------------------------------------------------------------------
 
-def _run_file_live(test_file, adapter, tag_filter: str | None) -> list[_RunResult]:
+
+def _run_file_live(
+    test_file: Any, adapter: Any, tag_filter: str | None
+) -> list[_RunResult]:
     """Run a test file in live mode using IsolatedContext."""
     from sxact.runner.isolation import IsolatedContext
 
     results: list[_RunResult] = []
     with IsolatedContext(adapter, test_file) as iso:
         for tc in test_file.tests:
-            if tag_filter and not _tc_matches_tag(tc.tags, test_file.meta.tags, tag_filter):
+            if tag_filter and not _tc_matches_tag(
+                tc.tags, test_file.meta.tags, tag_filter
+            ):
                 continue
             tr = iso.run_test(tc)
-            results.append(_RunResult(
-                file_id=test_file.meta.id,
-                test_id=tc.id,
-                status=tr.status,
-                actual=tr.actual,
-                expected=tr.expected,
-                message=tr.message,
-            ))
+            results.append(
+                _RunResult(
+                    file_id=test_file.meta.id,
+                    test_id=tc.id,
+                    status=tr.status,
+                    actual=tr.actual,
+                    expected=tr.expected,
+                    message=tr.message,
+                )
+            )
     return results
 
 
-def _run_file_snapshot(test_file, adapter, tag_filter: str | None, store) -> list[_RunResult]:
+def _run_file_snapshot(
+    test_file: Any, adapter: Any, tag_filter: str | None, store: Any
+) -> list[_RunResult]:
     """Run a test file in snapshot mode, comparing against oracle snapshots."""
     from sxact.snapshot.compare import SnapshotComparator
 
@@ -127,16 +143,20 @@ def _run_file_snapshot(test_file, adapter, tag_filter: str | None, store) -> lis
                 bindings[op.store_as] = res.repr
 
         for tc in test_file.tests:
-            if tag_filter and not _tc_matches_tag(tc.tags, test_file.meta.tags, tag_filter):
+            if tag_filter and not _tc_matches_tag(
+                tc.tags, test_file.meta.tags, tag_filter
+            ):
                 continue
 
             if tc.skip:
-                results.append(_RunResult(
-                    file_id=test_file.meta.id,
-                    test_id=tc.id,
-                    status="skip",
-                    message=tc.skip,
-                ))
+                results.append(
+                    _RunResult(
+                        file_id=test_file.meta.id,
+                        test_id=tc.id,
+                        status="skip",
+                        message=tc.skip,
+                    )
+                )
                 continue
 
             # Run test operations with per-test binding scope
@@ -153,20 +173,24 @@ def _run_file_snapshot(test_file, adapter, tag_filter: str | None, store) -> lis
                 error_msg = str(exc)
 
             if error_msg:
-                results.append(_RunResult(
-                    file_id=test_file.meta.id,
-                    test_id=tc.id,
-                    status="error",
-                    message=error_msg,
-                ))
+                results.append(
+                    _RunResult(
+                        file_id=test_file.meta.id,
+                        test_id=tc.id,
+                        status="error",
+                        message=error_msg,
+                    )
+                )
                 continue
 
             if last_res is None:
-                results.append(_RunResult(
-                    file_id=test_file.meta.id,
-                    test_id=tc.id,
-                    status="pass",
-                ))
+                results.append(
+                    _RunResult(
+                        file_id=test_file.meta.id,
+                        test_id=tc.id,
+                        status="pass",
+                    )
+                )
                 continue
 
             cmp = comparator.compare(test_file.meta.id, tc.id, last_res)
@@ -177,14 +201,16 @@ def _run_file_snapshot(test_file, adapter, tag_filter: str | None, store) -> lis
             else:
                 status, msg = "fail", cmp.details
 
-            results.append(_RunResult(
-                file_id=test_file.meta.id,
-                test_id=tc.id,
-                status=status,
-                actual=cmp.actual_normalized,
-                expected=cmp.expected_normalized,
-                message=msg,
-            ))
+            results.append(
+                _RunResult(
+                    file_id=test_file.meta.id,
+                    test_id=tc.id,
+                    status=status,
+                    actual=cmp.actual_normalized,
+                    expected=cmp.expected_normalized,
+                    message=msg,
+                )
+            )
     finally:
         adapter.teardown(ctx)
 
@@ -282,6 +308,7 @@ def _print_json_run(all_results: list[tuple[str, list[_RunResult]]]) -> None:
 # Subcommand: run
 # ---------------------------------------------------------------------------
 
+
 def _cmd_run(args: argparse.Namespace) -> int:
     from sxact.runner.loader import load_test_file, LoadError
     from sxact.adapter.base import AdapterError
@@ -303,7 +330,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
     # Parse tag filter
     tag_filter: str | None = None
-    for f in (args.filter or []):
+    for f in args.filter or []:
         if f.startswith("tag:"):
             tag_filter = f[4:]
             break
@@ -318,6 +345,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     # Live mode: verify oracle is reachable
     if args.oracle_mode == "live":
         from sxact.adapter.wolfram import WolframAdapter
+
         if isinstance(adapter, WolframAdapter) and not adapter._oracle.health():
             print(
                 f"error: oracle not reachable at {args.oracle_url}\n"
@@ -330,6 +358,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     store = None
     if args.oracle_mode == "snapshot":
         from sxact.snapshot.store import SnapshotStore
+
         oracle_dir = Path(args.oracle_dir)
         try:
             store = SnapshotStore(oracle_dir)
@@ -344,19 +373,25 @@ def _cmd_run(args: argparse.Namespace) -> int:
         try:
             test_file = load_test_file(toml_path)
         except LoadError as exc:
-            all_results.append((str(toml_path), [_RunResult(
-                file_id=str(toml_path),
-                test_id="<load>",
-                status="error",
-                message=str(exc),
-            )]))
+            all_results.append(
+                (
+                    str(toml_path),
+                    [
+                        _RunResult(
+                            file_id=str(toml_path),
+                            test_id="<load>",
+                            status="error",
+                            message=str(exc),
+                        )
+                    ],
+                )
+            )
             continue
 
         # Skip files where no tests match the tag filter
         if tag_filter:
-            file_has_match = (
-                tag_filter in test_file.meta.tags
-                or any(tag_filter in tc.tags for tc in test_file.tests)
+            file_has_match = tag_filter in test_file.meta.tags or any(
+                tag_filter in tc.tags for tc in test_file.tests
             )
             if not file_has_match:
                 continue
@@ -367,19 +402,23 @@ def _cmd_run(args: argparse.Namespace) -> int:
             else:
                 results = _run_file_snapshot(test_file, adapter, tag_filter, store)
         except AdapterError as exc:
-            results = [_RunResult(
-                file_id=test_file.meta.id,
-                test_id="<adapter>",
-                status="error",
-                message=str(exc),
-            )]
+            results = [
+                _RunResult(
+                    file_id=test_file.meta.id,
+                    test_id="<adapter>",
+                    status="error",
+                    message=str(exc),
+                )
+            ]
         except Exception as exc:
-            results = [_RunResult(
-                file_id=test_file.meta.id,
-                test_id="<runner>",
-                status="error",
-                message=str(exc),
-            )]
+            results = [
+                _RunResult(
+                    file_id=test_file.meta.id,
+                    test_id="<runner>",
+                    status="error",
+                    message=str(exc),
+                )
+            ]
 
         all_results.append((str(toml_path), results))
 

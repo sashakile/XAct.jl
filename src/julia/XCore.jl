@@ -52,7 +52,8 @@ export xEvaluateAt, XHold
 export ValidateSymbol, FindSymbols
 export register_symbol
 export xPermNames, xTensorNames, xCoreNames
-export xTableauNames, xCobaNames, InvarNames, HarmonicsNames, xPertNames, SpinorsNames, EMNames
+export xTableauNames,
+    xCobaNames, InvarNames, HarmonicsNames, xPertNames, SpinorsNames, EMNames
 export WarningFrom, xActDirectory, xActDocDirectory
 
 # 11. Misc
@@ -81,7 +82,8 @@ Return the single element of a one-element collection; throw otherwise.
 Used inside xTensor for pattern-match assertions.
 """
 function JustOne(list)
-    length(list) == 1 || error("JustOne: expected a list with one element, got $(length(list))")
+    length(list) == 1 ||
+        error("JustOne: expected a list with one element, got $(length(list))")
     first(list)
 end
 
@@ -179,10 +181,9 @@ function CheckOptions(opts...)
     for o in opts
         if o isa Pair
             push!(flat, o)
-        elseif o isa Union{AbstractVector, Tuple}
+        elseif o isa Union{AbstractVector,Tuple}
             for item in o
-                item isa Pair ||
-                    error("CheckOptions: expected Pair rules, got: $(o)")
+                item isa Pair || error("CheckOptions: expected Pair rules, got: $(o)")
                 push!(flat, item)
             end
         else
@@ -259,17 +260,18 @@ end
     MakeDaggerSymbol(s::Symbol) -> Symbol
 
 Toggle the dagger character:
-- If present, remove it.
-- If absent, insert it before the first `\$` in the name, or append it.
+
+  - If present, remove it.
+  - If absent, insert it before the first `\$` in the name, or append it.
 """
 function MakeDaggerSymbol(s::Symbol)
     name = string(s)
-    dg   = DaggerCharacter[]
+    dg = DaggerCharacter[]
     if occursin(dg, name)
         Symbol(replace(name, dg => ""))
     else
-        idx      = findfirst(==('$'), name)
-        new_name = isnothing(idx) ? name * dg : name[1:idx-1] * dg * name[idx:end]
+        idx = findfirst(==('$'), name)
+        new_name = isnothing(idx) ? name * dg : name[1:(idx - 1)] * dg * name[idx:end]
         Symbol(new_name)
     end
 end
@@ -289,7 +291,7 @@ end
 # protection.  Callers that relied on protection for thread safety must add
 # their own synchronisation when porting to concurrent Julia code.
 
-const _upvalue_store = Dict{Symbol, Dict{Symbol, Any}}()
+const _upvalue_store = Dict{Symbol,Dict{Symbol,Any}}()
 
 """
     SubHead(expr) -> Symbol
@@ -298,8 +300,8 @@ Return the innermost atomic head of a nested expression.
 For a bare `Symbol`, returns itself.  For an `Expr`, recurses into `expr.head`.
 """
 SubHead(s::Symbol) = s
-SubHead(e::Expr)   = SubHead(e.head)
-SubHead(x)         = x
+SubHead(e::Expr) = SubHead(e.head)
+SubHead(x) = x
 
 """
     xUpSet!(property, tag, value)
@@ -333,7 +335,7 @@ end
 Append `element` to the upvalue list `property[tag]`, initialising to `[]` if absent.
 """
 function xUpAppendTo!(property::Symbol, tag::Symbol, element)
-    d   = get!(() -> Dict{Symbol,Any}(), _upvalue_store, tag)
+    d = get!(() -> Dict{Symbol,Any}(), _upvalue_store, tag)
     lst = get!(d, property, Any[])
     push!(lst, element)
     lst
@@ -399,7 +401,7 @@ const push_unevaluated! = push!
 #
 # Design: keyed Dict from (defcommand::Symbol, moment::String) to hook vector.
 
-const _xtensions = Dict{Tuple{Symbol,String}, Vector{Any}}()
+const _xtensions = Dict{Tuple{Symbol,String},Vector{Any}}()
 
 """
     xTension!(package, defcommand, moment, func)
@@ -408,7 +410,9 @@ Register `func` to be called at `moment` ("Beginning" or "End") during
 execution of `defcommand`.  `package` is a string label used for grouping
 (stored as metadata only; hooks fire in registration order).
 """
-function xTension!(package::AbstractString, defcommand::Symbol, moment::AbstractString, func)
+function xTension!(
+    package::AbstractString, defcommand::Symbol, moment::AbstractString, func
+)
     moment in ("Beginning", "End") ||
         error("xTension!: moment must be \"Beginning\" or \"End\", got \"$moment\"")
     key = (defcommand, moment)
@@ -460,42 +464,48 @@ xEvaluateAt(expr, _positions) = expr
 
 # Central registry: symbol name → owning package name.
 # All packages call register_symbol() at load time to populate this.
-const _symbol_registry = Dict{String, String}()
+const _symbol_registry = Dict{String,String}()
 
 # Per-package name lists.  Populated via register_symbol(); also open for
 # direct push!() by packages that manage their own registration.
-const xPermNames     = String[]
-const xTensorNames   = String[]
-const xCoreNames     = String[]
-const xTableauNames  = String[]
-const xCobaNames     = String[]
-const InvarNames     = String[]
+const xPermNames = String[]
+const xTensorNames = String[]
+const xCoreNames = String[]
+const xTableauNames = String[]
+const xCobaNames = String[]
+const InvarNames = String[]
 const HarmonicsNames = String[]
-const xPertNames     = String[]
-const SpinorsNames   = String[]
-const EMNames        = String[]
+const xPertNames = String[]
+const SpinorsNames = String[]
+const EMNames = String[]
 
 # Map package label → per-package list (used by register_symbol).
-const _PACKAGE_LISTS = Dict{String, Vector{String}}(
-    "XCore"    => xCoreNames,
-    "XPerm"    => xPermNames,
-    "XTensor"  => xTensorNames,
+const _PACKAGE_LISTS = Dict{String,Vector{String}}(
+    "XCore" => xCoreNames,
+    "XPerm" => xPermNames,
+    "XTensor" => xTensorNames,
     "XTableau" => xTableauNames,
-    "XCoba"    => xCobaNames,
-    "Invar"    => InvarNames,
-    "Harmonics"=> HarmonicsNames,
-    "XPert"    => xPertNames,
-    "Spinors"  => SpinorsNames,
-    "EM"       => EMNames,
+    "XCoba" => xCobaNames,
+    "Invar" => InvarNames,
+    "Harmonics" => HarmonicsNames,
+    "XPert" => xPertNames,
+    "Spinors" => SpinorsNames,
+    "EM" => EMNames,
 )
 
-"""Current warning source label, analogous to Mathematica `\$WarningFrom`."""
+"""
+Current warning source label, analogous to Mathematica `\$WarningFrom`.
+"""
 const WarningFrom = Ref{String}("XCore")
 
-"""Path to the xAct installation directory."""
+"""
+Path to the xAct installation directory.
+"""
 const xActDirectory = Ref{String}("")
 
-"""Path to the xAct documentation directory."""
+"""
+Path to the xAct documentation directory.
+"""
 const xActDocDirectory = Ref{String}("")
 
 """
@@ -503,13 +513,13 @@ const xActDocDirectory = Ref{String}("")
 
 Register `name` (a `Symbol` or string) as owned by `package`.
 
-- If the name is already registered by the **same** package, the call is a
-  no-op (idempotent).
-- If the name is already registered by a **different** package, throws an error.
-- On success, also appends `name` to the per-package name list if `package` is
-  one of the known xAct package labels.
+  - If the name is already registered by the **same** package, the call is a
+    no-op (idempotent).
+  - If the name is already registered by a **different** package, throws an error.
+  - On success, also appends `name` to the per-package name list if `package` is
+    one of the known xAct package labels.
 """
-function register_symbol(name::Union{Symbol, AbstractString}, package::AbstractString)
+function register_symbol(name::Union{Symbol,AbstractString}, package::AbstractString)
     sname = string(name)
     if haskey(_symbol_registry, sname)
         existing = _symbol_registry[sname]
@@ -529,8 +539,9 @@ Throw if `name` collides with any symbol already registered in the xAct
 registry, or if it is exported by Julia's `Base`.  Returns `nothing` on success.
 
 Error conditions (mirrors Mathematica `ValidateSymbol`):
-- `name` is in `_symbol_registry` → already used by that package
-- `name` is a `Base` export → reserved by Julia
+
+  - `name` is in `_symbol_registry` → already used by that package
+  - `name` is a `Base` export → reserved by Julia
 """
 function ValidateSymbol(name::Symbol)
     sname = string(name)
@@ -550,10 +561,10 @@ end
 Recursively collect all `Symbol`s in `expr` (including inside `Expr` args and
 collections).  Returns a deduplicated vector.
 """
-FindSymbols(s::Symbol)                          = [s]
-FindSymbols(e::Expr)                            = unique(vcat(FindSymbols.(e.args)...))
-FindSymbols(v::Union{AbstractVector,Tuple})     = unique(vcat(FindSymbols.(v)...))
-FindSymbols(_)                                  = Symbol[]
+FindSymbols(s::Symbol) = [s]
+FindSymbols(e::Expr) = unique(vcat(FindSymbols.(e.args)...))
+FindSymbols(v::Union{AbstractVector,Tuple}) = unique(vcat(FindSymbols.(v)...))
+FindSymbols(_) = Symbol[]
 
 # ============================================================
 # 11. Misc

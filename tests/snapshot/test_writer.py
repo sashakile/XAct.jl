@@ -18,6 +18,7 @@ from sxact.snapshot.writer import write_oracle_dir
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_snapshot(
     test_id: str = "tc_001",
     raw_output: str = "T[-a,-b]",
@@ -52,6 +53,7 @@ def _make_file_snap(
 # ---------------------------------------------------------------------------
 # Directory structure
 # ---------------------------------------------------------------------------
+
 
 class TestDirectoryStructure:
     def test_creates_output_dir(self, tmp_path):
@@ -105,6 +107,7 @@ class TestDirectoryStructure:
 # VERSION file content
 # ---------------------------------------------------------------------------
 
+
 class TestVersionFile:
     def test_default_content(self, tmp_path):
         write_oracle_dir([], tmp_path / "o")
@@ -128,12 +131,17 @@ class TestVersionFile:
 # Snapshot JSON content
 # ---------------------------------------------------------------------------
 
+
 class TestSnapshotJson:
     def test_all_fields_present(self, tmp_path):
-        ts = _make_snapshot("tc_001", raw_output="T[-a,-b]", normalized_output="T[-$1,-$2]")
+        ts = _make_snapshot(
+            "tc_001", raw_output="T[-a,-b]", normalized_output="T[-$1,-$2]"
+        )
         write_oracle_dir([_make_file_snap("xcore/basic", [ts])], tmp_path / "o")
 
-        data = json.loads((tmp_path / "o" / "xcore" / "basic" / "tc_001.json").read_text())
+        data = json.loads(
+            (tmp_path / "o" / "xcore" / "basic" / "tc_001.json").read_text()
+        )
         assert data["test_id"] == "tc_001"
         assert data["oracle_version"] == "xAct 1.2.0"
         assert data["mathematica_version"] == "14.0.0"
@@ -170,6 +178,7 @@ class TestSnapshotJson:
 # ---------------------------------------------------------------------------
 # Checksums
 # ---------------------------------------------------------------------------
+
 
 class TestChecksums:
     def test_checksums_exist(self, tmp_path):

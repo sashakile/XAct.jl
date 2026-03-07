@@ -5,7 +5,6 @@ include(joinpath(@__DIR__, "..", "XPerm.jl"))
 using .XPerm
 
 @testset "XPerm" begin
-
     @testset "Permutation utilities" begin
         @test identity_perm(4) == [1, 2, 3, 4]
         @test identity_signed_perm(4) == [1, 2, 3, 4, 5, 6]
@@ -127,10 +126,9 @@ using .XPerm
     end
 
     @testset "riemann_sgs" begin
-        sgs = riemann_sgs((1,2,3,4), 4)
+        sgs = riemann_sgs((1, 2, 3, 4), 4)
         @test sgs.n == 4
         @test sgs.signed
         @test length(sgs.GS) == 3
     end
-
 end

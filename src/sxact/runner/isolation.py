@@ -28,6 +28,7 @@ from sxact.runner.loader import TestCase, TestFile
 # Result value object
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TestResult:
     """Outcome of running a single test case through an IsolatedContext."""
@@ -44,6 +45,7 @@ class TestResult:
 # ---------------------------------------------------------------------------
 # IsolatedContext
 # ---------------------------------------------------------------------------
+
 
 class IsolatedContext:
     """Manages lifecycle and binding scope for a single TOML test file.
@@ -68,7 +70,7 @@ class IsolatedContext:
     :meth:`~TestAdapter.teardown` on exit (even on exception).
     """
 
-    def __init__(self, adapter: TestAdapter, test_file: TestFile) -> None:
+    def __init__(self, adapter: TestAdapter[Any], test_file: TestFile) -> None:
         self._adapter = adapter
         self._test_file = test_file
         self._ctx: Any = None
@@ -85,12 +87,12 @@ class IsolatedContext:
         self._ready = True
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         if self._ctx is not None:
             self._adapter.teardown(self._ctx)
             self._ctx = None
         self._ready = False
-        return False  # do not suppress exceptions
+        # returning None (falsy) means: do not suppress exceptions
 
     # ------------------------------------------------------------------
     # Public API
@@ -176,7 +178,11 @@ class IsolatedContext:
         if exp.expr is not None:
             expected_text = _sub_refs(exp.expr, bindings)
             expected_norm = self._adapter.normalize(expected_text)
-            mode = EqualityMode(exp.comparison_tier) if exp.comparison_tier else EqualityMode.NORMALIZED
+            mode = (
+                EqualityMode(exp.comparison_tier)
+                if exp.comparison_tier
+                else EqualityMode.NORMALIZED
+            )
             if not self._adapter.equals(actual_norm, expected_norm, mode, self._ctx):
                 return TestResult(
                     test_id=tc.id,
@@ -248,7 +254,9 @@ def _sub_refs(text: str, bindings: dict[str, str]) -> str:
     return _REF_RE.sub(lambda m: bindings.get(m.group(1), m.group(0)), text)
 
 
-def _substitute_bindings(args: dict[str, Any], bindings: dict[str, str]) -> dict[str, Any]:
+def _substitute_bindings(
+    args: dict[str, Any], bindings: dict[str, str]
+) -> dict[str, Any]:
     """Return a copy of *args* with ``$name`` references substituted."""
     return {
         key: _sub_refs(val, bindings) if isinstance(val, str) else val

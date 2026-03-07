@@ -32,6 +32,7 @@ from sxact.oracle.result import Result
 # Context
 # ---------------------------------------------------------------------------
 
+
 class _WolframContext:
     """Per-file context for WolframAdapter.
 
@@ -47,6 +48,7 @@ class _WolframContext:
 # ---------------------------------------------------------------------------
 # Adapter
 # ---------------------------------------------------------------------------
+
 
 class WolframAdapter(TestAdapter[_WolframContext]):
     """Concrete adapter for the Wolfram/xAct backend.
@@ -81,12 +83,11 @@ class WolframAdapter(TestAdapter[_WolframContext]):
         Raises AdapterError if the oracle is unreachable or restart fails.
         """
         if not self._oracle.health():
-            raise AdapterError(
-                f"Wolfram oracle unavailable at {self._oracle.base_url}"
-            )
+            raise AdapterError(f"Wolfram oracle unavailable at {self._oracle.base_url}")
         is_clean, leaked = self._oracle.check_clean_state()
         if not is_clean:
             import warnings
+
             warnings.warn(
                 f"Kernel dirty before test file (leaked: {leaked}); "
                 "triggering hard restart.",
@@ -95,8 +96,7 @@ class WolframAdapter(TestAdapter[_WolframContext]):
             )
             if not self._oracle.restart():
                 raise AdapterError(
-                    "Kernel state dirty and restart failed; "
-                    f"leaked symbols: {leaked}"
+                    f"Kernel state dirty and restart failed; leaked symbols: {leaked}"
                 )
         return _WolframContext(context_id=str(uuid.uuid4()))
 
@@ -110,6 +110,7 @@ class WolframAdapter(TestAdapter[_WolframContext]):
         ctx.alive = False
         if not self._oracle.cleanup():
             import warnings
+
             warnings.warn(
                 "Oracle cleanup failed after test file; "
                 "kernel state may be dirty for next test.",
@@ -121,7 +122,9 @@ class WolframAdapter(TestAdapter[_WolframContext]):
     # Execution
     # ------------------------------------------------------------------
 
-    def execute(self, ctx: _WolframContext, action: str, args: dict[str, Any]) -> Result:
+    def execute(
+        self, ctx: _WolframContext, action: str, args: dict[str, Any]
+    ) -> Result:
         if action not in self.supported_actions():
             raise ValueError(f"Unknown action: {action!r}")
 
@@ -146,7 +149,10 @@ class WolframAdapter(TestAdapter[_WolframContext]):
         # Assert: treat non-True oracle result as test failure
         if action == "Assert" and result.status == "ok":
             if result.repr.strip() != "True":
-                msg = args.get("message") or f"Assertion failed: {args.get('condition', '')}"
+                msg = (
+                    args.get("message")
+                    or f"Assertion failed: {args.get('condition', '')}"
+                )
                 return Result(
                     status="error",
                     type="Bool",
@@ -185,7 +191,7 @@ class WolframAdapter(TestAdapter[_WolframContext]):
             return f"DefTensor[{', '.join(parts)}]"
 
         if action == "Evaluate":
-            return args["expression"]
+            return str(args["expression"])
 
         if action == "ToCanonical":
             return f"ToCanonical[{args['expression']}]"
@@ -201,7 +207,7 @@ class WolframAdapter(TestAdapter[_WolframContext]):
             return f"ContractMetric[{args['expression']}]"
 
         if action == "Assert":
-            return args["condition"]
+            return str(args["condition"])
 
         raise ValueError(f"Unknown action: {action!r}")  # unreachable
 
@@ -250,7 +256,9 @@ class WolframAdapter(TestAdapter[_WolframContext]):
     # Introspection
     # ------------------------------------------------------------------
 
-    def get_properties(self, expr: str, ctx: _WolframContext | None = None) -> dict[str, Any]:
+    def get_properties(
+        self, expr: str, ctx: _WolframContext | None = None
+    ) -> dict[str, Any]:
         return {}
 
     def get_version(self) -> VersionInfo:
@@ -267,5 +275,3 @@ class WolframAdapter(TestAdapter[_WolframContext]):
             cas_version=cas_version,
             adapter_version="0.1.0",
         )
-
-

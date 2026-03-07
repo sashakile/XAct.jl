@@ -1,8 +1,8 @@
 # Research Report: MetaMigration Harness (sxBench)
 ## Decoupling Symbolic Validation for Cross-Library Migration
 
-**Date:** 2026-03-05  
-**Status:** Research / Architectural Proposal  
+**Date:** 2026-03-05
+**Status:** Research / Architectural Proposal
 **Target:** Rubi.jl, sxAct, and Generic Symbolic CAS Ports
 
 ---
@@ -19,7 +19,7 @@
 ---
 
 ## 2. Introduction: The Validation Gap
-When migrating mature symbolic systems (like **xAct** or **Rubi**) from Mathematica to open-source environments (Julia/Python), the primary challenge is not just the porting of logic, but the **verification of mathematical equivalence**. 
+When migrating mature symbolic systems (like **xAct** or **Rubi**) from Mathematica to open-source environments (Julia/Python), the primary challenge is not just the porting of logic, but the **verification of mathematical equivalence**.
 
 The current `sxAct` project has built a robust "Three-Layer" validation system. This research explores how to extract this system into a standalone **MetaMigration Harness** (internal name: `sxBench`) that can be reused for any symbolic library, starting with **Rubi.jl**.
 
@@ -43,7 +43,7 @@ The `sxact/runner/loader.py` uses a TOML schema that includes tensor-specific fi
 ### 3.3 Normalization and Canonicalization
 Normalization is currently a monolith in `src/sxact/normalize/`.
 - **Problem:** It is hardcoded for tensor index permutation and dummy variable renaming.
-- **Solution:** Introduce a **Normalization Plugin Architecture**. 
+- **Solution:** Introduce a **Normalization Plugin Architecture**.
     - `sxBench` provides the framework.
     - `sxAct` provides the `TensorNormalizer` (index-aware).
     - `Rubi` provides the `AlgebraicNormalizer` (polynomial/rule-aware).
@@ -95,4 +95,4 @@ Every library port must implement a standardized adapter to bridge the language 
 ---
 
 ## 7. Conclusion
-Decoupling the `sxAct` testing framework into `sxBench` creates a foundational piece of **symbolic migration infrastructure**. It allows developers to port complex Mathematica packages with the rigorous verification required for scientific computing. 
+Decoupling the `sxAct` testing framework into `sxBench` creates a foundational piece of **symbolic migration infrastructure**. It allows developers to port complex Mathematica packages with the rigorous verification required for scientific computing.

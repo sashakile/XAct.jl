@@ -6,13 +6,11 @@ import textwrap
 from pathlib import Path
 
 import pytest
-import tomli
 
 from sxact.runner.property_runner import (
     GeneratorSpec,
     PropertyFile,
     PropertyLoadError,
-    PropertySpec,
     _fresh_symbol,
     _generate_value,
     _substitute,
@@ -24,6 +22,7 @@ from sxact.runner.property_runner import (
 # ---------------------------------------------------------------------------
 # _fresh_symbol
 # ---------------------------------------------------------------------------
+
 
 class TestFreshSymbol:
     def test_zero_index(self):
@@ -48,6 +47,7 @@ class TestFreshSymbol:
 # _generate_value
 # ---------------------------------------------------------------------------
 
+
 class TestGenerateValue:
     def test_fresh_symbol_produces_identifier(self):
         gen = GeneratorSpec(name="s", type="Symbol", strategy="fresh_symbol")
@@ -60,12 +60,16 @@ class TestGenerateValue:
         assert len(vals) == 10
 
     def test_symbol_list_produces_list(self):
-        gen = GeneratorSpec(name="lst", type="SymbolList", strategy="symbol_list", length=3)
+        gen = GeneratorSpec(
+            name="lst", type="SymbolList", strategy="symbol_list", length=3
+        )
         val = _generate_value(gen, "T", 0)
         assert val.startswith("{") and val.endswith("}")
 
     def test_symbol_list_correct_length(self):
-        gen = GeneratorSpec(name="lst", type="SymbolList", strategy="symbol_list", length=4)
+        gen = GeneratorSpec(
+            name="lst", type="SymbolList", strategy="symbol_list", length=4
+        )
         val = _generate_value(gen, "T", 0)
         # Count commas: N elements have N-1 commas
         inner = val[1:-1]
@@ -80,6 +84,7 @@ class TestGenerateValue:
 # ---------------------------------------------------------------------------
 # _substitute
 # ---------------------------------------------------------------------------
+
 
 class TestSubstitute:
     def test_simple_substitution(self):
@@ -103,6 +108,7 @@ class TestSubstitute:
 # load_property_file
 # ---------------------------------------------------------------------------
 
+
 class TestLoadPropertyFile:
     def test_load_xcore_symbol_laws(self):
         path = Path("tests/properties/xcore_symbol_laws.toml")
@@ -121,7 +127,8 @@ class TestLoadPropertyFile:
 
     def test_load_minimal_property_file(self, tmp_path):
         toml = tmp_path / "prop.toml"
-        toml.write_text(textwrap.dedent("""\
+        toml.write_text(
+            textwrap.dedent("""\
             version = "1.0"
             layer = "property"
             description = "test"
@@ -144,7 +151,8 @@ class TestLoadPropertyFile:
             [properties.verification]
             num_samples = 2
             random_seed = 0
-        """))
+        """)
+        )
         pf = load_property_file(toml)
         assert len(pf.properties) == 1
         assert pf.properties[0].num_samples == 2
@@ -153,6 +161,7 @@ class TestLoadPropertyFile:
 # ---------------------------------------------------------------------------
 # run_property_file — using a mock adapter
 # ---------------------------------------------------------------------------
+
 
 class MockContext:
     pass
@@ -169,6 +178,7 @@ class AlwaysTrueAdapter:
 
     def execute(self, ctx, action, args):
         from sxact.oracle.result import Result
+
         if action == "Evaluate":
             return Result(status="ok", type="Bool", repr="True", normalized="True")
         return Result(status="ok", type="", repr="", normalized="")
@@ -188,6 +198,7 @@ class AlwaysFalseAdapter:
 
     def execute(self, ctx, action, args):
         from sxact.oracle.result import Result
+
         if action == "Evaluate":
             return Result(status="ok", type="Bool", repr="False", normalized="False")
         return Result(status="ok", type="", repr="", normalized="")
@@ -207,6 +218,7 @@ class ErrorAdapter:
 
     def execute(self, ctx, action, args):
         from sxact.oracle.result import Result
+
         return Result(status="error", type="", repr="", normalized="", error="boom")
 
     def supported_actions(self):
@@ -215,7 +227,8 @@ class ErrorAdapter:
 
 def _make_minimal_prop_file(tmp_path, num_samples=3) -> PropertyFile:
     toml = tmp_path / "prop.toml"
-    toml.write_text(textwrap.dedent(f"""\
+    toml.write_text(
+        textwrap.dedent(f"""\
         version = "1.0"
         layer = "property"
         description = "minimal"
@@ -238,7 +251,8 @@ def _make_minimal_prop_file(tmp_path, num_samples=3) -> PropertyFile:
         [properties.verification]
         num_samples = {num_samples}
         random_seed = 0
-    """))
+    """)
+    )
     return load_property_file(toml)
 
 
@@ -276,7 +290,8 @@ class TestRunPropertyFile:
 
     def test_tag_filter_skips_unmatched(self, tmp_path):
         toml = tmp_path / "prop.toml"
-        toml.write_text(textwrap.dedent("""\
+        toml.write_text(
+            textwrap.dedent("""\
             version = "1.0"
             layer = "property"
             description = "tag test"
@@ -320,7 +335,8 @@ class TestRunPropertyFile:
             [properties.verification]
             num_samples = 2
             random_seed = 1
-        """))
+        """)
+        )
         pf = load_property_file(toml)
         result = run_property_file(pf, AlwaysTrueAdapter(), tag_filter="critical")
         ids = [r.property_id for r in result.results]
@@ -334,17 +350,22 @@ class TestRunPropertyFile:
         class TrackingAdapter:
             def initialize(self):
                 return MockContext()
+
             def teardown(self, ctx):
                 pass
+
             def execute(self, ctx, action, args):
                 from sxact.oracle.result import Result
+
                 executed.append(action)
                 return Result(status="ok", type="", repr="True", normalized="True")
+
             def supported_actions(self):
                 return {"Evaluate", "DefManifold"}
 
         toml = tmp_path / "prop.toml"
-        toml.write_text(textwrap.dedent("""\
+        toml.write_text(
+            textwrap.dedent("""\
             version = "1.0"
             layer = "property"
             description = "setup test"
@@ -374,7 +395,8 @@ class TestRunPropertyFile:
             [properties.verification]
             num_samples = 1
             random_seed = 0
-        """))
+        """)
+        )
         pf = load_property_file(toml)
         run_property_file(pf, TrackingAdapter())
         assert "DefManifold" in executed

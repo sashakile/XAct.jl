@@ -119,6 +119,7 @@ class SnapshotStore:
 # Error type
 # ---------------------------------------------------------------------------
 
+
 class SnapshotLoadError(ValueError):
     """Raised when a snapshot JSON file exists but cannot be parsed."""
 
@@ -131,11 +132,14 @@ class SnapshotLoadError(ValueError):
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _load_json(path: Path) -> TestSnapshot:
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
-        raise SnapshotLoadError(f"Cannot read snapshot {path}: {exc}", path=path) from exc
+        raise SnapshotLoadError(
+            f"Cannot read snapshot {path}: {exc}", path=path
+        ) from exc
 
     missing = [f for f in ("test_id", "normalized_output", "hash") if f not in raw]
     if missing:

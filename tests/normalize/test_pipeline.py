@@ -1,6 +1,5 @@
 """Tests for the normalization pipeline."""
 
-
 from sxact.normalize import ast_normalize, normalize
 
 
@@ -66,23 +65,28 @@ class TestCombinedPipeline:
 # AST pipeline tests
 # ---------------------------------------------------------------------------
 
+
 class TestAstParser:
     """Tests for the S-expression parser."""
 
     def test_parse_leaf(self) -> None:
         from sxact.normalize.ast_parser import Leaf, parse
+
         assert parse("a") == Leaf("a")
 
     def test_parse_negative_leaf(self) -> None:
         from sxact.normalize.ast_parser import Leaf, parse
+
         assert parse("-a") == Leaf("-a")
 
     def test_parse_number(self) -> None:
         from sxact.normalize.ast_parser import Leaf, parse
+
         assert parse("2") == Leaf("2")
 
     def test_parse_simple_application(self) -> None:
         from sxact.normalize.ast_parser import Leaf, Node, parse
+
         tree = parse("T[-a, -b]")
         assert isinstance(tree, Node)
         assert tree.head == "T"
@@ -90,6 +94,7 @@ class TestAstParser:
 
     def test_parse_nested_application(self) -> None:
         from sxact.normalize.ast_parser import Node, parse
+
         tree = parse("Plus[a, b]")
         assert isinstance(tree, Node)
         assert tree.head == "Plus"
@@ -97,6 +102,7 @@ class TestAstParser:
 
     def test_parse_deeply_nested(self) -> None:
         from sxact.normalize.ast_parser import Node, parse
+
         tree = parse("CD[-a][CD[-b][T[c]]]")
         assert isinstance(tree, Node)
         # Outermost: apply result of CD[-a][...] to inner

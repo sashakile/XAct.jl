@@ -1,0 +1,368 @@
+# tests/properties/xcore_symbol_laws.toml
+# Layer 2: xCore symbol manipulation property tests.
+#
+# These validate programming invariants in xCore utility functions,
+# not mathematical tensor laws.  All properties use equivalence_type = "identical"
+# (oracle === comparison, not numeric subtraction).
+#
+# Design spec: specs/2026-03-05-property-test-design.md §Q5
+
+version     = "1.0"
+layer       = "property"
+description = "xCore symbol manipulation invariants: dagger involution, link/unlink roundtrip, deduplication, JustOne"
+
+# ---------------------------------------------------------------------------
+# Property 1: MakeDaggerSymbol is an involution (applying twice gives identity)
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "dagger_involution"
+name = "MakeDaggerSymbol is an involution"
+tags = ["xcore", "dagger", "property", "critical"]
+
+[properties.mathematical_basis]
+statement = "For any symbol s without dagger character, MakeDaggerSymbol(MakeDaggerSymbol(s)) == s"
+reference  = "xCore spec: MakeDaggerSymbol is self-inverse by construction"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "s"
+type     = "Symbol"
+strategy = "fresh_symbol"
+
+[properties.law]
+lhs              = "MakeDaggerSymbol[MakeDaggerSymbol[$s]]"
+rhs              = "$s"
+equivalence_type = "identical"
+
+[properties.verification]
+num_samples = 50
+random_seed = 42
+
+# ---------------------------------------------------------------------------
+# Property 2: MakeDaggerSymbol output always has dagger character
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "dagger_has_char_after_make"
+name = "HasDaggerCharacterQ is True after MakeDaggerSymbol"
+tags = ["xcore", "dagger", "property"]
+
+[properties.mathematical_basis]
+statement = "For any fresh symbol s, HasDaggerCharacterQ(MakeDaggerSymbol(s)) == True"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "s"
+type     = "Symbol"
+strategy = "fresh_symbol"
+
+[properties.law]
+lhs              = "HasDaggerCharacterQ[MakeDaggerSymbol[$s]]"
+rhs              = "True"
+equivalence_type = "identical"
+
+[properties.verification]
+num_samples = 50
+random_seed = 43
+
+# ---------------------------------------------------------------------------
+# Property 3: Fresh symbols have no dagger character
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "fresh_symbol_no_dagger"
+name = "HasDaggerCharacterQ is False for fresh symbols"
+tags = ["xcore", "dagger", "property"]
+
+[properties.mathematical_basis]
+statement = "A fresh symbol (no history) does not contain the dagger character"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "s"
+type     = "Symbol"
+strategy = "fresh_symbol"
+
+[properties.law]
+lhs              = "HasDaggerCharacterQ[$s]"
+rhs              = "False"
+equivalence_type = "identical"
+
+[properties.verification]
+num_samples = 50
+random_seed = 44
+
+# ---------------------------------------------------------------------------
+# Property 4: LinkSymbols/UnlinkSymbol roundtrip for single symbol
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "link_unlink_singleton"
+name = "UnlinkSymbol(LinkSymbols([s])) recovers singleton list"
+tags = ["xcore", "link", "property"]
+
+[properties.mathematical_basis]
+statement = "For any symbol s, UnlinkSymbol(LinkSymbols({s})) == {s}"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "s"
+type     = "Symbol"
+strategy = "fresh_symbol"
+
+[properties.law]
+lhs              = "UnlinkSymbol[LinkSymbols[{$s}]]"
+rhs              = "{$s}"
+equivalence_type = "identical"
+
+[properties.verification]
+num_samples = 30
+random_seed = 45
+
+# ---------------------------------------------------------------------------
+# Property 5: LinkSymbols/UnlinkSymbol roundtrip for two symbols
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "link_unlink_pair"
+name = "UnlinkSymbol(LinkSymbols([a, b])) recovers pair"
+tags = ["xcore", "link", "property"]
+
+[properties.mathematical_basis]
+statement = "For any fresh symbols a, b, UnlinkSymbol(LinkSymbols({a, b})) == {a, b}"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "a"
+type     = "Symbol"
+strategy = "fresh_symbol"
+
+[[properties.forall.generators]]
+name     = "b"
+type     = "Symbol"
+strategy = "fresh_symbol"
+
+[properties.law]
+lhs              = "UnlinkSymbol[LinkSymbols[{$a, $b}]]"
+rhs              = "{$a, $b}"
+equivalence_type = "identical"
+
+[properties.verification]
+num_samples = 30
+random_seed = 46
+
+# ---------------------------------------------------------------------------
+# Property 6: LinkSymbols preserves list length through UnlinkSymbol
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "link_unlink_length_preserved"
+name = "Length is preserved through LinkSymbols/UnlinkSymbol roundtrip"
+tags = ["xcore", "link", "property"]
+
+[properties.mathematical_basis]
+statement = "For any fresh symbols a, b, c, Length(UnlinkSymbol(LinkSymbols({a,b,c}))) == 3"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "a"
+type     = "Symbol"
+strategy = "fresh_symbol"
+
+[[properties.forall.generators]]
+name     = "b"
+type     = "Symbol"
+strategy = "fresh_symbol"
+
+[[properties.forall.generators]]
+name     = "c"
+type     = "Symbol"
+strategy = "fresh_symbol"
+
+[properties.law]
+lhs              = "Length[UnlinkSymbol[LinkSymbols[{$a, $b, $c}]]]"
+rhs              = "3"
+equivalence_type = "identical"
+
+[properties.verification]
+num_samples = 30
+random_seed = 47
+
+# ---------------------------------------------------------------------------
+# Property 7: DeleteDuplicates is idempotent
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "delete_duplicates_idempotent"
+name = "DeleteDuplicates applied twice equals applied once"
+tags = ["xcore", "list", "property"]
+
+[properties.mathematical_basis]
+statement = "For any list L, DeleteDuplicates(DeleteDuplicates(L)) == DeleteDuplicates(L)"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "lst"
+type     = "SymbolList"
+strategy = "symbol_list"
+length   = 5
+allow_duplicates = true
+
+[properties.law]
+lhs              = "DeleteDuplicates[DeleteDuplicates[$lst]]"
+rhs              = "DeleteDuplicates[$lst]"
+equivalence_type = "identical"
+
+[properties.verification]
+num_samples = 40
+random_seed = 48
+
+# ---------------------------------------------------------------------------
+# Property 8: DeleteDuplicates output is always duplicate-free
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "delete_duplicates_gives_unique"
+name = "DuplicateFreeQ is True after DeleteDuplicates"
+tags = ["xcore", "list", "property"]
+
+[properties.mathematical_basis]
+statement = "For any list L, DuplicateFreeQ(DeleteDuplicates(L)) == True"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "lst"
+type     = "SymbolList"
+strategy = "symbol_list"
+length   = 6
+allow_duplicates = true
+
+[properties.law]
+lhs              = "DuplicateFreeQ[DeleteDuplicates[$lst]]"
+rhs              = "True"
+equivalence_type = "identical"
+
+[properties.verification]
+num_samples = 40
+random_seed = 49
+
+# ---------------------------------------------------------------------------
+# Property 9: DeleteDuplicates never increases list length
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "delete_duplicates_shorter_or_equal"
+name = "DeleteDuplicates result length <= original length"
+tags = ["xcore", "list", "property"]
+
+[properties.mathematical_basis]
+statement = "For any list L, Length(DeleteDuplicates(L)) <= Length(L)"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "lst"
+type     = "SymbolList"
+strategy = "symbol_list"
+length   = 5
+allow_duplicates = true
+
+[properties.law]
+lhs              = "Length[DeleteDuplicates[$lst]] <= Length[$lst]"
+rhs              = "True"
+equivalence_type = "identical"
+
+[properties.verification]
+num_samples = 40
+random_seed = 50
+
+# ---------------------------------------------------------------------------
+# Property 10: JustOne extracts the single element from a singleton list
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "just_one_singleton"
+name = "JustOne[{x}] == x"
+tags = ["xcore", "list", "property"]
+
+[properties.mathematical_basis]
+statement = "For any element x, JustOne({x}) == x"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "x"
+type     = "Symbol"
+strategy = "fresh_symbol"
+
+[properties.law]
+lhs              = "JustOne[{$x}]"
+rhs              = "$x"
+equivalence_type = "identical"
+
+[properties.verification]
+num_samples = 40
+random_seed = 51
+
+# ---------------------------------------------------------------------------
+# Property 11: SymbolJoin returns an atom (Symbol head)
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "symbol_join_returns_atom"
+name = "SymbolJoin result is an atomic symbol"
+tags = ["xcore", "symbol", "property"]
+
+[properties.mathematical_basis]
+statement = "For any pair of string names a, b, AtomQ(SymbolJoin(a, b)) == True"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "a"
+type     = "Symbol"
+strategy = "fresh_symbol"
+
+[[properties.forall.generators]]
+name     = "b"
+type     = "Symbol"
+strategy = "fresh_symbol"
+
+[properties.law]
+lhs              = "AtomQ[SymbolJoin[SymbolName[$a], SymbolName[$b]]]"
+rhs              = "True"
+equivalence_type = "identical"
+
+[properties.verification]
+num_samples = 30
+random_seed = 52
+
+# ---------------------------------------------------------------------------
+# Property 12: FindSymbols output is a subset of expression's atom leaves
+# ---------------------------------------------------------------------------
+
+[[properties]]
+id   = "find_symbols_subset_of_atoms"
+name = "FindSymbols result is a subset of the expression's leaf atoms"
+tags = ["xcore", "symbol", "property"]
+
+[properties.mathematical_basis]
+statement = "For any expression e, FindSymbols(e) ⊆ Flatten(Level(e, {-1})) restricted to Symbol heads"
+
+[properties.forall]
+[[properties.forall.generators]]
+name     = "a"
+type     = "Symbol"
+strategy = "fresh_symbol"
+
+[[properties.forall.generators]]
+name     = "b"
+type     = "Symbol"
+strategy = "fresh_symbol"
+
+[properties.law]
+lhs              = "SubsetQ[FindSymbols[$a + $b], Cases[{$a + $b}, _Symbol, Infinity]]"
+rhs              = "True"
+equivalence_type = "identical"
+
+[properties.verification]
+num_samples = 30
+random_seed = 53

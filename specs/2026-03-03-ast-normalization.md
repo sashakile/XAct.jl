@@ -16,7 +16,7 @@ The current normalization pipeline (`src/sxact/normalize/pipeline.py`) relies on
 Transition to a formal Abstract Syntax Tree (AST) representation for all CAS outputs before performing comparison.
 
 ### 1. S-Expression Parser
-Implement a recursive-descent parser that converts xAct's `FullForm` output into a Python tree. 
+Implement a recursive-descent parser that converts xAct's `FullForm` output into a Python tree.
 - **Requirement:** The `OracleClient` must be configured to wrap expressions in `ToString[..., FullForm]` to ensure the parser only deals with prefix notation (e.g., `Plus[a, b]`) rather than ambiguous infix notation.
 - `Head[Arg1, Arg2]` -> `Node(head="Head", args=[...])`
 - `a` -> `Leaf(name="a")`

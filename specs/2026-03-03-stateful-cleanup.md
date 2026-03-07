@@ -7,7 +7,7 @@
 
 ## Problem Statement
 
-Wolfram/xAct is inherently stateful. Defining a manifold or tensor in one test file adds symbols to the global environment and internal `xAct` registries (e.g., `Manifolds`, `Tensors`). 
+Wolfram/xAct is inherently stateful. Defining a manifold or tensor in one test file adds symbols to the global environment and internal `xAct` registries (e.g., `Manifolds`, `Tensors`).
 - **Pollution:** Definitions from `test_a.py` can cause "Symbol protected" or "Already defined" errors in `test_b.py`.
 - **Memory:** Long-running test sessions can lead to kernel memory exhaustion as definitions accumulate.
 - **Nondeterminism:** Test success may depend on the order in which files are executed.

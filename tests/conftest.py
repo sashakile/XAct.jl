@@ -31,17 +31,28 @@ class MockOracleClient:
         self.calls.append(expr)
         return self._responses.get(
             expr,
-            Result(status="error", type="", repr="", normalized="",
-                   error=f"MockOracleClient: no response configured for: {expr!r}"),
+            Result(
+                status="error",
+                type="",
+                repr="",
+                normalized="",
+                error=f"MockOracleClient: no response configured for: {expr!r}",
+            ),
         )
 
-    def evaluate_with_xact(self, expr: str, timeout: int = 60,
-                           context_id: str | None = None) -> Result:
+    def evaluate_with_xact(
+        self, expr: str, timeout: int = 60, context_id: str | None = None
+    ) -> Result:
         self.calls.append(expr)
         return self._responses.get(
             expr,
-            Result(status="error", type="", repr="", normalized="",
-                   error=f"MockOracleClient: no response configured for: {expr!r}"),
+            Result(
+                status="error",
+                type="",
+                repr="",
+                normalized="",
+                error=f"MockOracleClient: no response configured for: {expr!r}",
+            ),
         )
 
     def cleanup(self) -> bool:

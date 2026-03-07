@@ -38,7 +38,10 @@ from sxact.snapshot.runner import TestSnapshot
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
 
-def _ok(repr: str = "T", normalized: str = "", properties: dict | None = None) -> Result:
+
+def _ok(
+    repr: str = "T", normalized: str = "", properties: dict | None = None
+) -> Result:
     return Result(
         status="ok",
         type="Expr",
@@ -97,8 +100,11 @@ def _make_adapter(*results: Result) -> MagicMock:
     return adapter
 
 
-def _make_snapshot(test_id: str, normalized: str = "T", hash_: str = "") -> TestSnapshot:
+def _make_snapshot(
+    test_id: str, normalized: str = "T", hash_: str = ""
+) -> TestSnapshot:
     from sxact.snapshot.runner import compute_oracle_hash
+
     h = hash_ or compute_oracle_hash(normalized, {})
     return TestSnapshot(
         test_id=test_id,
@@ -122,6 +128,7 @@ def _make_store(snapshots: dict[tuple[str, str], TestSnapshot]) -> MagicMock:
 
     def _verify(snap: TestSnapshot) -> bool:
         from sxact.snapshot.runner import compute_oracle_hash
+
         return snap.hash == compute_oracle_hash(snap.normalized_output, snap.properties)
 
     store.load.side_effect = _load
@@ -132,6 +139,7 @@ def _make_store(snapshots: dict[tuple[str, str], TestSnapshot]) -> MagicMock:
 # ---------------------------------------------------------------------------
 # _tc_matches_tag
 # ---------------------------------------------------------------------------
+
 
 class TestTcMatchesTag:
     def test_matches_test_tag(self):
@@ -150,6 +158,7 @@ class TestTcMatchesTag:
 # ---------------------------------------------------------------------------
 # _sub_bindings
 # ---------------------------------------------------------------------------
+
 
 class TestSubBindings:
     def test_substitutes_string_value(self):
@@ -173,6 +182,7 @@ class TestSubBindings:
 # ---------------------------------------------------------------------------
 # _run_file_live
 # ---------------------------------------------------------------------------
+
 
 class TestRunFileLive:
     def test_pass_case(self):
@@ -280,6 +290,7 @@ class TestRunFileLive:
 # ---------------------------------------------------------------------------
 # _run_file_snapshot
 # ---------------------------------------------------------------------------
+
 
 class TestRunFileSnapshot:
     def test_pass_when_snapshot_matches(self):
@@ -411,6 +422,7 @@ class TestRunFileSnapshot:
 # Terminal output formatter
 # ---------------------------------------------------------------------------
 
+
 class TestPrintTerminalRun:
     def _capture(self, all_results):
         buf = StringIO()
@@ -458,6 +470,7 @@ class TestPrintTerminalRun:
 # JSON output formatter
 # ---------------------------------------------------------------------------
 
+
 class TestPrintJsonRun:
     def _capture_json(self, all_results):
         buf = StringIO()
@@ -474,7 +487,11 @@ class TestPrintJsonRun:
         assert data["summary"]["failed"] == 0
 
     def test_test_fields(self):
-        results = [_RunResult("pkg/t", "tc_1", "fail", actual="T", expected="R", message="mismatch")]
+        results = [
+            _RunResult(
+                "pkg/t", "tc_1", "fail", actual="T", expected="R", message="mismatch"
+            )
+        ]
         data = self._capture_json([("f.toml", results)])
         t = data["files"][0]["tests"][0]
         assert t["id"] == "tc_1"
@@ -503,6 +520,7 @@ class TestPrintJsonRun:
 # ---------------------------------------------------------------------------
 # _cmd_run (integration-level, using fakes)
 # ---------------------------------------------------------------------------
+
 
 class TestCmdRun:
     """Test _cmd_run end-to-end with patched loader and adapter."""
@@ -547,7 +565,9 @@ class TestCmdRun:
         bad.write_text("not valid toml content ][")
 
         args = self._make_args(str(tmp_path))
-        with patch("sxact.snapshot.store.SnapshotStore", side_effect=ValueError("no dir")):
+        with patch(
+            "sxact.snapshot.store.SnapshotStore", side_effect=ValueError("no dir")
+        ):
             rc = _cmd_run(args)
 
         # Either oracle_dir missing causes rc=1 or load error does; either way rc=1
@@ -558,7 +578,9 @@ class TestCmdRun:
         toml_file = tmp_path / "tests.toml"
         toml_file.write_text("")  # will be intercepted by mock
 
-        tc = _make_tc(id="t1", ops=[Operation(action="Evaluate", args={"expression": "X"})])
+        tc = _make_tc(
+            id="t1", ops=[Operation(action="Evaluate", args={"expression": "X"})]
+        )
         tf = _make_file(tests=[tc])
         snap = _make_snapshot("t1", normalized="X")
         store = _make_store({("pkg/tests", "t1"): snap})
@@ -580,7 +602,9 @@ class TestCmdRun:
         toml_file = tmp_path / "tests.toml"
         toml_file.write_text("")
 
-        tc = _make_tc(id="t1", ops=[Operation(action="Evaluate", args={"expression": "X"})])
+        tc = _make_tc(
+            id="t1", ops=[Operation(action="Evaluate", args={"expression": "X"})]
+        )
         tf = _make_file(tests=[tc])
         snap = _make_snapshot("t1", normalized="DIFFERENT")
         store = _make_store({("pkg/tests", "t1"): snap})
@@ -602,7 +626,9 @@ class TestCmdRun:
         toml_file = tmp_path / "tests.toml"
         toml_file.write_text("")
 
-        tc = _make_tc(id="t1", ops=[Operation(action="Evaluate", args={"expression": "X"})])
+        tc = _make_tc(
+            id="t1", ops=[Operation(action="Evaluate", args={"expression": "X"})]
+        )
         tf = _make_file(tests=[tc])
         snap = _make_snapshot("t1", normalized="X")
         store = _make_store({("pkg/tests", "t1"): snap})

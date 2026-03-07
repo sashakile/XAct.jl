@@ -26,6 +26,7 @@ from sxact.runner.loader import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def write_toml(tmp_path: Path, content: str, name: str = "test.toml") -> Path:
     p = tmp_path / name
     p.write_text(textwrap.dedent(content))
@@ -41,6 +42,7 @@ MINIMAL_TOML = """\
     id          = "xcore/minimal"
     description = "Minimal valid test file"
 """
+
 
 def test_minimal_file_loads(tmp_path: Path) -> None:
     p = write_toml(tmp_path, MINIMAL_TOML)
@@ -105,6 +107,7 @@ FULL_TOML = """\
     is_zero         = false
     comparison_tier = 1
 """
+
 
 def test_full_file_meta(tmp_path: Path) -> None:
     p = write_toml(tmp_path, FULL_TOML)
@@ -195,6 +198,7 @@ EXPECTED_PROPS_TOML = """\
     slots = [0, 1]
 """
 
+
 def test_expected_properties(tmp_path: Path) -> None:
     p = write_toml(tmp_path, EXPECTED_PROPS_TOML)
     exp = load_test_file(p).tests[0].expected
@@ -209,6 +213,7 @@ def test_expected_properties(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Happy-path: no operations.store_as (optional field)
 # ---------------------------------------------------------------------------
+
 
 def test_operation_without_store_as(tmp_path: Path) -> None:
     toml = """\
@@ -234,6 +239,7 @@ def test_operation_without_store_as(tmp_path: Path) -> None:
 # Error: file not found
 # ---------------------------------------------------------------------------
 
+
 def test_file_not_found(tmp_path: Path) -> None:
     with pytest.raises(LoadError) as exc_info:
         load_test_file(tmp_path / "nonexistent.toml")
@@ -244,6 +250,7 @@ def test_file_not_found(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Error: invalid TOML syntax
 # ---------------------------------------------------------------------------
+
 
 def test_invalid_toml_syntax(tmp_path: Path) -> None:
     p = tmp_path / "bad.toml"
@@ -257,6 +264,7 @@ def test_invalid_toml_syntax(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Error: missing required meta.id
 # ---------------------------------------------------------------------------
+
 
 def test_missing_meta_id(tmp_path: Path) -> None:
     toml = """\
@@ -275,6 +283,7 @@ def test_missing_meta_id(tmp_path: Path) -> None:
 # Error: missing required meta.description
 # ---------------------------------------------------------------------------
 
+
 def test_missing_meta_description(tmp_path: Path) -> None:
     toml = """\
         [meta]
@@ -289,6 +298,7 @@ def test_missing_meta_description(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Error: invalid meta.id pattern (uppercase not allowed)
 # ---------------------------------------------------------------------------
+
 
 def test_invalid_meta_id_pattern(tmp_path: Path) -> None:
     toml = """\
@@ -305,6 +315,7 @@ def test_invalid_meta_id_pattern(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Error: invalid action name
 # ---------------------------------------------------------------------------
+
 
 def test_invalid_action_name(tmp_path: Path) -> None:
     toml = """\
@@ -326,6 +337,7 @@ def test_invalid_action_name(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Error: invalid store_as pattern (spaces not allowed)
 # ---------------------------------------------------------------------------
+
 
 def test_invalid_store_as_pattern(tmp_path: Path) -> None:
     toml = """\
@@ -351,6 +363,7 @@ def test_invalid_store_as_pattern(tmp_path: Path) -> None:
 # Error: invalid meta.layer value
 # ---------------------------------------------------------------------------
 
+
 def test_invalid_layer_value(tmp_path: Path) -> None:
     toml = """\
         [meta]
@@ -367,6 +380,7 @@ def test_invalid_layer_value(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Error: test missing required id
 # ---------------------------------------------------------------------------
+
 
 def test_test_missing_id(tmp_path: Path) -> None:
     toml = """\
@@ -392,6 +406,7 @@ def test_test_missing_id(tmp_path: Path) -> None:
 # Error: additional properties rejected
 # ---------------------------------------------------------------------------
 
+
 def test_unknown_top_level_key(tmp_path: Path) -> None:
     toml = """\
         [meta]
@@ -410,6 +425,7 @@ def test_unknown_top_level_key(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Smoke: load the bundled example file
 # ---------------------------------------------------------------------------
+
 
 def test_load_example_xcore_basic() -> None:
     example = Path(__file__).parent.parent / "examples" / "xcore_basic.toml"

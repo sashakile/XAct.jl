@@ -1,4 +1,7 @@
 using Test
+using Aqua
+using JET
+using JuliaFormatter
 include("../XCore.jl")
 using .XCore
 
@@ -51,16 +54,16 @@ end
 @testset "register_symbol — all known package lists populated" begin
     reset_registry!()
     pairs = [
-        (:S1, "XCore",    xCoreNames),
-        (:S2, "XPerm",    xPermNames),
-        (:S3, "XTensor",  xTensorNames),
+        (:S1, "XCore", xCoreNames),
+        (:S2, "XPerm", xPermNames),
+        (:S3, "XTensor", xTensorNames),
         (:S4, "XTableau", xTableauNames),
-        (:S5, "XCoba",    xCobaNames),
-        (:S6, "Invar",    InvarNames),
-        (:S7, "Harmonics",HarmonicsNames),
-        (:S8, "XPert",    xPertNames),
-        (:S9, "Spinors",  SpinorsNames),
-        (:S10,"EM",       EMNames),
+        (:S5, "XCoba", xCobaNames),
+        (:S6, "Invar", InvarNames),
+        (:S7, "Harmonics", HarmonicsNames),
+        (:S8, "XPert", xPertNames),
+        (:S9, "Spinors", SpinorsNames),
+        (:S10, "EM", EMNames),
     ]
     for (sym, pkg, lst) in pairs
         register_symbol(sym, pkg)
@@ -129,7 +132,7 @@ end
 end
 
 @testset "FindSymbols — Expr" begin
-    e = :( f(x, y) )
+    e = :(f(x, y))
     syms = FindSymbols(e)
     @test :f in syms && :x in syms && :y in syms
 end
@@ -240,7 +243,7 @@ end
     reset_xtensions!()
     fired = Symbol[]
     xTension!("Pkg", :DefTensor, "Beginning", (_...) -> push!(fired, :begin))
-    xTension!("Pkg", :DefTensor, "End",       (_...) -> push!(fired, :end))
+    xTension!("Pkg", :DefTensor, "End", (_...) -> push!(fired, :end))
     MakexTensions(:DefTensor, "Beginning")
     @test fired == [:begin]
     MakexTensions(:DefTensor, "End")
@@ -581,7 +584,7 @@ end
 end
 
 @testset "xEvaluateAt — returns expr unchanged" begin
-    e = :( f(x) )
+    e = :(f(x))
     @test xEvaluateAt(e, [1]) === e
     @test xEvaluateAt(42, []) === 42
 end
@@ -701,7 +704,7 @@ end
 
 @testset "L2: hooks are independent across (command, moment) pairs" begin
     reset_xtensions!()
-    results = Dict{Tuple{Symbol,String}, Vector{Int}}()
+    results = Dict{Tuple{Symbol,String},Vector{Int}}()
     cmds = [:Cmd1, :Cmd2, :Cmd3]
     moments = ["Beginning", "End"]
     # Register hooks for all combos, tracking a unique value per combo.
@@ -721,4 +724,26 @@ end
             @test length(results[key]) == 1
         end
     end
+end
+
+# ============================================================
+# Quality checks (Aqua, JET, JuliaFormatter)
+# ============================================================
+
+@testset "Aqua quality checks" begin
+    Aqua.test_all(
+        XCore;
+        ambiguities=false,   # XCore intentionally defers to caller dispatch
+        deps_compat=false,   # no [deps] to check (test-only extras)
+    )
+end
+
+@testset "JET static analysis" begin
+    # report_package checks for type errors and undefined names
+    JET.test_package(XCore; target_defined_mods=true)
+end
+
+@testset "JuliaFormatter" begin
+    src_dir = joinpath(@__DIR__, "..")
+    @test JuliaFormatter.format(src_dir; overwrite=false) == true
 end

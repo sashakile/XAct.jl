@@ -72,6 +72,7 @@ class VersionInfo:
 # Abstract base class
 # ---------------------------------------------------------------------------
 
+
 class TestAdapter(abc.ABC, Generic[ContextT]):
     """Abstract base class all CAS adapter implementations must conform to.
 
@@ -237,21 +238,24 @@ class TestAdapter(abc.ABC, Generic[ContextT]):
         The default implementation returns the full vocabulary.  Override to
         report a subset if the adapter does not yet implement all actions.
         """
-        return frozenset({
-            "DefManifold",
-            "DefMetric",
-            "DefTensor",
-            "Evaluate",
-            "ToCanonical",
-            "Simplify",
-            "Contract",
-            "Assert",
-        })
+        return frozenset(
+            {
+                "DefManifold",
+                "DefMetric",
+                "DefTensor",
+                "Evaluate",
+                "ToCanonical",
+                "Simplify",
+                "Contract",
+                "Assert",
+            }
+        )
 
 
 # ---------------------------------------------------------------------------
 # Sentinel error type
 # ---------------------------------------------------------------------------
+
 
 class AdapterError(RuntimeError):
     """Raised when an adapter fails in a way that cannot be represented as a

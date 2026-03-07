@@ -18,6 +18,7 @@ from sxact.snapshot.store import SnapshotLoadError, SnapshotStore
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _write_snapshot(
     oracle_dir: Path,
     meta_id: str,
@@ -52,6 +53,7 @@ def _write_snapshot(
 # Construction
 # ---------------------------------------------------------------------------
 
+
 class TestConstruction:
     def test_valid_dir_ok(self, tmp_path):
         store = SnapshotStore(tmp_path)
@@ -65,6 +67,7 @@ class TestConstruction:
 # ---------------------------------------------------------------------------
 # load()
 # ---------------------------------------------------------------------------
+
 
 class TestLoad:
     def test_returns_none_for_missing(self, tmp_path):
@@ -85,7 +88,9 @@ class TestLoad:
         assert snap.normalized_output == "delta[-$1,-$2]"
 
     def test_loads_properties(self, tmp_path):
-        _write_snapshot(tmp_path, "pkg/a", "t1", properties={"rank": 2, "type": "Tensor"})
+        _write_snapshot(
+            tmp_path, "pkg/a", "t1", properties={"rank": 2, "type": "Tensor"}
+        )
         store = SnapshotStore(tmp_path)
         snap = store.load("pkg/a", "t1")
         assert snap.properties == {"rank": 2, "type": "Tensor"}
@@ -124,6 +129,7 @@ class TestLoad:
 # ---------------------------------------------------------------------------
 # verify_hash()
 # ---------------------------------------------------------------------------
+
 
 class TestVerifyHash:
     def test_valid_hash_passes(self, tmp_path):
@@ -166,6 +172,7 @@ class TestVerifyHash:
 # oracle_version()
 # ---------------------------------------------------------------------------
 
+
 class TestOracleVersion:
     def test_reads_version_file(self, tmp_path):
         (tmp_path / "VERSION").write_text("xAct 1.2.0, Mathematica 14.0\n")
@@ -180,6 +187,7 @@ class TestOracleVersion:
 # ---------------------------------------------------------------------------
 # list_snapshots()
 # ---------------------------------------------------------------------------
+
 
 class TestListSnapshots:
     def test_empty_dir(self, tmp_path):

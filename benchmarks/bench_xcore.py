@@ -32,7 +32,9 @@ BASELINE_PATH = Path(__file__).parent / "xcore_baseline.json"
 # ── benchmark harness ────────────────────────────────────────────────────────
 
 
-def _bench(func: Callable[[], Any], n_warmup: int = N_WARMUP, n_measure: int = N_MEASURE) -> dict:
+def _bench(
+    func: Callable[[], Any], n_warmup: int = N_WARMUP, n_measure: int = N_MEASURE
+) -> dict:
     """Run func and return timing statistics (ms)."""
     # First call: JIT
     t0 = time.perf_counter()
@@ -104,7 +106,9 @@ def bench_xtension_dispatch(jl: Any, xcore_mod: Any) -> dict:
     # Register 10 hooks
     jl.seval("empty!(XCore._xtensions)")
     for i in range(10):
-        jl.seval(f'XCore.xTension!("Pkg{i}", :BenchCmd, "Beginning", (_...) -> nothing)')
+        jl.seval(
+            f'XCore.xTension!("Pkg{i}", :BenchCmd, "Beginning", (_...) -> nothing)'
+        )
 
     def _call() -> None:
         xcore_mod.MakexTensions(xcore_mod.Symbol("BenchCmd"), "Beginning")
@@ -116,6 +120,7 @@ def bench_xtension_dispatch(jl: Any, xcore_mod: Any) -> dict:
 
 def bench_symbol_join(xcore_mod: Any) -> dict:
     """Throughput of SymbolJoin with 3 components."""
+
     def _call() -> None:
         xcore_mod.SymbolJoin("Alpha", "Beta", "Gamma")
 
@@ -175,7 +180,9 @@ def main() -> None:
         print(f"  {name} …", end=" ", flush=True)
         stats = func()
         results["benchmarks"][name] = stats
-        print(f"median={stats['median_ms']:.3f}ms  IQR={stats['iqr_ms']:.3f}ms  JIT={stats['jit_overhead_ms']:.1f}ms")
+        print(
+            f"median={stats['median_ms']:.3f}ms  IQR={stats['iqr_ms']:.3f}ms  JIT={stats['jit_overhead_ms']:.1f}ms"
+        )
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -206,10 +213,14 @@ def _check_regression(current: dict, baseline_path: Path) -> None:
             continue
         ratio = curr_median / base_median
         if ratio >= error_factor:
-            print(f"ERROR  {name}: {ratio:.1f}x slower than baseline ({curr_median:.3f}ms vs {base_median:.3f}ms)")
+            print(
+                f"ERROR  {name}: {ratio:.1f}x slower than baseline ({curr_median:.3f}ms vs {base_median:.3f}ms)"
+            )
             had_error = True
         elif ratio >= warn_factor:
-            print(f"WARN   {name}: {ratio:.1f}x slower than baseline ({curr_median:.3f}ms vs {base_median:.3f}ms)")
+            print(
+                f"WARN   {name}: {ratio:.1f}x slower than baseline ({curr_median:.3f}ms vs {base_median:.3f}ms)"
+            )
 
     if had_error:
         sys.exit(1)

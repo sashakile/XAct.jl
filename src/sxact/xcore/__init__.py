@@ -26,8 +26,7 @@ try:
     from juliacall import JuliaError
 except ImportError as exc:  # pragma: no cover
     raise ImportError(
-        "juliacall is required for sxact.xcore.  "
-        "Install it with: pip install juliacall"
+        "juliacall is required for sxact.xcore.  Install it with: pip install juliacall"
     ) from exc
 
 from .list_utils import (

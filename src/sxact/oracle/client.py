@@ -1,6 +1,6 @@
 """HTTP client for the Wolfram Oracle server."""
 
-from typing import Literal
+from typing import Any, Literal
 
 import requests
 
@@ -33,9 +33,11 @@ class OracleClient:
             data = resp.json()
             status_raw = data.get("status", "error")
             status: Literal["ok", "error", "timeout"] = (
-                "ok" if status_raw == "ok" else
-                "timeout" if status_raw == "timeout" else
-                "error"
+                "ok"
+                if status_raw == "ok"
+                else "timeout"
+                if status_raw == "timeout"
+                else "error"
             )
             raw = data.get("result", "") or ""
             return Result(
@@ -50,8 +52,9 @@ class OracleClient:
         except requests.RequestException as e:
             return Result(status="error", type="", repr="", normalized="", error=str(e))
 
-    def evaluate_with_xact(self, expr: str, timeout: int = 60,
-                           context_id: str | None = None) -> Result:
+    def evaluate_with_xact(
+        self, expr: str, timeout: int = 60, context_id: str | None = None
+    ) -> Result:
         """Evaluate a Wolfram expression with xAct pre-loaded.
 
         Args:
@@ -61,7 +64,7 @@ class OracleClient:
                 the server wraps the expression in a Block with a unique context
                 to prevent symbol pollution between tests.
         """
-        json_body: dict = {"expr": expr, "timeout": timeout}
+        json_body: dict[str, Any] = {"expr": expr, "timeout": timeout}
         if context_id:
             json_body["context_id"] = context_id
         try:
@@ -73,9 +76,11 @@ class OracleClient:
             data = resp.json()
             status_raw = data.get("status", "error")
             status: Literal["ok", "error", "timeout"] = (
-                "ok" if status_raw == "ok" else
-                "timeout" if status_raw == "timeout" else
-                "error"
+                "ok"
+                if status_raw == "ok"
+                else "timeout"
+                if status_raw == "timeout"
+                else "error"
             )
             raw = data.get("result", "") or ""
             return Result(
@@ -126,4 +131,3 @@ class OracleClient:
             return data.get("clean", False), data.get("leaked", [])
         except requests.RequestException:
             return False, []
-

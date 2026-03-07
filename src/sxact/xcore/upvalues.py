@@ -12,6 +12,7 @@ from .symbols import _sym
 # 5. xUpvalues
 # ---------------------------------------------------------------------------
 
+
 def sub_head(expr: Any) -> Any:
     """Return the innermost atomic head of a nested expression.
 
@@ -61,6 +62,7 @@ def x_up_delete_cases_to(
 # 6. Tag assignment
 # ---------------------------------------------------------------------------
 
+
 def x_tag_set(tag: str | Any, key: Any, value: Any) -> Any:
     """Assign *value* to *key* in the tag store for *tag*.
 
@@ -69,9 +71,7 @@ def x_tag_set(tag: str | Any, key: Any, value: Any) -> Any:
     return _runtime.get_xcore().xTagSet_b(_sym(tag), key, value)
 
 
-def x_tag_set_delayed(
-    tag: str | Any, key: Any, thunk: Callable[[], Any]
-) -> None:
+def x_tag_set_delayed(tag: str | Any, key: Any, thunk: Callable[[], Any]) -> None:
     """Delayed variant of :func:`x_tag_set`.
 
     Julia: ``xTagSetDelayed!(tag, key, thunk)``
@@ -82,6 +82,7 @@ def x_tag_set_delayed(
 # ---------------------------------------------------------------------------
 # 8. Extensions system
 # ---------------------------------------------------------------------------
+
 
 def x_tension(
     package: str,
@@ -109,6 +110,7 @@ def make_x_tensions(defcommand: str | Any, moment: str, *args: Any) -> None:
 # ---------------------------------------------------------------------------
 # 11. Misc
 # ---------------------------------------------------------------------------
+
 
 def disclaimer() -> None:
     """Print the GPL warranty disclaimer.

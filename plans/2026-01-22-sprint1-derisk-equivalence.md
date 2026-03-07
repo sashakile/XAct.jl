@@ -129,9 +129,9 @@ A working Python module that can:
    from flask import Flask, request, jsonify
    import subprocess
    import time
-   
+
    app = Flask(__name__)
-   
+
    @app.route("/evaluate", methods=["POST"])
    def evaluate():
        expr = request.json.get("expr")
@@ -152,11 +152,11 @@ A working Python module that can:
    ```python
    # src/sxact/oracle/client.py
    import requests
-   
+
    class OracleClient:
        def __init__(self, base_url="http://localhost:8765"):
            self.base_url = base_url
-       
+
        def evaluate(self, expr: str) -> dict:
            resp = requests.post(f"{self.base_url}/evaluate", json={"expr": expr})
            return resp.json()

@@ -1,0 +1,48 @@
+default_stages: [pre-commit]
+
+repos:
+  # ── Python: ruff (lint + format) ──────────────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.2
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # ── Python: mypy type-checking ─────────────────────────────────────────────
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        language: system
+        entry: uv run mypy src/sxact/
+        pass_filenames: false
+        types: [python]
+
+  # ── Julia: JuliaFormatter ──────────────────────────────────────────────────
+  # Uses a dedicated tooling env so it never conflicts with the main project deps.
+  # Requires Julia in PATH; run `julia -e 'using Pkg; Pkg.instantiate()'` in
+  # src/julia/tooling/ to set it up on a fresh machine.
+  - repo: local
+    hooks:
+      - id: julia-format
+        name: julia-format
+        language: system
+        entry: julia --project=src/julia/tooling -e "
+          using JuliaFormatter;
+          ok = format(ARGS; overwrite=true);
+          ok || (println(\"Reformatted Julia files — stage changes and re-commit\"); exit(1))
+          " --
+        pass_filenames: true
+        types_or: [julia]
+
+  # ── Trailing whitespace / EOF ──────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-toml
+      - id: check-yaml
+      - id: mixed-line-ending
+        args: [--fix=lf]

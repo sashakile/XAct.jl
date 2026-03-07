@@ -35,6 +35,7 @@ def adapter_factory():
 # WolframAdapter-specific tests (require live oracle)
 # ---------------------------------------------------------------------------
 
+
 class TestWolframBuildExpr:
     """Unit tests for _build_expr() — no oracle needed."""
 
@@ -147,6 +148,7 @@ class TestWolframLifecycle:
         oracle.cleanup.return_value = True
         adapter = self._make_adapter(oracle)
         from sxact.adapter.wolfram import _WolframContext
+
         ctx = _WolframContext(context_id="test-ctx")
         adapter.teardown(ctx)
         oracle.cleanup.assert_called_once()
@@ -157,6 +159,7 @@ class TestWolframLifecycle:
         oracle.cleanup.return_value = True
         adapter = self._make_adapter(oracle)
         from sxact.adapter.wolfram import _WolframContext
+
         ctx = _WolframContext(context_id="test-ctx")
         assert ctx.alive is True
         adapter.teardown(ctx)
@@ -168,6 +171,7 @@ class TestWolframLifecycle:
         oracle.cleanup.return_value = False
         adapter = self._make_adapter(oracle)
         from sxact.adapter.wolfram import _WolframContext
+
         ctx = _WolframContext(context_id="test-ctx")
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
@@ -182,6 +186,7 @@ class TestWolframLifecycle:
         oracle.cleanup.return_value = False
         adapter = self._make_adapter(oracle)
         from sxact.adapter.wolfram import _WolframContext
+
         ctx = _WolframContext(context_id="test-ctx")
         with warnings.catch_warnings(record=True):
             warnings.simplefilter("always")
@@ -204,6 +209,7 @@ class TestWolframLifecycle:
     def test_initialize_raises_when_oracle_down(self):
         """initialize() raises AdapterError when oracle is unreachable."""
         from sxact.adapter.base import AdapterError
+
         oracle = MagicMock()
         oracle.health.return_value = False
         adapter = self._make_adapter(oracle)
@@ -229,6 +235,7 @@ class TestWolframLifecycle:
     def test_initialize_raises_if_restart_fails_on_dirty(self):
         """initialize() raises AdapterError when dirty and restart() fails."""
         from sxact.adapter.base import AdapterError
+
         oracle = MagicMock()
         oracle.health.return_value = True
         oracle.check_clean_state.return_value = (False, ["LeakedTensor"])

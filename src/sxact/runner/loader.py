@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import tomli
 import jsonschema
@@ -28,6 +28,7 @@ _SCHEMA_PATH = Path(__file__).parent / "schemas" / "test-schema.json"
 # Public error type
 # ---------------------------------------------------------------------------
 
+
 class LoadError(ValueError):
     """Raised when a test file cannot be loaded or fails schema validation.
 
@@ -39,7 +40,9 @@ class LoadError(ValueError):
                 is not field-specific (e.g. file not found, TOML syntax).
     """
 
-    def __init__(self, message: str, *, path: Path | None = None, field: str | None = None) -> None:
+    def __init__(
+        self, message: str, *, path: Path | None = None, field: str | None = None
+    ) -> None:
         super().__init__(message)
         self.path = path
         self.field = field
@@ -48,6 +51,7 @@ class LoadError(ValueError):
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class TestMeta:
@@ -110,6 +114,7 @@ class TestFile:
 # Public entry point
 # ---------------------------------------------------------------------------
 
+
 def load_test_file(path: str | Path) -> TestFile:
     """Load and validate a TOML test file.
 
@@ -135,6 +140,7 @@ def load_test_file(path: str | Path) -> TestFile:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _parse_toml(path: Path) -> dict[str, Any]:
     try:
         with open(path, "rb") as fh:
@@ -147,7 +153,7 @@ def _parse_toml(path: Path) -> dict[str, Any]:
 
 def _load_schema() -> dict[str, Any]:
     with open(_SCHEMA_PATH) as fh:
-        return json.load(fh)
+        return cast(dict[str, Any], json.load(fh))
 
 
 def _validate_against_schema(data: dict[str, Any], source: Path) -> None:
@@ -163,9 +169,7 @@ def _validate_against_schema(data: dict[str, Any], source: Path) -> None:
     # Report all violations, but raise on the first (most specific) one.
     first = errors[0]
     field_path = _json_path(first)
-    details = "; ".join(
-        f"{_json_path(e)}: {e.message}" for e in errors
-    )
+    details = "; ".join(f"{_json_path(e)}: {e.message}" for e in errors)
     raise LoadError(
         f"Schema validation failed in {source.name} — {details}",
         path=source,
@@ -187,6 +191,7 @@ def _json_path(error: jsonschema.ValidationError) -> str:
 # ---------------------------------------------------------------------------
 # Object builders
 # ---------------------------------------------------------------------------
+
 
 def _build(data: dict[str, Any], source: Path) -> TestFile:
     return TestFile(
