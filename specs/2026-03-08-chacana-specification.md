@@ -1,0 +1,168 @@
+# Chacana Specification v0.2.2
+
+**A language-agnostic, statically-typed DSL for symbolic and numerical tensor calculus**
+
+---
+
+## 1. Introduction
+
+### 1.1 Purpose & Scope
+
+Chacana is a **specification for a domain-specific language (DSL)**. It is a formal notation designed to bridge the fragmented ecosystem of tensor computation tools across Python, Julia, Rust, JavaScript, and Go.
+
+**Important Distinction:** Chacana is **not a computational engine or processor**. It defines a standard for *declaring* tensor structures and *expressing* algebraic operations. It is the responsibility of **Chacana Processors** (such as `Chacana-jl` or `Chacana-py`) to interpret this specification and execute the underlying mathematics.
+
+The specification provides:
+1.  **A Declaration Layer (TOML)**: For defining the "Context" (Manifolds, Tensors, Symmetries).
+2.  **An Expression Layer (Micro-syntax)**: A compact string notation for tensor algebra.
+3.  **A Static Type System**: For pre-execution validation of index well-formedness.
+4.  **A Formal AST (JSON)**: For cross-language and cross-process interchange (The **ValidationToken**).
+
+### 1.2 Design Principles
+
+*   **Principle 1: Separation of Notation from Implementation.** Chacana defines the "What," while Processors define the "How."
+*   **Principle 2: Separation of Declarations from Expressions.** Metadata is declared in TOML; algebra is expressed in strings.
+*   **Principle 3: Static Verification.** Index consistency and symmetry constraints are checked at parse-time, not runtime.
+*   **Principle 4: Backend Neutrality.** The same specification targets symbolic engines (SymPy, Cadabra) and numerical engines (JAX, PyTorch) via backend-specific adapters.
+*   **Principle 5: Machine-Parseable Penrose Notation.** Provides the readability of abstract index notation with the rigor of a statically-typed programming language.
+
+---
+
+## 2. TOML Declaration Layer (The Context)
+
+The TOML file defines the **Global Context (Γ)** in which expressions are evaluated.
+
+### 2.1 `[meta]` — File metadata
+
+```toml
+[meta]
+version    = "0.2.2"
+name       = "Schwarzschild perturbation theory"
+strictness = "strict" # "strict" (default) | "relaxed" | "pedantic"
+backend    = "symbolic"
+```
+
+| Field        | Type   | Default    | Description                                      |
+|--------------|--------|------------|--------------------------------------------------|
+| `version`    | string | `"0.2.2"`  | Chacana spec version                             |
+| `strictness` | string | `"strict"` | "relaxed" allows bypassing certain Type Rules.   |
+
+### 2.2 `[perturbation.<n>]` — Perturbation Theory
+Declares the background and parameters for ε-expansion.
+
+**Note:** Any tensor using a perturbation order (e.g., `h@1`) must have a `manifold` and `index_type` that matches the background tensor or the declared perturbation parameter's scope.
+
+```toml
+[perturbation.eps]
+parameter  = "ε"
+order      = 2
+background = "g_background"
+```
+
+### 2.3 `[strategy.<n>]` — Contraction Optimization
+Provides hints for numerical processors regarding contraction ordering (NP-hard optimization).
+
+```toml
+[strategy.schwarzschild_gw]
+einsum_opt   = "optimal"
+intermediate = ["T_aux", "S_aux"]
+cost_limit   = 1e9
+```
+
+---
+
+## 3. The Static Index Type System
+
+Chacana introduces a formal **Static Type System** to ensure that tensor expressions are mathematically well-formed before they are sent to a processor.
+
+### 3.1 Typing Judgments
+An expression `E` is a **Well-Formed Expression (WFE)** in context **Γ** (the TOML declarations) if it satisfies the following rules:
+
+*   **Rule 1: Contraction Consistency.** A pair of indices `(a, b)` is contractible if and only if `a.name == b.name` and `a.index_type == b.index_type`.
+    *   **Metric-Aware Variance**: If the `index_type` defines a `metric`, same-variance contraction (e.g., `_a _a`) is permitted (implying a metric contraction).
+    *   **Strict Variance**: If no metric is defined, indices must have opposite variance (`^a _a`).
+    *   **Spinor Exception**: 2-spinor contraction follows the specific metric properties (e.g., antisymmetric `epsilon`) declared in Γ.
+*   **Rule 2: Free Index Invariance.** In a sum `A + B`, the set of free indices of `A` must be identical to the set of free indices of `B` in name, variance, and type.
+*   **Rule 3: Symmetry Validity.** A permutation `σ` applied to tensor `T` is valid if and only if `σ` is a member of the symmetry group `S_T` declared in Γ.
+*   **Rule 4: Derivative Compatibility.** A derivative index `;c` is valid if its type matches the connection type associated with the operand's manifold in Γ.
+*   **Rule 5: Perturbation Type Safety.** A tensor order `T@n` is valid only if `T` is declared in Γ. All orders `n > 0` of a tensor must share the same `index_type` and `manifold` as the order-0 (background) tensor.
+
+### 3.2 Strictness Levels
+*   **Strict (Default)**: All Rules (1-5) must pass. Errors block processing.
+*   **Relaxed**: Rule 4 (Derivative Compatibility) and Rule 5 (Perturbation Safety) emit warnings instead of errors. Useful for early-stage drafting.
+*   **Pedantic**: Enforces optional "Best Practices" (e.g., explicit type annotations even when unambiguous).
+
+---
+
+## 4. Expression DSL (Micro-syntax)
+
+### 4.1 Spinor Tokens
+*   **Dotted Indices**: `T{^A _Ḃ}`
+*   **Spinor Metric**: `epsilon{_A _B}`
+*   **Soldering Form**: `sigma{^a _B _Ċ}`
+
+### 4.2 Exterior Calculus (Forms)
+*   **Wedge Product**: `A{_a} ^ B{_b}` is the exterior product.
+    *   **Normalization**: Parsers must use the $1/(p!q!)$ normalization convention where $p$ and $q$ are the degrees of the forms.
+*   **Exterior Derivative**: `d(A){_a _b}`
+*   **Hodge Dual**: `*(F){^a ^b}`
+
+### 4.3 Perturbation Syntax
+*   **Order Annotation**: `h{_a _b}@1` (Refers to the 1st-order perturbation).
+*   **Background Metric**: `g{_a _b}@0` (Refers to the background metric).
+*   **Note**: The `@` delimiter is used to distinguish perturbation orders from commutator brackets `[]`.
+
+---
+
+## 5. Formal Denotational Semantics
+
+Chacana defines the mathematical meaning of its syntax via a denotation function **⟦·⟧**.
+
+*   **Tensors**: `⟦T{^a _b}⟧` maps to an element of the tensor bundle `V ⊗ V*` over manifold `M`.
+*   **Contraction**: `⟦T{^a _b} * S{^b _c}⟧` denotes the trace over the `b` slots of the tensor product.
+*   **Covariant Derivative**: `⟦T{^a _b ;c}⟧` denotes the action of the connection `∇_c` on the tensor field `T`.
+*   **Exterior Derivative**: `⟦d(A)⟧` denotes the map $\Omega^p(M) \to \Omega^{p+1}(M)$ given by the standard exterior derivative.
+*   **Hodge Dual**: `⟦*(F)⟧` denotes the isomorphism $\Omega^p(M) \to \Omega^{n-p}(M)$ induced by the metric and orientation.
+*   **Wedge Product**: `⟦A ^ B⟧` denotes the element $A \wedge B = \frac{(p+q)!}{p!q!} \text{Alt}(A \otimes B)$ using the $1/p!q!$ convention.
+
+---
+
+## 6. The Abstract Syntax Tree (AST) & JSON Interchange
+
+For tool interoperability, Chacana provides a **Canonical JSON Representation**. This format is the definitive **ValidationToken** used by the **Eleguá Orchestrator** to prove mathematical equivalence across different language processors.
+
+The AST follows a **MathJSON-compatible** recursive structure.
+
+---
+
+## 7. Comparison with Processors
+
+| Feature | Chacana Spec (DSL) | Chacana Processor (e.g., Chacana-jl) |
+| :--- | :--- | :--- |
+| **Parsing** | Defines Grammar | Implements Recursive Descent |
+| **Validation** | Defines Type Rules | Implements Static Checker |
+| **Symmetry** | Defines BSGS Shorthand | Implements Schreier-Sims |
+| **Computational Reduction** | **OUT OF SCOPE** | **Symbolic Rewrite / Numerical Codegen** |
+| **Canonicalization** | Defines Logic (Portugal) | Implements Double-Coset Search |
+
+---
+
+## 8. Symmetry System
+
+### 8.1 Shorthand Notation
+Symmetries are declared as strings. The parser expands these into BSGS (Base and Strong Generating Set) representations.
+
+| Shorthand           | Meaning                                         |
+|---------------------|-------------------------------------------------|
+| `none`              | No symmetry                                     |
+| `sym(i, j)`         | Symmetric in slots i, j                         |
+| `asym(i, j)`        | Antisymmetric in slots i, j                     |
+| `riemann(a,b,c,d)`  | Riemann monoterm symmetries                     |
+| `cyclic(i,j,k)`     | Cyclic symmetry: `T_{ijk} = T_{jki} = T_{kij}` |
+
+---
+
+## 9. Next Steps for Implementation
+1.  Finalize the **PEG Grammar** for the extended micro-syntax (incorporating `@` for perturbations).
+2.  Implement the **Static Type Checker** in `chacana-spec-py`.
+3.  Generate the **JSON Schema** for the `ValidationToken` and verify compatibility with the Eleguá core.
