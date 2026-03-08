@@ -302,6 +302,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
 
     def _execute_expr(self, wolfram_expr: str) -> Result:
         julia_expr = _wl_to_jl(wolfram_expr)
+        julia_expr = _postprocess_dimino(julia_expr)
         _bind_fresh_symbols(self._jl, julia_expr)
         try:
             val = self._jl.seval(julia_expr)
@@ -364,13 +365,14 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             passed = val is True or str(val).lower() == "true"
             if passed:
                 return Result(status="ok", type="Bool", repr="True", normalized="True")
-            msg = message or f"Assertion failed: {wolfram_condition}"
+            # Assertion evaluated but returned false — this is a valid result,
+            # not an error. Return status="ok" so snapshot comparators can
+            # compare the "False" result against oracle snapshots.
             return Result(
-                status="error",
+                status="ok",
                 type="Bool",
-                repr=str(val),
-                normalized=str(val),
-                error=msg,
+                repr="False",
+                normalized="False",
             )
         except Exception as exc:
             return Result(
@@ -659,6 +661,99 @@ _SCHREIER_ORBIT_RE = re.compile(
 )
 _SCHREIER_ORBITS_RE = re.compile(r"SchreierOrbits\[GenSet\[([^\]]+)\],\s*([^\]]+)\]")
 
+# Post-process Dimino after WL→Julia translation.
+# Matches: Dimino(GenSet(g1, g2, ...))
+# Captures the comma-separated generator names after Julia translation.
+_DIMINO_GENSET_POST_RE = re.compile(r"\bDimino\(GenSet\(([^)]+)\)\)")
+
+
+def _postprocess_dimino(julia_expr: str) -> str:
+    """Inject name registry into Dimino(GenSet(...)) calls (post WL→Julia translation).
+
+    Dimino(GenSet(g1, g2, ...)) → Dimino(GenSet(g1, g2, ...), ["g1"=>g1, "g2"=>g2, ...])
+    """
+
+    def replace_dimino(m: "re.Match[str]") -> str:
+        gens_str = m.group(1).strip()
+        gen_names = [g.strip() for g in gens_str.split(",")]
+        pairs = ", ".join(f'"{nm}"=>{nm}' for nm in gen_names)
+        return f"Dimino(GenSet({gens_str}), [{pairs}])"
+
+    return _DIMINO_GENSET_POST_RE.sub(replace_dimino, julia_expr)
+
+
+_PREFIX_AT_RE = re.compile(r"(\b[A-Za-z_]\w*)\s*@(?!@)")
+
+
+def _preprocess_prefix_at(expr: str) -> str:
+    """Transform WL prefix application f@expr → f[expr].
+
+    WL's single ``@`` is prefix function application: ``f@x = f[x]``.
+    We convert to bracket notation so the main character-pass in ``_wl_to_jl``
+    can then translate ``f[...]`` → ``f(...)``.
+    We only replace ``@`` that immediately follows an identifier (not ``@@``).
+    """
+    # Strategy: find each `identifier@` and wrap the following expression
+    # in WL brackets. Since the following expression is always a balanced
+    # sub-expression (identifier, function-call, or bracketed list) we can
+    # scan forward to find the end.
+    result = []
+    i = 0
+    n = len(expr)
+    while i < n:
+        m = _PREFIX_AT_RE.search(expr, i)
+        if m is None:
+            result.append(expr[i:])
+            break
+        result.append(expr[i : m.start()])
+        func_name = m.group(1)
+        result.append(func_name)
+        result.append("[")
+        j = m.end()  # position after the @
+        # Find the end of the following expression (one balanced token)
+        # Skip whitespace
+        while j < n and expr[j] == " ":
+            j += 1
+        if j < n and expr[j] in "([{":
+            # Balanced bracket: copy until matching close
+            open_ch = expr[j]
+            close_ch = {"(": ")", "[": "]", "{": "}"}[open_ch]
+            depth = 1
+            result.append(expr[j])
+            j += 1
+            while j < n and depth > 0:
+                if expr[j] == open_ch:
+                    depth += 1
+                elif expr[j] == close_ch:
+                    depth -= 1
+                result.append(expr[j])
+                j += 1
+        else:
+            # Identifier or number: copy until non-identifier char,
+            # then include any immediately following bracket expression
+            k = j
+            while k < n and (expr[k].isalnum() or expr[k] == "_"):
+                k += 1
+            result.append(expr[j:k])
+            j = k
+            # If followed by a bracket, include it too
+            if j < n and expr[j] in "([{":
+                open_ch = expr[j]
+                close_ch = {"(": ")", "[": "]", "{": "}"}[open_ch]
+                depth = 1
+                result.append(expr[j])
+                j += 1
+                while j < n and depth > 0:
+                    if expr[j] == open_ch:
+                        depth += 1
+                    elif expr[j] == close_ch:
+                        depth -= 1
+                    result.append(expr[j])
+                    j += 1
+        result.append("]")
+        i = j
+    return "".join(result)
+
 
 def _preprocess_apply_op(expr: str) -> str:
     """Transform f @@ {a, b, c} → f(a, b, c) (WL Apply with list).
@@ -754,6 +849,10 @@ def _wl_to_jl(expr: str) -> str:
     as-is; they will cause Julia ``UndefVarError`` for tests that rely on
     Wolfram's symbolic algebra — those tests correctly fail in Julia.
     """
+    # Pre-process WL prefix @: f@expr → f[expr] (f @ g returns f applied to g).
+    # This must run before Apply @@ handling.
+    expr = _preprocess_prefix_at(expr)
+
     # Pre-process Apply @@ operator: f @@ {a,b,c} → f(a,b,c)
     expr = _preprocess_apply_op(expr)
 

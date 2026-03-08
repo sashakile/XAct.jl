@@ -862,12 +862,95 @@ export canonicalize_slots
 
 export Cycles, GenSet, PermMemberQ, OrderOfGroup, Perm, PermDeg
 export Orbit, Orbits, Permute, TranslatePerm, SchreierSims, ID
+export Group
 
 """
 Identity permutation sentinel. `PermMemberQ(ID, sgs)` expands to identity_perm(sgs.n).
 """
 struct _IDType end
 const ID = _IDType()
+
+# ---------------------------------------------------------------------------
+# Group: ordered list of group elements returned by Dimino
+# ---------------------------------------------------------------------------
+
+"""
+    Group(elem1, elem2, ...) → Group
+
+Ordered list of group elements as returned by xPerm's Dimino.
+Each element is either a String (named generator or "ID") or a Vector{Int} (Cycles form).
+Equality treats "ID" and Int[] as equivalent identity representations.
+"""
+struct Group
+    elems::Vector{Any}
+    Group(elems::Vector{Any}) = new(elems)
+end
+Group(args...) = Group(Any[a for a in args])
+
+function _perm_eq_normalized(p::Vector{Int}, q::Vector{Int})
+    n = max(length(p), length(q))
+    p_ext = length(p) < n ? vcat(p, collect((length(p) + 1):n)) : p
+    q_ext = length(q) < n ? vcat(q, collect((length(q) + 1):n)) : q
+    return p_ext == q_ext
+end
+
+function _group_elem_eq(a, b)
+    a === b && return true
+    # "ID" and Int[] are both representations of the identity
+    if a isa String && a == "ID" && b isa Vector{Int} && isempty(b)
+        return true
+    end
+    if b isa String && b == "ID" && a isa Vector{Int} && isempty(a)
+        return true
+    end
+    if a isa Vector{Int} && b isa Vector{Int}
+        return _perm_eq_normalized(a, b)
+    end
+    # String name vs Vector{Int}: look up the Julia variable in Main scope
+    if a isa String && b isa Vector{Int}
+        try
+            val = Main.eval(Symbol(a))
+            if val isa Vector{Int}
+                return _perm_eq_normalized(val, b)
+            end
+        catch
+        end
+    end
+    if b isa String && a isa Vector{Int}
+        try
+            val = Main.eval(Symbol(b))
+            if val isa Vector{Int}
+                return _perm_eq_normalized(a, val)
+            end
+        catch
+        end
+    end
+    a == b
+end
+
+function Base.:(==)(a::Group, b::Group)
+    length(a.elems) == length(b.elems) || return false
+    all(_group_elem_eq(x, y) for (x, y) in zip(a.elems, b.elems))
+end
+
+Base.length(g::Group) = length(g.elems)
+Length(g::Group) = length(g.elems)
+
+function Base.show(io::IO, g::Group)
+    print(io, "Group[")
+    for (i, e) in enumerate(g.elems)
+        i > 1 && print(io, ", ")
+        if e isa String
+            print(io, '"', e, '"')
+        elseif e isa Vector{Int}
+            # Use WL-style curly-brace list so _wl_to_jl can translate back to Julia
+            print(io, "{", join(e, ", "), "}")
+        else
+            print(io, e)
+        end
+    end
+    print(io, "]")
+end
 
 """
     Cycles(cycle1, cycle2, ...) → Vector{Int}
@@ -1111,6 +1194,61 @@ end
 export Stabilizer
 
 # ---------------------------------------------------------------------------
+# StablePoints
+# ---------------------------------------------------------------------------
+
+"""
+    StablePoints(perm) → Vector{Int}
+    StablePoints(gs::Vector) → Vector{Int}
+    StablePoints(sgs::StrongGenSet) → Vector{Int}
+
+Return the sorted list of points fixed by all generators.
+"""
+function StablePoints(perm::AbstractVector{<:Integer})
+    n = length(perm)
+    [i for i in 1:n if perm[i] == i]
+end
+
+function StablePoints(gs::Vector{Vector{Int}})
+    isempty(gs) && return Int[]
+    n = maximum(length(g) for g in gs)
+    [i for i in 1:n if all(length(g) < i || g[i] == i for g in gs)]
+end
+
+function StablePoints(sgs::StrongGenSet)
+    StablePoints(sgs.sgs)
+end
+
+export StablePoints
+
+# ---------------------------------------------------------------------------
+# RightCosetRepresentative
+# ---------------------------------------------------------------------------
+
+"""
+    RightCosetRepresentative(perm, n, sgs) → Vector{Int}
+
+WL-compatible wrapper: return the canonical (lex-minimum) representative
+of the right coset S·perm in the group defined by `sgs`.
+"""
+function RightCosetRepresentative(
+    perm::AbstractVector{<:Integer}, n::Integer, sgs::StrongGenSet
+)
+    p = if length(perm) < n
+        vcat(Vector{Int}(perm), collect((length(perm) + 1):n))
+    else
+        Vector{Int}(perm)
+    end
+    p_canon, sign = right_coset_rep(p, sgs)
+    Any[p_canon, sign]  # WL returns {canonical_perm, sign}; First[] extracts the perm
+end
+
+export RightCosetRepresentative
+
+First(x) = first(x)
+export First
+
+# ---------------------------------------------------------------------------
 # SchreierOrbit
 # ---------------------------------------------------------------------------
 
@@ -1261,31 +1399,92 @@ export SchreierResult, SchreierOrbit
 # ---------------------------------------------------------------------------
 
 """
-    Dimino(GS) → Vector{Vector{Int}}
+    Dimino(GS, names) → Group
 
-Enumerate all elements of the group generated by `GS` via BFS (right multiplication).
-Returns elements in BFS order: identity first. Supports `Length[Dimino[...]]` tests.
+Enumerate all elements of the group generated by `GS` using the Dimino algorithm.
+Returns a Group with elements in coset-expansion order (identity first).
+`names` is an optional Vector{Pair{String,Vector{Int}}} mapping name → permutation vector.
+Named elements appear as their String name; others appear as their permutation vector.
+
+The algorithm: for each new generator s not yet in G, iterate through all current
+elements and left-multiply by s, appending new elements. This produces xPerm-compatible
+coset ordering.
 """
-function Dimino(GS::Vector{Vector{Int}})
-    isempty(GS) && return [Int[]]
+function Dimino(
+    GS::Vector{Vector{Int}},
+    names::Vector{Pair{String,Vector{Int}}}=Pair{String,Vector{Int}}[],
+)
+    if isempty(GS)
+        return Group(Any["ID"])
+    end
     n = maximum(length(g) for g in GS)
     padded = [length(g) < n ? vcat(g, collect((length(g) + 1):n)) : copy(g) for g in GS]
     identity_p = collect(1:n)
+
+    # Build name lookup: padded_vec → name string
+    name_lookup = Dict{Vector{Int},String}()
+    for (nm, vec) in names
+        padded_vec = length(vec) < n ? vcat(vec, collect((length(vec) + 1):n)) : vec
+        name_lookup[padded_vec] = nm
+    end
+
+    G = [identity_p]
     seen = Set{Vector{Int}}([identity_p])
-    queue = [identity_p]
-    head = 1
-    while head <= length(queue)
-        h = queue[head];
-        head += 1
-        for g in padded
-            new_e = compose(g, h)
-            if !(new_e in seen)
-                push!(seen, new_e)
-                push!(queue, new_e)
+
+    for (ki, s) in enumerate(padded)
+        s in seen && continue
+
+        # Snapshot of the current subgroup H = G before adding this coset
+        H = copy(G)
+
+        # Add the first new coset: s * H
+        for h in H
+            x = compose(s, h)
+            if !(x in seen)
+                push!(seen, x)
+                push!(G, x)
             end
         end
+
+        # Find additional new cosets by applying each generator (so far) to each
+        # known coset representative, until no new cosets emerge.
+        # coset_reps[1] = s (the first new rep); we scan forward as we discover more.
+        first_new = length(H) + 1   # index in G of the first new coset rep
+        ri = first_new
+        while ri <= length(G)
+            t = G[ri]
+            # Apply each generator s1,...,s_ki to this coset rep
+            for gen in padded[1:ki]
+                x = compose(gen, t)
+                if !(x in seen)
+                    # x is a new coset rep — add x * H
+                    push!(seen, x)
+                    push!(G, x)
+                    for h in H
+                        xh = compose(x, h)
+                        if !(xh in seen)
+                            push!(seen, xh)
+                            push!(G, xh)
+                        end
+                    end
+                end
+            end
+            ri += 1
+        end
     end
-    queue
+
+    # Convert G to Group elements with name lookup
+    elems = Any[]
+    for (i, p) in enumerate(G)
+        if i == 1
+            push!(elems, "ID")          # identity always first
+        elseif haskey(name_lookup, p)
+            push!(elems, name_lookup[p])
+        else
+            push!(elems, p)             # raw vector; compared by == against Cycles(...)
+        end
+    end
+    Group(elems)
 end
 
 export Dimino
