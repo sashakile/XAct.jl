@@ -1,0 +1,193 @@
+# Chacana Tree-sitter Specification v0.1.1
+
+This document defines the **Tree-sitter grammar** for the Chacana micro-syntax. While the [Chacana PEG Grammar](./2026-03-08-chacana-grammar.md) is optimized for deterministic transformation into a JSON AST, this Tree-sitter specification is designed for **IDE integration**, **incremental parsing**, and **high-speed static validation**.
+
+## 1. Design Goals
+
+1.  **Incremental Parsing**: Efficiently re-parse only changed branches in large tensor expressions.
+2.  **Error Recovery**: Gracefully handle partial or malformed expressions (e.g., during active typing in an editor).
+3.  **Static Analysis**: Enable S-expression queries to identify variance mismatches and illegal contractions before execution.
+4.  **Language Portability**: Provide a single `grammar.js` that can be compiled for VS Code, Neovim, Emacs, and CLI tools.
+
+## 2. Project Structure
+
+A standard `tree-sitter-chacana` implementation should follow this layout:
+- `grammar.js`: The formal grammar definition (below).
+- `queries/`: S-expression query files.
+    - `highlights.scm`: Syntax highlighting rules.
+    - `validation.scm`: Static analysis queries (Section 4).
+- `src/`: Generated parser files (C/JSON).
+- `test/corpus/`: Example expressions for unit testing.
+
+## 3. Grammar Implementation (`grammar.js`)
+
+```javascript
+module.exports = grammar({
+  name: 'chacana',
+
+  // Characters ignored between tokens (whitespace)
+  extras: $ => [/[ \t\n\r]/],
+
+  word: $ => $.identifier,
+
+  rules: {
+    // Top-level entry point
+    expression: $ => $.sum,
+
+    // Precedence 7: Addition / Subtraction (Left-associative)
+    sum: $ => prec.left(1, seq(
+      $.product,
+      repeat(seq(choice('+', '-'), $.product))
+    )),
+
+    // Precedence 5: Multiplication (Standard)
+    product: $ => prec.left(2, seq(
+      $.wedge,
+      repeat(seq('*', $.wedge))
+    )),
+
+    // Precedence 4: Wedge Product (Exterior Algebra)
+    wedge: $ => prec.left(3, seq(
+      $.factor,
+      repeat(seq('^', $.factor))
+    )),
+
+    factor: $ => choice(
+      $.unary_expr,      // High-precedence unary minus
+      $.exterior_op,
+      $.commutator,
+      $.perturbation,
+      $.parenthesized,
+      $.tensor_expr,     // Ordered before named_constant to prefer block match
+      $.scalar,
+      $.named_constant   // Fallback for rank-0 identifiers
+    ),
+
+    // Precedence 6: Unary Sign
+    unary_expr: $ => prec(6, seq(
+      field('operator', choice('+', '-')),
+      $.factor
+    )),
+
+    parenthesized: $ => seq('(', $.sum, ')'),
+
+    // Precedence 3: Exterior Operators
+    exterior_op: $ => choice(
+      seq('*', '(', $.factor, ')'), // Hodge Dual
+      seq('d', '(', $.factor, ')')  // Exterior Derivative
+    ),
+
+    commutator: $ => seq('[', $.sum, ',', $.sum, ']'),
+
+    // Precedence 2: Perturbation Order (@n)
+    perturbation: $ => prec.left(4, seq(
+      $.tensor_expr,
+      optional(seq('@', $.integer))
+    )),
+
+    // Precedence 1: Tensor Index Attachment (Atomic)
+    // Note: Named constants are semantically rank-0 tensors
+    tensor_expr: $ => seq(
+      field('tensor_name', $.identifier),
+      seq('{', $.index_list, '}')
+    ),
+
+    // Mandatory whitespace between indices is enforced here.
+    // By matching /[ \t\n\r]+/ explicitly, we override the global 'extras'.
+    index_list: $ => seq(
+      $.index,
+      repeat(seq(/[ \t\n\r]+/, $.index))
+    ),
+
+    index: $ => seq(
+      field('prefix', $.prefix),
+      field('label', $.identifier)
+    ),
+
+    prefix: $ => choice(
+      seq($.deriv_op, optional($.variance_op)), // e.g. ;^a
+      $.variance_op                            // e.g. _a
+    ),
+
+    // Terminals
+    identifier: $ => /[a-zA-Zα-ωΑ-ΩḀ-῿_][a-zA-Z0-9α-ωΑ-ΩḀ-῿_]*/,
+    integer: $ => /[0-9]+/,
+    float: $ => /[0-9]+\.[0-9]+/,
+    scalar: $ => choice($.float, $.integer, $.rational),
+    rational: $ => seq($.integer, '/', $.integer),
+    named_constant: $ => $.identifier,
+    variance_op: $ => choice('^', '_'),
+    deriv_op: $ => choice(';', ','),
+  }
+});
+```
+
+## 4. Precedence Mapping
+
+The Tree-sitter grammar uses `prec.left(N, ...)` to mirror the precedence hierarchy defined in the PEG specification:
+
+| Level | Rule | Tree-sitter `prec` | Note |
+| :--- | :--- | :--- | :--- |
+| 1 | `tensor_expr` | Atomic | High-priority binding. |
+| 2 | `perturbation` | 4 | Binds `@n` to tensors. |
+| 3 | `exterior_op` | Choice | `*()` and `d()`. |
+| 4 | `wedge` | 3 | `^` (Exterior product). |
+| 5 | `product` | 2 | `*` (Standard product). |
+| 6 | `unary_expr` | 6 | High-precedence prefix `-`. |
+| 7 | `sum` | 1 | `+`, `-` (Binary). |
+
+## 5. Static Validation Queries (`queries/validation.scm`)
+
+Tree-sitter queries allow for "Lint-style" validation of the Concrete Syntax Tree (CST).
+
+### A. Index Label Extraction
+Collects all unique labels in an expression for downstream balance checking.
+```scheme
+(index
+  label: (identifier) @index_label)
+```
+
+### B. Finding Covariant Derivatives
+Identifies indices acting as derivatives for specialized semantic highlighting.
+```scheme
+(index
+  prefix: (prefix (deriv_op)) @deriv_prefix
+  label: (identifier) @variable.parameter)
+```
+
+### C. Finding Illegal Contractions
+Identifies adjacent indices with identical labels and *identical variance* (illegal in GR).
+```scheme
+(index_list
+  (index
+    prefix: (prefix (variance_op) @v1)
+    label: (identifier) @i1)
+  (index
+    prefix: (prefix (variance_op) @v2)
+    label: (identifier) @i2)
+  (#eq? @i1 @i2)
+  (#eq? @v1 @v2)) @error.contraction
+```
+
+## 6. Implementation Strategy for "Chacana Checker"
+
+The **Chacana Static Checker** (referenced in v0.2.4) SHOULD utilize this Tree-sitter grammar to perform the following three-stage validation:
+
+1.  **Syntactic Pass (Tree-sitter)**:
+    *   Verify balanced brackets `{}` and `[]`.
+    *   Highlight invalid operators or misplaced scalar values.
+2.  **Internal Consistency Pass (Bridge Mechanism)**:
+    *   This pass uses a **Tree-sitter Visitor** to traverse the CST.
+    *   It identifies double-up (`^a ^a`) or double-down (`_a _a`) contraction attempts.
+    *   It verifies that free indices in a sum are identical across all terms.
+3.  **Semantic Context Pass (TOML-bound)**:
+    *   The Bridge queries the TOML context $\Gamma$ to ensure every `tensor_name` exists.
+    *   Ensures the number of indices in `tensor_expr` matches the declared `rank` in TOML.
+    *   Upon successful validation, it confirms the creation of a **ValidationToken** for cross-language equivalence.
+
+## 7. Integration with Language Servers
+
+The generated `tree-sitter-chacana.so` (or `.wasm`) should be included in the `chacana-lsp` implementation to provide:
+*   **Real-time Diagnostics**: Immediate underlining of mathematical errors.
+*   **Symbol Navigation**: Jump from `T{^a}` to the `[tensor.T]` declaration in the `chacana.toml`.
+*   **Semantic Folding**: Fold large products or sums in complex GR derivations.
