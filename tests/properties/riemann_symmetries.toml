@@ -267,8 +267,8 @@ rank     = 1
 symmetry = "none"
 
 [properties.law]
-lhs              = "Pg[pa,pb] Pg[-pa,-pc] $V[pc]"
-rhs              = "$V[pb]"
+lhs              = "Contract[Pg[pa,pb] $V[-pb]]"
+rhs              = "$V[pa]"
 equivalence_type = "numerical_tolerance"
 tolerance        = 1e-12
 

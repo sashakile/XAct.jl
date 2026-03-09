@@ -15,6 +15,7 @@ Supported generator strategies:
 
 from __future__ import annotations
 
+import random
 import re
 import string
 from dataclasses import dataclass, field
@@ -181,6 +182,14 @@ def _fresh_symbol(prefix: str, n: int) -> str:
 
 def _generate_value(gen: GeneratorSpec, prefix: str, sample_idx: int) -> str:
     """Generate a Wolfram-syntax value string for a single generator."""
+    # Scalar generators produce small integers (non-zero) for numeric substitution.
+    # This allows scalar-tensor distributivity and similar algebraic properties
+    # to be verified via symbolic canonicalization.
+    if gen.type == "Scalar":
+        rng = random.Random(sample_idx)
+        val = rng.randint(1, 9)
+        return str(val)
+
     if gen.strategy == "fresh_symbol":
         # Unique symbol: prefix + generator name + sample index
         sym = _fresh_symbol(f"px{prefix}{gen.name}", sample_idx)
@@ -194,8 +203,6 @@ def _generate_value(gen: GeneratorSpec, prefix: str, sample_idx: int) -> str:
         ]
         if gen.allow_duplicates:
             # Mix in some duplicates deterministically
-            import random
-
             rng = random.Random(sample_idx)
             chosen = [rng.choice(pool) for _ in range(gen.length)]
         else:

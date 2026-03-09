@@ -520,10 +520,12 @@ end
 
 function _parse_sum!(terms::Vector{TermAST}, s::AbstractString)
     # Walk through the string, splitting on top-level + and -
+    # Tracks both [] and () depth to avoid splitting inside grouped sub-expressions.
     pos = 1
     n = length(s)
     current_start = 1
     current_sign = 1
+    paren_depth = 0  # tracks ( ) nesting
 
     # Handle leading sign
     if pos <= n && (s[pos] == '+' || s[pos] == '-')
@@ -543,11 +545,17 @@ function _parse_sum!(terms::Vector{TermAST}, s::AbstractString)
                 s[pos] == ']' && (depth -= 1)
                 pos += 1
             end
-        elseif (c == '+' || c == '-') && pos > 1
+        elseif c == '('
+            paren_depth += 1
+            pos += 1
+        elseif c == ')'
+            paren_depth -= 1
+            pos += 1
+        elseif (c == '+' || c == '-') && pos > 1 && paren_depth == 0
             # Top-level +/-: end current term
             chunk = strip(s[current_start:(pos - 1)])
             if !isempty(chunk)
-                push!(terms, _parse_term(chunk, current_sign))
+                _push_chunk!(terms, chunk, current_sign)
             end
             current_sign = c == '-' ? -1 : 1
             pos += 1
@@ -560,8 +568,43 @@ function _parse_sum!(terms::Vector{TermAST}, s::AbstractString)
     # Last chunk
     chunk = strip(s[current_start:end])
     if !isempty(chunk)
-        push!(terms, _parse_term(chunk, current_sign))
+        _push_chunk!(terms, chunk, current_sign)
     end
+end
+
+"""
+Push a parsed chunk into `terms`, handling parenthesized sub-expressions and
+scalar-times-subexpression patterns.
+"""
+function _push_chunk!(terms::Vector{TermAST}, chunk::AbstractString, sign::Int)
+    s = strip(chunk)
+
+    # Case 1: Entire chunk is a parenthesized sub-expression: (A + B + ...)
+    if startswith(s, "(") && endswith(s, ")")
+        inner = strip(s[2:(end - 1)])
+        sub_terms = TermAST[]
+        _parse_sum!(sub_terms, inner)
+        for t in sub_terms
+            push!(terms, TermAST(t.coeff * sign, t.factors))
+        end
+        return nothing
+    end
+
+    # Case 2: Integer * (sub-expression): N * (A + B)
+    m = match(r"^(-?\d+)\s*\*\s*\((.+)\)$"s, s)
+    if !isnothing(m)
+        n_coeff = parse(Int, m.captures[1])
+        inner = strip(m.captures[2])
+        sub_terms = TermAST[]
+        _parse_sum!(sub_terms, inner)
+        for t in sub_terms
+            push!(terms, TermAST(t.coeff * sign * n_coeff, t.factors))
+        end
+        return nothing
+    end
+
+    # Default: parse as a regular term
+    push!(terms, _parse_term(s, sign))
 end
 
 function _parse_term(chunk::AbstractString, outer_sign::Int)::TermAST
@@ -577,8 +620,9 @@ function _parse_term(chunk::AbstractString, outer_sign::Int)::TermAST
         coeff = coeff * (num // den)
         s = strip(s[(length(m_rat.match) + 1):end])
     else
-        # Match leading integer (possibly with optional *)
-        m_int = match(r"^(-?\d+)\*?\s*", s)
+        # Match leading integer (possibly with optional * and surrounding spaces)
+        # Handles "7*T", "7 *T", "7* T", "7 * T"
+        m_int = match(r"^(-?\d+)\s*\*?\s*", s)
         if !isnothing(m_int)
             coeff = coeff * (parse(Int, m_int.captures[1]) // 1)
             s = strip(s[(length(m_int.match) + 1):end])
@@ -817,7 +861,11 @@ function _canonicalize_term(term::TermAST)::Union{TermAST,Nothing}
 
     for f in term.factors
         t = get(_tensors, f.tensor_name, nothing)
-        isnothing(t) && error("Unknown tensor: $(f.tensor_name)")
+        if isnothing(t)
+            # Unknown tensor: treat as NoSymmetry, pass through unchanged
+            push!(new_factors, FactorAST(f.tensor_name, copy(f.indices)))
+            continue
+        end
 
         current = copy(f.indices)
         sym = t.symmetry
@@ -836,6 +884,11 @@ function _canonicalize_term(term::TermAST)::Union{TermAST,Nothing}
         running_sign *= (factor_sign // 1)
         push!(new_factors, FactorAST(f.tensor_name, canon_indices))
     end
+
+    # Sort factors within the term for canonical factor ordering.
+    # In abstract index notation, tensor factors commute (tensor product is symmetric),
+    # so we canonicalize factor order by tensor name then index list.
+    sort!(new_factors; by=f -> (string(f.tensor_name), f.indices))
 
     TermAST(running_sign, new_factors)
 end

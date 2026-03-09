@@ -179,6 +179,11 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
 
         if action == "Evaluate":
             expr = args.get("expression", "")
+            # Intercept numerical_tolerance comparisons BEFORE the early-return so
+            # Max[Abs[Flatten[N[...]]]] tensor expressions are handled via ToCanonical.
+            canonical_result = _try_numerical_tolerance_via_canonical(self._jl, expr)
+            if canonical_result is not None:
+                return canonical_result
             # If it looks like a tensor expression (contains Name[...] with index syntax),
             # return it as-is for later ToCanonical use — no Julia evaluation needed.
             # Exception: if the expression contains a comparison operator (===) it is a
@@ -563,6 +568,96 @@ def _try_single_to_canonical_comparison(
 # Pattern: "px" + one-or-more uppercase letters + generator name (lowercase) + suffix (lowercase).
 # Examples: pxBAGsbq, pxKBIsbr, pxBKYsbt, pxLYPabu
 _FRESH_SYMBOL_RE = re.compile(r"\bpx[A-Z]+[a-z]+\b")
+
+# Regex matching the property runner's numerical_tolerance comparison expression.
+_NUMERICAL_TOL_RE = re.compile(r"^Max\[Abs\[Flatten\[N\[(.+)\]\]\]\]$", re.DOTALL)
+
+# XTensor functions that take a string argument and return a string result.
+_XPERM_STRING_FUNCS = ("ToCanonical", "Contract")
+
+
+def _preprocess_xperm_calls(jl: Any, expr: str) -> str:
+    """Recursively evaluate ToCanonical[...] and Contract[...] calls in expr.
+
+    Replaces each such call with its Julia string result so that the
+    remaining expression can be passed to XTensor.ToCanonical for final
+    canonicalization.
+    """
+    for func_name in _XPERM_STRING_FUNCS:
+        func_prefix = func_name + "["
+        while func_prefix in expr:
+            pos = expr.find(func_prefix)
+            start = pos + len(func_prefix)
+            depth = 1
+            i = start
+            while i < len(expr) and depth > 0:
+                if expr[i] == "[":
+                    depth += 1
+                elif expr[i] == "]":
+                    depth -= 1
+                i += 1
+            inner = expr[start : i - 1]
+            # Recursively preprocess the inner expression first
+            inner_processed = _preprocess_xperm_calls(jl, inner)
+            try:
+                result = str(
+                    jl.seval(f'XTensor.{func_name}("{_jl_escape(inner_processed)}")')
+                )
+            except Exception:
+                # If preprocessing fails, leave the call in place
+                break
+            expr = expr[:pos] + result + expr[i:]
+    return expr
+
+
+def _try_numerical_tolerance_via_canonical(jl: Any, wolfram_expr: str) -> Result | None:
+    """Intercept Max[Abs[Flatten[N[(lhs) - (rhs)]]]] for tensor expressions.
+
+    The property runner generates this pattern for numerical_tolerance checks.
+    For the Julia symbolic adapter, we instead apply ToCanonical to the
+    difference expression.  If the result is "0" (the tensors are equal by
+    symmetry), return "0.0" (passes the < tolerance check).
+
+    Returns None if the expression doesn't match the pattern or if we cannot
+    determine a canonical result.
+    """
+    m = _NUMERICAL_TOL_RE.match(wolfram_expr.strip())
+    if not m:
+        return None
+    inner = m.group(1).strip()
+    if not _is_tensor_expr(inner):
+        return None
+
+    # Use inner directly as diff_expr.
+    # The property runner always generates (lhs) - (rhs), and XTensor._parse_sum!
+    # has paren-depth tracking so it handles nested paren groups correctly.
+    # Stripping parens from a multi-term rhs would lose sign distribution
+    # (e.g. "(T+S) - (S+T)" → "T+S - S+T = 2T" instead of 0).
+    diff_expr = inner
+
+    # Preprocess any nested ToCanonical/Contract calls
+    try:
+        preprocessed = _preprocess_xperm_calls(jl, diff_expr)
+    except Exception:
+        preprocessed = diff_expr
+
+    # Apply ToCanonical to the whole difference
+    try:
+        result = str(jl.seval(f'XTensor.ToCanonical("{_jl_escape(preprocessed)}")'))
+    except Exception:
+        return None
+
+    if result == "0":
+        return Result(status="ok", type="Float", repr="0.0", normalized="0.0")
+
+    # Try to interpret as a numeric value (e.g. if all terms cancel to a number)
+    try:
+        float(result)
+        return Result(status="ok", type="Float", repr=result, normalized=result)
+    except ValueError:
+        pass
+
+    return None
 
 
 def _bind_fresh_symbols(jl: Any, julia_expr: str) -> None:
@@ -959,6 +1054,30 @@ def _wl_to_jl(expr: str) -> str:
                         out.append(f"issubset({b_jl}, {a_jl})")
                     else:
                         out.append(f"issubset({_wl_to_jl(inner)})")
+                    i = k
+                elif name == "Cases":
+                    # Cases[expr, _Symbol, Infinity] → FindSymbols(expr)
+                    # This handles the WL pattern-matching form used in xCore property tests.
+                    depth2 = 1
+                    k = j + 1
+                    while k < n and depth2 > 0:
+                        if expr[k] == "[":
+                            depth2 += 1
+                        elif expr[k] == "]":
+                            depth2 -= 1
+                        k += 1
+                    inner = expr[j + 1 : k - 1]
+                    parts = _top_level_split(inner, ",")
+                    # Check for the _Symbol pattern: Cases[expr, _Symbol, Infinity]
+                    if (
+                        len(parts) == 3
+                        and parts[1].strip() == "_Symbol"
+                        and parts[2].strip() == "Infinity"
+                    ):
+                        out.append(f"FindSymbols({_wl_to_jl(parts[0].strip())})")
+                    else:
+                        # Generic fallback: emit as regular function call
+                        out.append(f"Cases({_wl_to_jl(inner)})")
                     i = k
                 else:
                     # Function call: translate name if keyword-mapped, then emit name(

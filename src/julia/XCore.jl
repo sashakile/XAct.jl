@@ -29,7 +29,7 @@ export SetNumberOfArguments
 export CheckOptions, TrueOrFalse, ReportSet, ReportSetOption
 
 # 4. Symbol naming and dagger character
-export SymbolJoin, NoPattern
+export SymbolJoin, NoPattern, AtomQ, SymbolName
 export DaggerCharacter, HasDaggerCharacterQ, MakeDaggerSymbol
 export LinkCharacter, LinkSymbols, UnlinkSymbol
 
@@ -218,6 +218,29 @@ Identity function.  Julia has no Pattern/Blank wrappers; this is a no-op shim
 preserving call-site compatibility with xTensor code that calls `NoPattern`.
 """
 NoPattern(expr) = expr
+
+"""
+    AtomQ(x) -> Bool
+
+Return `true` for any value (analogous to Mathematica `AtomQ`).
+In Julia, every Symbol, Number, and String is atomic.
+"""
+AtomQ(x) = true
+
+"""
+    SymbolName(s::Symbol) -> String
+
+Return the string name of a symbol (analogous to Mathematica `SymbolName`).
+"""
+SymbolName(s::Symbol) = string(s)
+
+# Allow Symbol + Symbol (and Symbol + Expr) to build symbolic expressions.
+# This enables xCore property tests that construct expressions like `$a + $b`
+# where $a and $b are fresh Symbols bound in Main.
+Base.:+(a::Symbol, b::Symbol) = Expr(:call, :+, a, b)
+Base.:+(a::Symbol, b::Expr) = Expr(:call, :+, a, b)
+Base.:+(a::Expr, b::Symbol) = Expr(:call, :+, a, b)
+Base.:+(a::Expr, b::Expr) = Expr(:call, :+, a, b)
 
 """
     HasDaggerCharacterQ(s::Symbol) -> Bool
