@@ -1,0 +1,95 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  pytest:
+    name: Python unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: pip install uv
+      - name: Install dependencies
+        run: uv sync --extra dev
+      - name: Run pytest
+        run: uv run pytest tests/ -q --ignore=tests/integration --ignore=tests/properties --ignore=tests/xperm --ignore=tests/xtensor
+
+  julia-xperm:
+    name: Julia XPerm unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "1.10"
+      - name: Cache Julia packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.julia/packages
+            ~/.julia/compiled
+          key: julia-1.10-${{ hashFiles('src/julia/Project.toml') }}
+          restore-keys: julia-1.10-
+      - name: Instantiate Julia project
+        run: julia --project=src/julia -e 'using Pkg; Pkg.instantiate()'
+      - name: Run XPerm tests
+        run: julia --project=src/julia src/julia/tests/test_xperm.jl
+
+  julia-xtensor:
+    name: Julia XTensor unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "1.10"
+      - name: Cache Julia packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.julia/packages
+            ~/.julia/compiled
+          key: julia-1.10-${{ hashFiles('src/julia/Project.toml') }}
+          restore-keys: julia-1.10-
+      - name: Instantiate Julia project
+        run: julia --project=src/julia -e 'using Pkg; Pkg.instantiate()'
+      - name: Run XTensor tests
+        run: julia --project=src/julia src/julia/tests/test_xtensor.jl
+
+  toml-regression:
+    name: TOML snapshot regression tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "1.10"
+      - name: Install uv
+        run: pip install uv
+      - name: Install dependencies
+        run: uv sync --extra dev
+      - name: Cache Julia packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.julia/packages
+            ~/.julia/compiled
+          key: julia-1.10-${{ hashFiles('src/julia/Project.toml') }}
+          restore-keys: julia-1.10-
+      - name: Instantiate Julia project
+        run: julia --project=src/julia -e 'using Pkg; Pkg.instantiate()'
+      - name: Run TOML regression tests (xperm)
+        run: uv run xact-test run tests/xperm --adapter julia --oracle-mode snapshot --oracle-dir oracle
+      - name: Run TOML regression tests (xtensor)
+        run: uv run xact-test run tests/xtensor --adapter julia --oracle-mode snapshot --oracle-dir oracle
