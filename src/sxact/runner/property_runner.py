@@ -76,9 +76,10 @@ class Counterexample:
 class PropertyResult:
     property_id: str
     name: str
-    status: str  # "pass", "fail", "error", "skip"
+    status: str  # "pass", "partial", "fail", "error", "skip"
     num_samples: int
     num_passed: int
+    confidence: float = 0.0  # num_passed / num_samples; 0.0 when num_samples == 0
     counterexample: Counterexample | None = None
     message: str | None = None
 
@@ -398,14 +399,21 @@ def _run_property(
                 rhs_result=rhs_result,
             )
 
-    status = "pass" if num_passed == spec.num_samples else "fail"
+    if num_passed == spec.num_samples:
+        status = "pass"
+    elif num_passed == 0:
+        status = "fail"
+    else:
+        status = "partial"
+    confidence = num_passed / spec.num_samples if spec.num_samples > 0 else 0.0
     return PropertyResult(
         property_id=spec.id,
         name=spec.name,
         status=status,
         num_samples=spec.num_samples,
         num_passed=num_passed,
-        counterexample=counterexample if status == "fail" else None,
+        confidence=confidence,
+        counterexample=counterexample if status != "pass" else None,
     )
 
 

@@ -26,6 +26,7 @@ from sxact.runner.property_runner import (
 def _print_terminal(file_results: list[PropertyFileResult]) -> None:
     total_props = 0
     total_pass = 0
+    total_partial = 0
     total_fail = 0
     total_error = 0
     total_skip = 0
@@ -35,12 +36,20 @@ def _print_terminal(file_results: list[PropertyFileResult]) -> None:
         print(f"  {fr.description}")
         for r in fr.results:
             total_props += 1
-            icon = {"pass": "✓", "fail": "✗", "error": "!", "skip": "○"}.get(
-                r.status, "?"
-            )
-            line = f"  {icon} {r.property_id}  ({r.num_passed}/{r.num_samples})"
+            icon = {
+                "pass": "✓",
+                "partial": "~",
+                "fail": "✗",
+                "error": "!",
+                "skip": "○",
+            }.get(r.status, "?")
+            pct = f" = {r.confidence:.0%}" if r.num_samples > 0 else ""
+            line = f"  {icon} {r.property_id}  ({r.num_passed}/{r.num_samples}{pct})"
             if r.status == "pass":
                 total_pass += 1
+            elif r.status == "partial":
+                total_partial += 1
+                line += "  PARTIAL"
             elif r.status == "fail":
                 total_fail += 1
                 line += "  FAIL"
@@ -56,6 +65,8 @@ def _print_terminal(file_results: list[PropertyFileResult]) -> None:
 
     print(f"\n{'=' * 60}")
     summary = f"{total_pass} passed, {total_fail} failed, {total_error} errors"
+    if total_partial:
+        summary += f", {total_partial} partial"
     if total_skip:
         summary += f", {total_skip} skipped"
     print(f"Properties: {total_props}  |  {summary}")
@@ -82,6 +93,7 @@ def _print_json(file_results: list[PropertyFileResult]) -> None:
                 "status": r.status,
                 "num_samples": r.num_samples,
                 "num_passed": r.num_passed,
+                "confidence": r.confidence,
             }
             if r.message:
                 obj["message"] = r.message
@@ -190,6 +202,8 @@ def _cmd_property(args: argparse.Namespace) -> int:
         _print_terminal(file_results)
 
     any_failure = any(
-        r.status in ("fail", "error") for fr in file_results for r in fr.results
+        r.status in ("fail", "partial", "error")
+        for fr in file_results
+        for r in fr.results
     )
     return 1 if any_failure else 0

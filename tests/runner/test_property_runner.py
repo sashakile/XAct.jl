@@ -207,6 +207,31 @@ class AlwaysFalseAdapter:
         return {"Evaluate", "Assert"}
 
 
+class FirstSamplePassesAdapter:
+    """Adapter that returns 'True' for the first Evaluate call, 'False' thereafter."""
+
+    def __init__(self):
+        self._call_count = 0
+
+    def initialize(self):
+        return MockContext()
+
+    def teardown(self, ctx):
+        pass
+
+    def execute(self, ctx, action, args):
+        from sxact.oracle.result import Result
+
+        if action == "Evaluate":
+            self._call_count += 1
+            val = "True" if self._call_count == 1 else "False"
+            return Result(status="ok", type="Bool", repr=val, normalized=val)
+        return Result(status="ok", type="", repr="", normalized="")
+
+    def supported_actions(self):
+        return {"Evaluate", "Assert"}
+
+
 class ErrorAdapter:
     """Adapter that returns error Results."""
 
@@ -264,6 +289,7 @@ class TestRunPropertyFile:
         r = result.results[0]
         assert r.status == "pass"
         assert r.num_passed == r.num_samples
+        assert r.confidence == 1.0
 
     def test_all_fail(self, tmp_path):
         pf = _make_minimal_prop_file(tmp_path)
@@ -271,7 +297,19 @@ class TestRunPropertyFile:
         r = result.results[0]
         assert r.status == "fail"
         assert r.num_passed == 0
+        assert r.confidence == 0.0
         assert r.counterexample is not None
+
+    def test_partial_pass(self, tmp_path):
+        """When some but not all samples pass, status is 'partial' with correct confidence."""
+        pf = _make_minimal_prop_file(tmp_path, num_samples=3)
+        result = run_property_file(pf, FirstSamplePassesAdapter())
+        r = result.results[0]
+        assert r.status == "partial"
+        assert r.num_passed == 1
+        assert r.num_samples == 3
+        assert abs(r.confidence - 1 / 3) < 1e-9
+        assert r.counterexample is not None  # first failing sample captured
 
     def test_counterexample_has_bindings(self, tmp_path):
         pf = _make_minimal_prop_file(tmp_path)
