@@ -15,7 +15,10 @@ Public API::
 from __future__ import annotations
 
 import json
+import os
+import platform
 import statistics
+import subprocess
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -25,6 +28,75 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from sxact.adapter.base import TestAdapter
     from sxact.runner.loader import TestCase, TestFile
+
+# ---------------------------------------------------------------------------
+# Machine metadata
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class MachineInfo:
+    """Hardware and runtime metadata for a benchmark run."""
+
+    cpu_model: str
+    cpu_cores: int
+    ram_gb: float
+    os: str
+    python_version: str
+    julia_version: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "MachineInfo":
+        return cls(**d)
+
+
+def _ram_gb() -> float:
+    """Return total RAM in GB using /proc/meminfo (Linux) or platform fallback."""
+    try:
+        meminfo = Path("/proc/meminfo").read_text(encoding="utf-8")
+        for line in meminfo.splitlines():
+            if line.startswith("MemTotal:"):
+                kb = int(line.split()[1])
+                return round(kb / 1_048_576, 1)
+    except Exception:
+        pass
+    # macOS / Windows fallback via sysctl
+    try:
+        out = subprocess.check_output(
+            ["sysctl", "-n", "hw.memsize"], text=True, stderr=subprocess.DEVNULL
+        )
+        return round(int(out.strip()) / 1_073_741_824, 1)
+    except Exception:
+        pass
+    return 0.0
+
+
+def _julia_version() -> str:
+    """Return Julia version string, or 'unavailable' if not on PATH."""
+    try:
+        out = subprocess.check_output(
+            ["julia", "--version"], text=True, stderr=subprocess.STDOUT, timeout=10
+        )
+        # "julia version 1.10.2"
+        return out.strip().split()[-1]
+    except Exception:
+        return "unavailable"
+
+
+def collect_machine_info() -> MachineInfo:
+    """Collect hardware and runtime metadata for the current machine."""
+    return MachineInfo(
+        cpu_model=platform.processor() or platform.machine() or "unknown",
+        cpu_cores=os.cpu_count() or 0,
+        ram_gb=_ram_gb(),
+        os=f"{platform.system()} {platform.release()} {platform.machine()}",
+        python_version=platform.python_version(),
+        julia_version=_julia_version(),
+    )
+
 
 # Default timing parameters (per spec §Layer 3)
 N_WARMUP_DEFAULT = 10
@@ -132,28 +204,55 @@ def bench_test_case(
 # ---------------------------------------------------------------------------
 
 
-def load_baseline(path: Path) -> dict[str, BenchResult]:
-    """Load baseline JSON; returns mapping of ``"adapter/test_id"`` → result."""
+def load_baseline(
+    path: Path,
+) -> tuple[dict[str, BenchResult], MachineInfo | None]:
+    """Load baseline JSON.
+
+    Returns:
+        (mapping of ``"adapter/test_id"`` → result, MachineInfo or None)
+    """
     if not path.exists():
-        return {}
-    raw = json.loads(path.read_text(encoding="utf-8"))
+        return {}, None
+    text = path.read_text(encoding="utf-8").strip()
+    if not text:
+        return {}, None
+    raw = json.loads(text)
     out = {}
     for entry in raw.get("benchmarks", []):
         r = BenchResult.from_dict(entry)
         out[_key(r.adapter, r.test_id)] = r
-    return out
+    machine: MachineInfo | None = None
+    if "machine" in raw:
+        try:
+            machine = MachineInfo.from_dict(raw["machine"])
+        except Exception:
+            pass
+    return out, machine
 
 
-def save_baseline(path: Path, results: list[BenchResult]) -> None:
+def save_baseline(
+    path: Path,
+    results: list[BenchResult],
+    machine: MachineInfo | None = None,
+) -> None:
     """Write (or update) baseline JSON with the given results.
 
     Existing entries for the same adapter/test_id are replaced; others kept.
+    Machine metadata is always refreshed from *machine* (or collected fresh if None).
     """
-    existing = load_baseline(path)
+    existing, _ = load_baseline(path)
     for r in results:
         existing[_key(r.adapter, r.test_id)] = r
 
-    data = {"benchmarks": [r.to_dict() for r in existing.values()]}
+    if machine is None:
+        machine = collect_machine_info()
+
+    data = {
+        "machine": machine.to_dict(),
+        "recorded_at": datetime.now(timezone.utc).isoformat(),
+        "benchmarks": [r.to_dict() for r in existing.values()],
+    }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 

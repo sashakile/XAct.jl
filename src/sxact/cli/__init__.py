@@ -116,17 +116,32 @@ def _cmd_benchmark(args: argparse.Namespace) -> int:
         return 0
 
     if args.record:
-        save_baseline(baseline_path, results)
+        from sxact.benchmarks.runner import collect_machine_info
+
+        m = collect_machine_info()
+        save_baseline(baseline_path, results, machine=m)
         print(f"\nBaseline written to {baseline_path}")
+        print(f"  machine : {m.os}")
+        print(f"  cpu     : {m.cpu_model} ({m.cpu_cores} cores)")
+        print(f"  ram     : {m.ram_gb} GB")
+        print(f"  python  : {m.python_version}")
+        print(f"  julia   : {m.julia_version}")
 
     if args.check:
-        baseline = load_baseline(baseline_path)
+        baseline, baseline_machine = load_baseline(baseline_path)
         if not baseline:
             print(
                 f"warning: no baseline found at {baseline_path}; run with --record first",
                 file=sys.stderr,
             )
             return 0
+
+        if baseline_machine:
+            print(
+                f"baseline machine: {baseline_machine.os}  "
+                f"{baseline_machine.cpu_model} ({baseline_machine.cpu_cores}c)  "
+                f"{baseline_machine.ram_gb}GB RAM"
+            )
 
         regressions = check_regression(results, baseline)
         had_fail = False
