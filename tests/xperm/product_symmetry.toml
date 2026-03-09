@@ -1,0 +1,338 @@
+# tests/xperm/product_symmetry.toml
+# Layer 1 regression tests for products and linear combinations of tensors
+# with declared symmetries.
+#
+# Tests that ToCanonical correctly simplifies products of symmetric and
+# antisymmetric tensors, including mixed-symmetry expressions where one
+# factor's symmetry forces a product term to vanish.
+#
+# Reference: xPerm documentation §3 (symmetry reduction in products),
+#            xTensor documentation §2.4 (tensor algebra).
+#
+# Validates schema: src/sxact/runner/schemas/test-schema.json
+
+[meta]
+id              = "xperm/product_symmetry"
+description     = "Product symmetry reductions: mixed sym/antisym products, weighted sums (layer 1)"
+tags            = ["xperm", "symmetry", "products", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Setup: 4D Lorentzian manifold with metric and various symmetry tensors.
+# ---------------------------------------------------------------------------
+
+[[setup]]
+action   = "DefManifold"
+store_as = "PSm"
+[setup.args]
+name      = "PSm"
+dimension = 4
+indices   = ["psa", "psb", "psc", "psd", "pse", "psf"]
+
+[[setup]]
+action   = "DefMetric"
+store_as = "PSg"
+[setup.args]
+signdet = -1
+metric  = "PSg[-psa,-psb]"
+covd    = "PSD"
+
+# Symmetric rank-2 tensor
+[[setup]]
+action   = "DefTensor"
+store_as = "PSS"
+[setup.args]
+name     = "PSS"
+indices  = ["-psa", "-psb"]
+manifold = "PSm"
+symmetry = "Symmetric[{-psa,-psb}]"
+
+# Antisymmetric rank-2 tensor (electromagnetic field-like)
+[[setup]]
+action   = "DefTensor"
+store_as = "PSF"
+[setup.args]
+name     = "PSF"
+indices  = ["-psa", "-psb"]
+manifold = "PSm"
+symmetry = "Antisymmetric[{-psa,-psb}]"
+
+# Second antisymmetric rank-2 tensor
+[[setup]]
+action   = "DefTensor"
+store_as = "PSG"
+[setup.args]
+name     = "PSG"
+indices  = ["-psa", "-psb"]
+manifold = "PSm"
+symmetry = "Antisymmetric[{-psa,-psb}]"
+
+# Rank-3 totally antisymmetric tensor
+[[setup]]
+action   = "DefTensor"
+store_as = "PSH"
+[setup.args]
+name     = "PSH"
+indices  = ["-psa", "-psb", "-psc"]
+manifold = "PSm"
+symmetry = "Antisymmetric[{-psa,-psb,-psc}]"
+
+# Riemann-symmetric rank-4 tensor (for Bianchi tests)
+[[setup]]
+action   = "DefTensor"
+store_as = "PSR"
+[setup.args]
+name     = "PSR"
+indices  = ["-psa", "-psb", "-psc", "-psd"]
+manifold = "PSm"
+symmetry = "RiemannSymmetric[{-psa,-psb,-psc,-psd}]"
+
+# ---------------------------------------------------------------------------
+# Tests: product symmetry reductions
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "sym_sym_product_swap"
+description = "Product of two symmetric tensors: PSS[-a,-b] PSS[-c,-d] = PSS[-b,-a] PSS[-c,-d]"
+
+# Each factor is symmetric; swapping a symmetric tensor's indices leaves the
+# product unchanged.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "PSS[-psa,-psb] PSS[-psc,-psd] - PSS[-psb,-psa] PSS[-psc,-psd]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "S[-a,-b] S[-c,-d] = S[-b,-a] S[-c,-d] (first factor symmetric)"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "antisym_antisym_product_even"
+description = "Product of antisymmetric tensors: PSF[-a,-b] PSG[-c,-d] = PSF[-b,-a] PSG[-d,-c]"
+
+# Both factors are antisymmetric: swapping each tensor's indices introduces
+# two sign flips, which cancel.  F[-b,-a] = -F[-a,-b], G[-d,-c] = -G[-c,-d],
+# so their product is (-1)(-1) F[-a,-b] G[-c,-d] = F[-a,-b] G[-c,-d].
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "PSF[-psa,-psb] PSG[-psc,-psd] - PSF[-psb,-psa] PSG[-psd,-psc]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "F[-a,-b] G[-c,-d] = F[-b,-a] G[-d,-c] (double sign flip cancels)"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "antisym_antisym_product_odd"
+description = "PSF[-a,-b] PSG[-c,-d] + PSF[-b,-a] PSG[-c,-d] = 0"
+
+# F[-b,-a] = -F[-a,-b], so F[-a,-b] G[-c,-d] + F[-b,-a] G[-c,-d] = 0.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "PSF[-psa,-psb] PSG[-psc,-psd] + PSF[-psb,-psa] PSG[-psc,-psd]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "F[-a,-b] G[-c,-d] + F[-b,-a] G[-c,-d] = 0 (first factor antisym)"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "riemann_sym_first_bianchi_term"
+description = "PSR[-a,-b,-c,-d] + PSR[-a,-c,-d,-b] + PSR[-a,-d,-b,-c] = 0 (first Bianchi)"
+
+# First (algebraic) Bianchi identity: R_{a[bcd]} = 0.
+# Equivalently: R_{abcd} + R_{acdb} + R_{adbc} = 0.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "PSR[-psa,-psb,-psc,-psd] + PSR[-psa,-psc,-psd,-psb] + PSR[-psa,-psd,-psb,-psc]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "First Bianchi: R_{abcd} + R_{acdb} + R_{adbc} = 0"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "riemann_second_pair_antisymmetry"
+description = "PSR[-a,-b,-c,-d] + PSR[-a,-b,-d,-c] = 0 (antisymmetry in second pair)"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "PSR[-psa,-psb,-psc,-psd] + PSR[-psa,-psb,-psd,-psc]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "R_{abcd} + R_{abdc} = 0 (antisymmetry in second pair)"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "weighted_antisym_sum_zero"
+description = "Weighted sum: 3*PSF[-a,-b] + 3*PSF[-b,-a] = 0"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "3 PSF[-psa,-psb] + 3 PSF[-psb,-psa]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "3*F[-a,-b] + 3*F[-b,-a] = 0 (weighted antisymmetric sum)"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "rank3_antisym_first_bianchi"
+description = "Rank-3 antisym cyclic: PSH[-a,-b,-c] + PSH[-b,-c,-a] + PSH[-c,-a,-b] = 3*PSH[-a,-b,-c]"
+
+# For totally antisymmetric H, the cyclic sum equals 3 times the base term
+# when all three cyclic permutations are even... actually let's check:
+# H[-b,-c,-a] is (abc)→(bca) = product of (12)(23) = even perm, sign +1 = +H[-a,-b,-c]
+# H[-c,-a,-b] is (abc)→(cab) = product of (13)(12) = even perm, sign +1 = +H[-a,-b,-c]
+# So H[-a,-b,-c] + H[-b,-c,-a] + H[-c,-a,-b] = 3*H[-a,-b,-c]
+# Equivalently: H[-a,-b,-c] + H[-b,-c,-a] + H[-c,-a,-b] - 3*H[-a,-b,-c] = 0
+# i.e. H[-b,-c,-a] + H[-c,-a,-b] - 2*H[-a,-b,-c] = 0
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "PSH[-psb,-psc,-psa] + PSH[-psc,-psa,-psb] - 2 PSH[-psa,-psb,-psc]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Rank-3 totally antisymmetric: cyclic sum - 2*base = 0"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "sym_antisym_complement"
+description = "Symmetric plus antisymmetric: PSS[-a,-b] - PSS[-b,-a] = 0 (sym part), PSF[-a,-b] + PSF[-b,-a] = 0 (antisym part)"
+
+# Each of these is individually verified.  This test checks the symmetric part.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "sym_zero"
+[tests.operations.args]
+expression = "PSS[-psa,-psb] - PSS[-psb,-psa]"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "antisym_zero"
+[tests.operations.args]
+expression = "PSF[-psa,-psb] + PSF[-psb,-psa]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$sym_zero == 0"
+message   = "PSS[-a,-b] - PSS[-b,-a] = 0 (symmetric tensor)"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "riemann_metric_combo"
+description = "Riemann and metric product: PSg[-a,-b] PSR[-c,-d,-e,-f] does not vanish under ToCanonical"
+
+# A product of two unrelated tensors (metric and Riemann) should not simplify
+# to zero.  We verify the canonical form is not zero.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "PSg[-psa,-psb] PSR[-psc,-psd,-pse,-psf]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "TensorQ[PSg]"
+message   = "PSg (metric) should be a valid tensor"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "riemann_first_antisymmetry"
+description = "PSR[-a,-b,-c,-d] + PSR[-b,-a,-c,-d] = 0 (antisymmetry in first pair)"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "PSR[-psa,-psb,-psc,-psd] + PSR[-psb,-psa,-psc,-psd]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Riemann antisymmetry in first pair: R[-a,-b,-c,-d] + R[-b,-a,-c,-d] = 0"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1

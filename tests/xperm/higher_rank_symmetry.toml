@@ -1,0 +1,319 @@
+# tests/xperm/higher_rank_symmetry.toml
+# Layer 1 regression tests for higher-rank tensor symmetry declarations.
+#
+# Tests rank-3 totally symmetric, rank-4 totally antisymmetric, and
+# partially-symmetric (antisymmetric in a subset of indices) tensors.
+# Verifies correct sign under odd permutations and invariance under even
+# permutations.
+#
+# Reference: xPerm documentation §2.2 (Young tableaux representations),
+#            Butler (1991) §4 (permutation group generators).
+#
+# Validates schema: src/sxact/runner/schemas/test-schema.json
+
+[meta]
+id              = "xperm/higher_rank_symmetry"
+description     = "Higher-rank tensor symmetries: rank-3 symmetric, rank-4 antisymmetric, partial symmetry (layer 1)"
+tags            = ["xperm", "symmetry", "higher-rank", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Setup: 4D manifold with rank-3 totally symmetric, rank-4 totally
+# antisymmetric, and partially antisymmetric tensors.
+# ---------------------------------------------------------------------------
+
+[[setup]]
+action   = "DefManifold"
+store_as = "HRm"
+[setup.args]
+name      = "HRm"
+dimension = 4
+indices   = ["hra", "hrb", "hrc", "hrd", "hre", "hrf"]
+
+# Rank-3 totally symmetric tensor
+[[setup]]
+action   = "DefTensor"
+store_as = "HRS3"
+[setup.args]
+name     = "HRS3"
+indices  = ["-hra", "-hrb", "-hrc"]
+manifold = "HRm"
+symmetry = "Symmetric[{-hra,-hrb,-hrc}]"
+
+# Rank-4 totally antisymmetric tensor
+[[setup]]
+action   = "DefTensor"
+store_as = "HRA4"
+[setup.args]
+name     = "HRA4"
+indices  = ["-hra", "-hrb", "-hrc", "-hrd"]
+manifold = "HRm"
+symmetry = "Antisymmetric[{-hra,-hrb,-hrc,-hrd}]"
+
+# Rank-3 tensor antisymmetric only in first pair of indices
+[[setup]]
+action   = "DefTensor"
+store_as = "HRAp"
+[setup.args]
+name     = "HRAp"
+indices  = ["-hra", "-hrb", "-hrc"]
+manifold = "HRm"
+symmetry = "Antisymmetric[{-hra,-hrb}]"
+
+# Rank-3 totally antisymmetric tensor (for additional tests)
+[[setup]]
+action   = "DefTensor"
+store_as = "HRB3"
+[setup.args]
+name     = "HRB3"
+indices  = ["-hra", "-hrb", "-hrc"]
+manifold = "HRm"
+symmetry = "Antisymmetric[{-hra,-hrb,-hrc}]"
+
+# ---------------------------------------------------------------------------
+# Tests: rank-3 totally symmetric tensor
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "rank3_sym_swap_12"
+description = "Rank-3 symmetric: HRS3[-a,-b,-c] - HRS3[-b,-a,-c] = 0 (swap indices 1,2)"
+
+# For a totally symmetric tensor, any index permutation gives the same value.
+# Transposition (12) = odd perm, but symmetric tensor has sign +1 for all perms.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "HRS3[-hra,-hrb,-hrc] - HRS3[-hrb,-hra,-hrc]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Totally symmetric rank-3 tensor: T[-a,-b,-c] = T[-b,-a,-c]"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "rank3_sym_swap_13"
+description = "Rank-3 symmetric: HRS3[-a,-b,-c] - HRS3[-c,-b,-a] = 0 (swap indices 1,3)"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "HRS3[-hra,-hrb,-hrc] - HRS3[-hrc,-hrb,-hra]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Totally symmetric rank-3 tensor: T[-a,-b,-c] = T[-c,-b,-a]"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "rank3_sym_swap_23"
+description = "Rank-3 symmetric: HRS3[-a,-b,-c] - HRS3[-a,-c,-b] = 0 (swap indices 2,3)"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "HRS3[-hra,-hrb,-hrc] - HRS3[-hra,-hrc,-hrb]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Totally symmetric rank-3 tensor: T[-a,-b,-c] = T[-a,-c,-b]"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "rank3_sym_cyclic"
+description = "Rank-3 symmetric: HRS3[-a,-b,-c] - HRS3[-b,-c,-a] = 0 (cyclic permutation)"
+
+# The cyclic permutation (abc)→(bca) is an even permutation (product of two
+# transpositions).  For a symmetric tensor, the value is the same regardless.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "HRS3[-hra,-hrb,-hrc] - HRS3[-hrb,-hrc,-hra]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Totally symmetric rank-3 tensor: T[-a,-b,-c] = T[-b,-c,-a] (cyclic)"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+# Tests: rank-4 totally antisymmetric tensor
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "rank4_antisym_swap_12"
+description = "Rank-4 antisymmetric: HRA4[-a,-b,-c,-d] + HRA4[-b,-a,-c,-d] = 0"
+
+# Transposition (12) is an odd permutation: sign = -1.
+# A[-b,-a,-c,-d] = -A[-a,-b,-c,-d], so A[-a,-b,-c,-d] + A[-b,-a,-c,-d] = 0.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "HRA4[-hra,-hrb,-hrc,-hrd] + HRA4[-hrb,-hra,-hrc,-hrd]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Totally antisymmetric rank-4: A[-a,-b,-c,-d] + A[-b,-a,-c,-d] = 0"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "rank4_antisym_swap_34"
+description = "Rank-4 antisymmetric: HRA4[-a,-b,-c,-d] + HRA4[-a,-b,-d,-c] = 0"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "HRA4[-hra,-hrb,-hrc,-hrd] + HRA4[-hra,-hrb,-hrd,-hrc]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Totally antisymmetric rank-4: A[-a,-b,-c,-d] + A[-a,-b,-d,-c] = 0"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "rank4_antisym_pair_exchange"
+description = "Rank-4 antisymmetric: HRA4[-a,-b,-c,-d] - HRA4[-c,-d,-a,-b] = 0"
+
+# The pair exchange (1324) is an even permutation (product of two transpositions
+# (13) and (24)).  So A[-c,-d,-a,-b] = +A[-a,-b,-c,-d], difference = 0.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "HRA4[-hra,-hrb,-hrc,-hrd] - HRA4[-hrc,-hrd,-hra,-hrb]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Totally antisymmetric rank-4: A[-a,-b,-c,-d] = A[-c,-d,-a,-b] (pair exchange = even perm)"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+# Tests: partial symmetry (antisymmetric in first pair only)
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "antisym_first_pair"
+description = "Antisymmetric in first pair: HRAp[-a,-b,-c] + HRAp[-b,-a,-c] = 0"
+
+# HRAp is antisymmetric in indices 1 and 2 (declared with Antisymmetric[{-hra,-hrb}]).
+# Swapping those two indices gives a sign flip.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "HRAp[-hra,-hrb,-hrc] + HRAp[-hrb,-hra,-hrc]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Partial antisymmetry: swapping the antisymmetric pair negates"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "rank3_antisym_odd_perm"
+description = "Rank-3 totally antisymmetric: HRB3[-a,-b,-c] + HRB3[-c,-b,-a] = 0"
+
+# Transposition (13) is odd: sign = -1.
+# B3[-c,-b,-a] = -B3[-a,-b,-c], so their sum = 0.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "HRB3[-hra,-hrb,-hrc] + HRB3[-hrc,-hrb,-hra]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Totally antisymmetric rank-3: T[-a,-b,-c] + T[-c,-b,-a] = 0 (odd permutation)"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "rank3_antisym_even_perm"
+description = "Rank-3 totally antisymmetric: HRB3[-a,-b,-c] - HRB3[-b,-c,-a] = 0"
+
+# The cyclic permutation (abc)→(bca) = (12)(23) is an even permutation (sign +1).
+# B3[-b,-c,-a] = +B3[-a,-b,-c], so their difference = 0.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "HRB3[-hra,-hrb,-hrc] - HRB3[-hrb,-hrc,-hra]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Totally antisymmetric rank-3: T[-a,-b,-c] = T[-b,-c,-a] (even permutation)"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1

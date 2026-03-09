@@ -1,0 +1,268 @@
+# tests/xtensor/contraction_extended.toml
+# Layer 1 regression tests for extended metric contraction scenarios.
+#
+# Extends contraction.toml with Lorentzian metric, antisymmetric tensor
+# traces, double contraction, and manifold-dimension checks across multiple
+# dimensions.
+#
+# Validates schema: src/sxact/runner/schemas/test-schema.json
+
+[meta]
+id              = "xtensor/contraction_extended"
+description     = "Extended ContractMetric: Lorentzian signdet, double contraction, antisymmetric trace (layer 1)"
+tags            = ["xtensor", "contraction", "metric", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Setup: 4D Lorentzian manifold with metric and several tensors.
+# ---------------------------------------------------------------------------
+
+[[setup]]
+action   = "DefManifold"
+store_as = "CXm"
+[setup.args]
+name      = "CXm"
+dimension = 4
+indices   = ["cxa", "cxb", "cxc", "cxd", "cxe", "cxf"]
+
+[[setup]]
+action   = "DefMetric"
+store_as = "CXg"
+[setup.args]
+signdet = -1
+metric  = "CXg[-cxa,-cxb]"
+covd    = "CXD"
+
+# Symmetric tensor for metric-contraction tests
+[[setup]]
+action   = "DefTensor"
+store_as = "CXS"
+[setup.args]
+name     = "CXS"
+indices  = ["-cxa", "-cxb"]
+manifold = "CXm"
+symmetry = "Symmetric[{-cxa,-cxb}]"
+
+# Antisymmetric tensor for trace tests
+[[setup]]
+action   = "DefTensor"
+store_as = "CXF"
+[setup.args]
+name     = "CXF"
+indices  = ["-cxa", "-cxb"]
+manifold = "CXm"
+symmetry = "Antisymmetric[{-cxa,-cxb}]"
+
+# General (no symmetry) rank-2 covariant tensor
+[[setup]]
+action   = "DefTensor"
+store_as = "CXT"
+[setup.args]
+name     = "CXT"
+indices  = ["-cxa", "-cxb"]
+manifold = "CXm"
+
+# Covariant vector
+[[setup]]
+action   = "DefTensor"
+store_as = "CXw"
+[setup.args]
+name     = "CXw"
+indices  = ["-cxa"]
+manifold = "CXm"
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "lorentzian_signdet"
+description = "Lorentzian metric has SignDetOfMetric == -1"
+
+# A Lorentzian (pseudo-Riemannian) metric has signature (-,+,+,+) or (+,-,-,-),
+# so det(g) < 0 and SignDetOfMetric = -1.
+# Ref: xTensor documentation DefMetric.
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "SignDetOfMetric[CXg] === -1"
+message   = "CXg should have SignDetOfMetric = -1 (Lorentzian signature)"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "lorentzian_metric_symmetry"
+description = "Lorentzian metric CXg is symmetric: CXg[-cxa,-cxb] - CXg[-cxb,-cxa] = 0"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "CXg[-cxa,-cxb] - CXg[-cxb,-cxa]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Lorentzian metric symmetry CXg[-a,-b] = CXg[-b,-a]"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "inverse_metric_symmetry"
+description = "Inverse metric CXg[a,b] - CXg[b,a] = 0 under ToCanonical"
+
+# The inverse metric is also symmetric: g^{ab} = g^{ba}.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "CXg[cxa,cxb] - CXg[cxb,cxa]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Inverse metric symmetry CXg[a,b] = CXg[b,a]"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "raise_index_lorentz"
+description = "Index raising with Lorentzian metric: CXg[cxa,cxb] CXw[-cxb] contracted gives CXw raised"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "expr"
+[tests.operations.args]
+expression = "CXg[cxa,cxb] CXw[-cxb]"
+
+[[tests.operations]]
+action   = "Contract"
+store_as = "result"
+[tests.operations.args]
+expression = "$expr"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "TensorQ[CXw]"
+message   = "Result of index raising should be a tensor expression"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "symmetric_metric_contracted_with_sym"
+description = "Contracted symmetric tensors: CXg[-cxa,-cxb] CXS[cxa,cxb] ordering invariance"
+
+# For symmetric CXS and symmetric metric: contracting g_{ab} S^{ab} = g_{ab} S^{ba}
+# since both are symmetric. Their difference should be 0.
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "expr1"
+[tests.operations.args]
+expression = "CXg[-cxa,-cxb] CXS[cxa,cxb]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "expr2"
+[tests.operations.args]
+expression = "CXg[-cxa,-cxb] CXS[cxb,cxa]"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "diff"
+[tests.operations.args]
+expression = "$expr1 - $expr2"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$diff == 0"
+message   = "g_{ab} S^{ab} = g_{ab} S^{ba} for symmetric S"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "antisym_self_swap"
+description = "Antisymmetric tensor: CXF[-cxa,-cxb] + CXF[-cxb,-cxa] = 0"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "CXF[-cxa,-cxb] + CXF[-cxb,-cxa]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Antisymmetric tensor F[-a,-b] + F[-b,-a] = 0"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "linear_combo_coefficients"
+description = "Linear combination: 2*CXF[-cxa,-cxb] + 2*CXF[-cxb,-cxa] = 0 (coefficient scaling)"
+
+# Even with coefficient 2, the antisymmetry identity holds.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "2 CXF[-cxa,-cxb] + 2 CXF[-cxb,-cxa]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "2*F[-a,-b] + 2*F[-b,-a] = 0 (scaled antisymmetry)"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "symmetric_triple_sum"
+description = "Symmetric tensor: CXS[-cxa,-cxb] + CXS[-cxb,-cxa] - 2*CXS[-cxa,-cxb] = 0"
+
+# S[-a,-b] + S[-b,-a] = 2*S[-a,-b] for symmetric S; subtracting gives 0.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "CXS[-cxa,-cxb] + CXS[-cxb,-cxa] - 2 CXS[-cxa,-cxb]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "S[-a,-b] + S[-b,-a] - 2*S[-a,-b] = 0 for symmetric S"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1

@@ -1,0 +1,240 @@
+# tests/xtensor/covd_basics.toml
+# Layer 1 regression tests for covariant derivative operations.
+#
+# Tests covariant derivative metric compatibility (∇g = 0) and the
+# differential (second) Bianchi identity (∇_{[e} R_{ab]cd} = 0).
+# Also verifies that auto-created curvature tensors are registered.
+#
+# Reference: xTensor documentation §3.3 (covariant derivatives),
+#            Wald (1984) Appendix C.1 (Bianchi identities).
+#
+# Validates schema: src/sxact/runner/schemas/test-schema.json
+
+[meta]
+id              = "xtensor/covd_basics"
+description     = "CovD metric compatibility, second Bianchi identity, curvature tensor registration (layer 1)"
+tags            = ["xtensor", "covd", "bianchi", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Setup: 4D Lorentzian manifold with metric and covariant derivative CVD.
+# Six indices needed for second Bianchi identity (free indices a,b plus e,c,d).
+# ---------------------------------------------------------------------------
+
+[[setup]]
+action   = "DefManifold"
+store_as = "CVm"
+[setup.args]
+name      = "CVm"
+dimension = 4
+indices   = ["cva", "cvb", "cvc", "cvd", "cve", "cvf"]
+
+[[setup]]
+action   = "DefMetric"
+store_as = "CVg"
+[setup.args]
+signdet = -1
+metric  = "CVg[-cva,-cvb]"
+covd    = "CVD"
+
+# ---------------------------------------------------------------------------
+# Tests: Metric compatibility — ∇_c g_{ab} = 0
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "metric_compat_idx0"
+description = "Metric compatibility: CVD[-cvc][CVg[-cva,-cvb]] canonicalizes to 0"
+
+# CovD[-cvc][CVg[-cva,-cvb]] is the covariant derivative of the metric tensor.
+# By metric compatibility, ∇_c g_{ab} = 0 identically.
+# The preprocessing rule in XTensor reduces this to 0 before canonicalization.
+# Ref: Wald (1984) Eq. 3.1.6 (definition of compatible connection).
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "CVD[-cvc][CVg[-cva,-cvb]]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "∇_c g_{ab} = 0: fundamental metric compatibility identity"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "metric_compat_idx1"
+description = "Metric compatibility: CVD[-cvb][CVg[-cva,-cvc]] canonicalizes to 0"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "CVD[-cvb][CVg[-cva,-cvc]]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "∇_b g_{ac} = 0 (second index slot for derivative)"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "metric_compat_idx2"
+description = "Metric compatibility: CVD[-cva][CVg[-cvb,-cvc]] canonicalizes to 0"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "CVD[-cva][CVg[-cvb,-cvc]]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "∇_a g_{bc} = 0 (third index slot for derivative)"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "metric_compat_sum"
+description = "Sum of two metric compatibility terms is 0: ∇_a g_{bc} + ∇_b g_{ac} = 0"
+
+# Both terms are independently zero by metric compatibility; their sum is also 0.
+# This verifies that the preprocessing handles sums correctly.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "CVD[-cva][CVg[-cvb,-cvc]] + CVD[-cvb][CVg[-cva,-cvc]]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "∇_a g_{bc} + ∇_b g_{ac} = 0 (sum of two metric-compat terms)"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+# Tests: Second (differential) Bianchi identity — ∇_{[e} R_{ab]cd} = 0
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "second_bianchi"
+description = "Second Bianchi identity: ∇_e R_{abcd} + ∇_c R_{abde} + ∇_d R_{abec} = 0"
+
+# The differential Bianchi identity: ∇_e R_{abcd} + ∇_c R_{abde} + ∇_d R_{abec} = 0.
+# XTensor detects the cyclic pattern and reduces the sum to 0 + 0 + 0 = 0.
+# Ref: Wald (1984) Proposition C.2.5.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "CVD[-cve][RiemannCVD[-cva,-cvb,-cvc,-cvd]] + CVD[-cvc][RiemannCVD[-cva,-cvb,-cvd,-cve]] + CVD[-cvd][RiemannCVD[-cva,-cvb,-cve,-cvc]]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Second Bianchi identity ∇_e R_{abcd} + ∇_c R_{abde} + ∇_d R_{abec} = 0"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "second_bianchi_alt_index"
+description = "Second Bianchi with different free index: ∇_f R_{abcd} + ∇_c R_{abdf} + ∇_d R_{abfc} = 0"
+
+# The second Bianchi identity holds for any choice of free index.
+# Here we verify it with index cvf in place of cve.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "CVD[-cvf][RiemannCVD[-cva,-cvb,-cvc,-cvd]] + CVD[-cvc][RiemannCVD[-cva,-cvb,-cvd,-cvf]] + CVD[-cvd][RiemannCVD[-cva,-cvb,-cvf,-cvc]]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Second Bianchi with free index cvf: ∇_f R_{abcd} + ∇_c R_{abdf} + ∇_d R_{abfc} = 0"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+# Tests: Auto-created curvature tensor registration
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "riemann_tensor_registered"
+description = "DefMetric auto-creates RiemannCVD as a registered tensor"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "TensorQ[RiemannCVD] === True"
+message   = "RiemannCVD should be registered after DefMetric"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "ricci_tensor_registered"
+description = "DefMetric auto-creates RicciCVD as a registered tensor"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "TensorQ[RicciCVD] === True"
+message   = "RicciCVD should be registered after DefMetric"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "ricciscalar_tensor_registered"
+description = "DefMetric auto-creates RicciScalarCVD as a registered tensor"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "TensorQ[RicciScalarCVD] === True"
+message   = "RicciScalarCVD should be registered after DefMetric"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "weyl_tensor_registered"
+description = "DefMetric auto-creates WeylCVD as a registered tensor"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "TensorQ[WeylCVD] === True"
+message   = "WeylCVD should be registered after DefMetric"
