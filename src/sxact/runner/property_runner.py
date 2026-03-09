@@ -82,6 +82,7 @@ class PropertyResult:
     confidence: float = 0.0  # num_passed / num_samples; 0.0 when num_samples == 0
     counterexample: Counterexample | None = None
     message: str | None = None
+    cross_adapter_diff: dict[str, str] | None = None
 
 
 @dataclass

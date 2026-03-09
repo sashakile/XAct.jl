@@ -518,6 +518,14 @@ def main() -> None:
         help="Filter properties by tag (e.g. --filter tag:critical). May be repeated.",
     )
     prop.add_argument(
+        "--compare-adapter",
+        choices=["wolfram", "julia", "python"],
+        default=None,
+        dest="compare_adapter",
+        metavar="ADAPTER",
+        help="Secondary adapter to compare against (default: none). Runs both adapters and reports disagreements.",
+    )
+    prop.add_argument(
         "--format",
         choices=["terminal", "json"],
         default="terminal",

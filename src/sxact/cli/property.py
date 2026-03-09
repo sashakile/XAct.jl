@@ -30,6 +30,7 @@ def _print_terminal(file_results: list[PropertyFileResult]) -> None:
     total_fail = 0
     total_error = 0
     total_skip = 0
+    total_diff = 0
 
     for fr in file_results:
         print(f"\n{fr.file_path}")
@@ -63,12 +64,20 @@ def _print_terminal(file_results: list[PropertyFileResult]) -> None:
             if r.counterexample:
                 _print_counterexample(r.counterexample)
 
+            if r.cross_adapter_diff:
+                total_diff += 1
+                print("      Cross-adapter disagreement:")
+                for adapter_name, summary in r.cross_adapter_diff.items():
+                    print(f"        {adapter_name}: {summary}")
+
     print(f"\n{'=' * 60}")
     summary = f"{total_pass} passed, {total_fail} failed, {total_error} errors"
     if total_partial:
         summary += f", {total_partial} partial"
     if total_skip:
         summary += f", {total_skip} skipped"
+    if total_diff:
+        summary += f", {total_diff} cross-adapter disagreements"
     print(f"Properties: {total_props}  |  {summary}")
 
 
@@ -107,6 +116,8 @@ def _print_json(file_results: list[PropertyFileResult]) -> None:
                     "lhs_result": cx.lhs_result,
                     "rhs_result": cx.rhs_result,
                 }
+            if r.cross_adapter_diff:
+                obj["cross_adapter_diff"] = r.cross_adapter_diff
             props.append(obj)
         output.append(
             {
@@ -123,8 +134,36 @@ def _print_json(file_results: list[PropertyFileResult]) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _result_summary(r: PropertyResult) -> str:
+    """Short repr string for a PropertyResult, used in cross-adapter diff."""
+    pct = f" = {r.confidence:.0%}" if r.num_samples > 0 else ""
+    return f"{r.status} ({r.num_passed}/{r.num_samples}{pct})"
+
+
+def _apply_cross_adapter_diff(
+    primary_results: PropertyFileResult,
+    secondary_results: PropertyFileResult,
+    primary_name: str,
+    secondary_name: str,
+) -> None:
+    """Annotate primary results with cross_adapter_diff where adapters disagree."""
+    secondary_by_id = {r.property_id: r for r in secondary_results.results}
+    for r in primary_results.results:
+        sec = secondary_by_id.get(r.property_id)
+        if sec is None:
+            r.cross_adapter_diff = {
+                primary_name: _result_summary(r),
+                secondary_name: "missing",
+            }
+        elif r.status != sec.status:
+            r.cross_adapter_diff = {
+                primary_name: _result_summary(r),
+                secondary_name: _result_summary(sec),
+            }
+
+
 def _cmd_property(args: argparse.Namespace) -> int:
-    from sxact.cli.run import _make_adapter
+    from sxact.cli.run import _make_adapter, _make_adapter_by_name
 
     test_path = Path(args.test_path)
     if test_path.is_file():
@@ -165,6 +204,15 @@ def _cmd_property(args: argparse.Namespace) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
+    compare_adapter_name: str | None = getattr(args, "compare_adapter", None)
+    compare_adapter = None
+    if compare_adapter_name:
+        try:
+            compare_adapter = _make_adapter_by_name(compare_adapter_name, args)
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+
     file_results: list[PropertyFileResult] = []
 
     for toml_path in property_files:
@@ -192,6 +240,34 @@ def _cmd_property(args: argparse.Namespace) -> int:
                         message=str(exc),
                     )
                 ],
+            )
+
+        if compare_adapter is not None:
+            assert compare_adapter_name is not None
+            try:
+                secondary = run_property_file(
+                    prop_file,
+                    compare_adapter,
+                    tag_filter,
+                    adapter_name=compare_adapter_name,
+                )
+            except Exception as exc:
+                secondary = PropertyFileResult(
+                    file_path=str(toml_path),
+                    description="",
+                    results=[
+                        PropertyResult(
+                            property_id="<runner>",
+                            name="<runner>",
+                            status="error",
+                            num_samples=0,
+                            num_passed=0,
+                            message=str(exc),
+                        )
+                    ],
+                )
+            _apply_cross_adapter_diff(
+                result, secondary, args.adapter, compare_adapter_name
             )
 
         file_results.append(result)

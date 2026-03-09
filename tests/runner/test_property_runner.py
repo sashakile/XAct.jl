@@ -17,6 +17,7 @@ from sxact.runner.property_runner import (
     load_property_file,
     run_property_file,
 )
+from sxact.cli.property import _apply_cross_adapter_diff
 
 
 # ---------------------------------------------------------------------------
@@ -380,6 +381,42 @@ class TestRunPropertyFile:
         ids = [r.property_id for r in result.results]
         assert "tagged" in ids
         assert "untagged" not in ids
+
+    def test_cross_adapter_diff_agree(self, tmp_path):
+        """Both adapters pass → no cross_adapter_diff set."""
+        pf = _make_minimal_prop_file(tmp_path)
+        primary = run_property_file(pf, AlwaysTrueAdapter())
+        secondary = run_property_file(pf, AlwaysTrueAdapter())
+        _apply_cross_adapter_diff(primary, secondary, "julia", "python")
+        assert all(r.cross_adapter_diff is None for r in primary.results)
+
+    def test_cross_adapter_diff_disagree(self, tmp_path):
+        """Primary passes, secondary fails → cross_adapter_diff populated."""
+        pf = _make_minimal_prop_file(tmp_path)
+        primary = run_property_file(pf, AlwaysTrueAdapter())
+        secondary = run_property_file(pf, AlwaysFalseAdapter())
+        _apply_cross_adapter_diff(primary, secondary, "julia", "python")
+        r = primary.results[0]
+        assert r.cross_adapter_diff is not None
+        assert "julia" in r.cross_adapter_diff
+        assert "python" in r.cross_adapter_diff
+        assert "pass" in r.cross_adapter_diff["julia"]
+        assert "fail" in r.cross_adapter_diff["python"]
+
+    def test_cross_adapter_diff_missing_property(self, tmp_path):
+        """Property missing from secondary run → cross_adapter_diff with 'missing'."""
+        from sxact.runner.property_runner import PropertyFileResult
+
+        pf = _make_minimal_prop_file(tmp_path)
+        primary = run_property_file(pf, AlwaysTrueAdapter())
+        # Secondary with no results (empty file result)
+        secondary = PropertyFileResult(
+            file_path=str(pf.path), description="", results=[]
+        )
+        _apply_cross_adapter_diff(primary, secondary, "julia", "python")
+        r = primary.results[0]
+        assert r.cross_adapter_diff is not None
+        assert r.cross_adapter_diff.get("python") == "missing"
 
     def test_setup_executed_before_properties(self, tmp_path):
         """Setup actions should be executed; failure in setup marks all properties as error."""
