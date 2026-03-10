@@ -101,6 +101,8 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             "Perturb",
             "PerturbCurvature",
             "Simplify",
+            "PerturbationOrder",
+            "PerturbationAtOrder",
         }
     )
 
@@ -228,6 +230,10 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 return self._simplify(args)
             if action == "PerturbCurvature":
                 return self._perturb_curvature(args)
+            if action == "PerturbationOrder":
+                return self._perturbation_order(args)
+            if action == "PerturbationAtOrder":
+                return self._perturbation_at_order(args)
         except Exception as exc:
             return Result(
                 status="error", type="", repr="", normalized="", error=str(exc)
@@ -392,6 +398,22 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         result = self._jl.seval(f"XTensor.check_metric_consistency(:{metric})")
         raw = "True" if result is True or str(result).lower() == "true" else "False"
         return Result(status="ok", type="Bool", repr=raw, normalized=raw)
+
+    def _perturbation_order(self, args: dict[str, Any]) -> Result:
+        tensor = str(args["tensor"])
+        result = self._jl.seval(f"XTensor.PerturbationOrder(:{tensor})")
+        order = int(result)
+        return Result(status="ok", type="Int", repr=str(order), normalized=str(order))
+
+    def _perturbation_at_order(self, args: dict[str, Any]) -> Result:
+        background = str(args["background"])
+        order = int(args["order"])
+        result = self._jl.seval(f"XTensor.PerturbationAtOrder(:{background}, {order})")
+        name = str(result)
+        # Strip leading colon that Julia Symbol.show() sometimes includes
+        if name.startswith(":"):
+            name = name[1:]
+        return Result(status="ok", type="String", repr=name, normalized=name)
 
     def _simplify(self, args: dict[str, Any]) -> Result:
         expr = _jl_escape(str(args["expression"]))

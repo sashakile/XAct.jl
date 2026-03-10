@@ -1,0 +1,273 @@
+# xtensor/pert_orders.toml
+# Tests for PerturbationOrder() and PerturbationAtOrder() queries (sxAct-hyy).
+# These functions allow retrieving the perturbation order of a registered
+# tensor and looking up which tensor is registered at a given order for a
+# background tensor.
+#
+# All tests use oracle_is_axiom = true: the Julia adapter is the ground truth.
+
+[meta]
+id              = "xtensor/pert_orders"
+description     = "xPert: PerturbationOrder and PerturbationAtOrder queries"
+tags            = ["xtensor", "xpert", "perturbation", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Setup: 4D Lorentzian manifold, background metric, two perturbation tensors
+# ---------------------------------------------------------------------------
+
+[[setup]]
+action   = "DefManifold"
+store_as = "Bpo"
+[setup.args]
+name      = "Bpo"
+dimension = 4
+indices   = ["bpoa", "bpob", "bpoc", "bpod"]
+
+[[setup]]
+action   = "DefMetric"
+store_as = "Cng"
+[setup.args]
+signdet = -1
+metric  = "Cng[-bpoa,-bpob]"
+covd    = "Cnd"
+
+# First-order metric perturbation
+[[setup]]
+action   = "DefTensor"
+store_as = "Pertg1"
+[setup.args]
+name     = "Pertg1"
+indices  = ["-bpoa", "-bpob"]
+manifold = "Bpo"
+symmetry = "Symmetric[{-bpoa,-bpob}]"
+
+[[setup]]
+action   = "DefPerturbation"
+store_as = "Pertg1"
+[setup.args]
+tensor     = "Pertg1"
+background = "Cng"
+order      = 1
+
+# Second-order metric perturbation
+[[setup]]
+action   = "DefTensor"
+store_as = "Pertg2"
+[setup.args]
+name     = "Pertg2"
+indices  = ["-bpoa", "-bpob"]
+manifold = "Bpo"
+symmetry = "Symmetric[{-bpoa,-bpob}]"
+
+[[setup]]
+action   = "DefPerturbation"
+store_as = "Pertg2"
+[setup.args]
+tensor     = "Pertg2"
+background = "Cng"
+order      = 2
+
+# Third-order metric perturbation
+[[setup]]
+action   = "DefTensor"
+store_as = "Pertg3"
+[setup.args]
+name     = "Pertg3"
+indices  = ["-bpoa", "-bpob"]
+manifold = "Bpo"
+symmetry = "Symmetric[{-bpoa,-bpob}]"
+
+[[setup]]
+action   = "DefPerturbation"
+store_as = "Pertg3"
+[setup.args]
+tensor     = "Pertg3"
+background = "Cng"
+order      = 3
+
+# A second background tensor with its own perturbation
+[[setup]]
+action   = "DefTensor"
+store_as = "Phi"
+[setup.args]
+name     = "Phi"
+indices  = ["-bpoa", "-bpob"]
+manifold = "Bpo"
+symmetry = "Symmetric[{-bpoa,-bpob}]"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "PertPhi1"
+[setup.args]
+name     = "PertPhi1"
+indices  = ["-bpoa", "-bpob"]
+manifold = "Bpo"
+symmetry = "Symmetric[{-bpoa,-bpob}]"
+
+[[setup]]
+action   = "DefPerturbation"
+store_as = "PertPhi1"
+[setup.args]
+tensor     = "PertPhi1"
+background = "Phi"
+order      = 1
+
+# ---------------------------------------------------------------------------
+# PerturbationOrder tests — query the order of a named perturbation tensor
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "pert_order_first"
+description = "PerturbationOrder returns 1 for a first-order perturbation"
+
+[[tests.operations]]
+action = "PerturbationOrder"
+[tests.operations.args]
+tensor = "Pertg1"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "pert_order_second"
+description = "PerturbationOrder returns 2 for a second-order perturbation"
+
+[[tests.operations]]
+action = "PerturbationOrder"
+[tests.operations.args]
+tensor = "Pertg2"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "pert_order_third"
+description = "PerturbationOrder returns 3 for a third-order perturbation"
+
+[[tests.operations]]
+action = "PerturbationOrder"
+[tests.operations.args]
+tensor = "Pertg3"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "pert_order_phi"
+description = "PerturbationOrder returns 1 for first-order perturbation of Phi"
+
+[[tests.operations]]
+action = "PerturbationOrder"
+[tests.operations.args]
+tensor = "PertPhi1"
+
+# ---------------------------------------------------------------------------
+# PerturbationAtOrder tests — query the tensor name for a given background + order
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "pert_at_order_1"
+description = "PerturbationAtOrder(Cng, 1) returns Pertg1"
+
+[[tests.operations]]
+action = "PerturbationAtOrder"
+[tests.operations.args]
+background = "Cng"
+order      = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "pert_at_order_2"
+description = "PerturbationAtOrder(Cng, 2) returns Pertg2"
+
+[[tests.operations]]
+action = "PerturbationAtOrder"
+[tests.operations.args]
+background = "Cng"
+order      = 2
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "pert_at_order_3"
+description = "PerturbationAtOrder(Cng, 3) returns Pertg3"
+
+[[tests.operations]]
+action = "PerturbationAtOrder"
+[tests.operations.args]
+background = "Cng"
+order      = 3
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "pert_at_order_phi1"
+description = "PerturbationAtOrder(Phi, 1) returns PertPhi1"
+
+[[tests.operations]]
+action = "PerturbationAtOrder"
+[tests.operations.args]
+background = "Phi"
+order      = 1
+
+# ---------------------------------------------------------------------------
+# Assert-based round-trip tests — use Julia predicates directly
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "assert_pert_order_1_via_julia"
+description = "Assert: PerturbationOrder(Pertg1) == 1"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "PerturbationOrder(Pertg1) === 1"
+message   = "PerturbationOrder(Pertg1) should be 1"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "assert_pert_order_2_via_julia"
+description = "Assert: PerturbationOrder(Pertg2) == 2"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "PerturbationOrder(Pertg2) === 2"
+message   = "PerturbationOrder(Pertg2) should be 2"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "assert_pert_at_order_roundtrip"
+description = "Assert: PerturbationAtOrder(Cng, 1) is the same symbol as Pertg1"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "PerturbationAtOrder(Cng, 1) === Pertg1"
+message   = "PerturbationAtOrder(Cng, 1) should equal :Pertg1"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "assert_pert_at_order_2_roundtrip"
+description = "Assert: PerturbationAtOrder(Cng, 2) is the same symbol as Pertg2"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "PerturbationAtOrder(Cng, 2) === Pertg2"
+message   = "PerturbationAtOrder(Cng, 2) should equal :Pertg2"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "assert_pert_order_consistent_with_check"
+description = "Assert: PerturbationOrder is consistent with check_perturbation_order"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "check_perturbation_order(Pertg1, PerturbationOrder(Pertg1)) === true"
+message   = "PerturbationOrder result should pass check_perturbation_order"

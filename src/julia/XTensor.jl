@@ -48,6 +48,9 @@ export SignDetOfMetric
 # xPert background metric consistency
 export check_metric_consistency, check_perturbation_order
 
+# xPert perturbation order queries
+export PerturbationOrder, PerturbationAtOrder
+
 # ============================================================
 # Types
 # ============================================================
@@ -1636,6 +1639,13 @@ function def_perturbation!(tensor::Symbol, background::Symbol, order::Int)::Pert
         error("def_perturbation!: tensor $tensor not registered — call def_tensor! first")
     haskey(_tensors, background) ||
         error("def_perturbation!: background tensor $background not registered")
+    for (existing_name, existing_p) in _perturbations
+        if existing_p.background == background && existing_p.order == order
+            error(
+                "def_perturbation!: order-$order perturbation for $background already registered as $existing_name",
+            )
+        end
+    end
 
     p = PerturbationObj(tensor, background, order)
     _perturbations[tensor] = p
@@ -1701,6 +1711,56 @@ end
 
 function check_perturbation_order(tensor_name::AbstractString, order::Int)::Bool
     check_perturbation_order(Symbol(tensor_name), order)
+end
+
+"""
+    PerturbationOrder(tensor_name) → Int
+
+Return the perturbation order of a registered perturbation tensor.
+Throws an error if `tensor_name` is not a registered perturbation.
+
+# Examples
+
+```julia
+PerturbationOrder(:Pertg1)   # → 1
+PerturbationOrder(:Pertg2)   # → 2
+```
+"""
+function PerturbationOrder(tensor_name::Symbol)::Int
+    p = get(_perturbations, tensor_name, nothing)
+    isnothing(p) &&
+        error("PerturbationOrder: $tensor_name is not a registered perturbation")
+    p.order
+end
+
+function PerturbationOrder(tensor_name::AbstractString)::Int
+    PerturbationOrder(Symbol(tensor_name))
+end
+
+"""
+    PerturbationAtOrder(background, order) → Symbol
+
+Return the name of the perturbation tensor registered for `background` at
+perturbation `order`.  Throws an error if no such perturbation is registered.
+
+# Examples
+
+```julia
+PerturbationAtOrder(:g, 1)   # → :Pertg1
+PerturbationAtOrder(:g, 2)   # → :Pertg2
+```
+"""
+function PerturbationAtOrder(background::Symbol, order::Int)::Symbol
+    for (pname, p) in _perturbations
+        if p.background == background && p.order == order
+            return pname
+        end
+    end
+    error("PerturbationAtOrder: no order-$order perturbation registered for $background")
+end
+
+function PerturbationAtOrder(background::AbstractString, order::Int)::Symbol
+    PerturbationAtOrder(Symbol(background), order)
 end
 
 # ============================================================

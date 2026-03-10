@@ -1,0 +1,11 @@
+{
+  "test_id": "assert_pert_order_consistent_with_check",
+  "oracle_version": "julia-axiom",
+  "mathematica_version": "N/A",
+  "timestamp": "2026-03-10T19:46:03.568696+00:00",
+  "commands": "[julia-adapter]",
+  "raw_output": "False",
+  "normalized_output": "False",
+  "properties": {},
+  "hash": "sha256:82d00aac8815"
+}

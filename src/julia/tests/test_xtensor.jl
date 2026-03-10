@@ -491,4 +491,50 @@ using .XTensor
             @test Simplify(once) == once
         end
     end
+
+    @testset "PerturbationOrder and PerturbationAtOrder" begin
+        reset_state!()
+        def_manifold!(:Bpo, 4, [:bpoa, :bpob, :bpoc, :bpod])
+        def_tensor!(:Pog, ["-bpoa", "-bpob"], :Bpo; symmetry_str="Symmetric[{-bpoa,-bpob}]")
+        def_tensor!(
+            :PoPert1, ["-bpoa", "-bpob"], :Bpo; symmetry_str="Symmetric[{-bpoa,-bpob}]"
+        )
+        def_tensor!(
+            :PoPert2, ["-bpoa", "-bpob"], :Bpo; symmetry_str="Symmetric[{-bpoa,-bpob}]"
+        )
+        def_tensor!(
+            :PoPert3, ["-bpoa", "-bpob"], :Bpo; symmetry_str="Symmetric[{-bpoa,-bpob}]"
+        )
+        def_perturbation!(:PoPert1, :Pog, 1)
+        def_perturbation!(:PoPert2, :Pog, 2)
+        def_perturbation!(:PoPert3, :Pog, 3)
+
+        # PerturbationOrder returns the registered order
+        @test PerturbationOrder(:PoPert1) == 1
+        @test PerturbationOrder(:PoPert2) == 2
+        @test PerturbationOrder(:PoPert3) == 3
+        @test PerturbationOrder("PoPert1") == 1
+
+        # PerturbationOrder throws for unregistered tensors
+        @test_throws ErrorException PerturbationOrder(:Pog)
+        @test_throws ErrorException PerturbationOrder(:DoesNotExist)
+
+        # PerturbationAtOrder returns the tensor registered at each order
+        @test PerturbationAtOrder(:Pog, 1) == :PoPert1
+        @test PerturbationAtOrder(:Pog, 2) == :PoPert2
+        @test PerturbationAtOrder(:Pog, 3) == :PoPert3
+        @test PerturbationAtOrder("Pog", 1) == :PoPert1
+
+        # PerturbationAtOrder throws when no perturbation at the given order
+        @test_throws ErrorException PerturbationAtOrder(:Pog, 4)
+        @test_throws ErrorException PerturbationAtOrder(:DoesNotExist, 1)
+
+        # Round-trip: PerturbationAtOrder(bg, PerturbationOrder(p)) == p
+        @test PerturbationAtOrder(:Pog, PerturbationOrder(:PoPert1)) == :PoPert1
+        @test PerturbationAtOrder(:Pog, PerturbationOrder(:PoPert2)) == :PoPert2
+
+        # check_perturbation_order is consistent with PerturbationOrder
+        @test check_perturbation_order(:PoPert1, PerturbationOrder(:PoPert1))
+        @test !check_perturbation_order(:PoPert1, PerturbationOrder(:PoPert2))
+    end
 end

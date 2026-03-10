@@ -96,6 +96,8 @@
         "CheckMetricConsistency",
         "Perturb",
         "PerturbCurvature",
+        "PerturbationOrder",
+        "PerturbationAtOrder",
         "Assert"
       ]
     },
@@ -114,6 +116,8 @@
         { "$ref": "#/$defs/args/CheckMetricConsistency" },
         { "$ref": "#/$defs/args/Perturb" },
         { "$ref": "#/$defs/args/PerturbCurvature" },
+        { "$ref": "#/$defs/args/PerturbationOrder" },
+        { "$ref": "#/$defs/args/PerturbationAtOrder" },
         { "$ref": "#/$defs/args/Assert" }
       ]
     },
@@ -493,6 +497,35 @@
             "description": "Which formula to return: 'Christoffel1', 'Riemann1', 'Ricci1', or 'RicciScalar1'. When omitted, all formulas are returned.",
             "type": "string",
             "enum": ["Christoffel1", "Riemann1", "Ricci1", "RicciScalar1"]
+          }
+        }
+      },
+      "PerturbationOrder": {
+        "description": "Arguments for PerturbationOrder action. Returns the perturbation order of a registered perturbation tensor.",
+        "type": "object",
+        "required": ["tensor"],
+        "additionalProperties": false,
+        "properties": {
+          "tensor": {
+            "description": "Name of the registered perturbation tensor",
+            "type": "string"
+          }
+        }
+      },
+      "PerturbationAtOrder": {
+        "description": "Arguments for PerturbationAtOrder action. Returns the name of the perturbation tensor registered for a background tensor at a given order.",
+        "type": "object",
+        "required": ["background", "order"],
+        "additionalProperties": false,
+        "properties": {
+          "background": {
+            "description": "Name of the background tensor",
+            "type": "string"
+          },
+          "order": {
+            "description": "Perturbation order to query (≥ 1)",
+            "type": "integer",
+            "minimum": 1
           }
         }
       },
