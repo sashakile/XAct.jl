@@ -8,8 +8,7 @@ Per-file isolation is achieved by resetting XCore and XTensor global state on
 teardown.
 
 Actions that require xTensor (DefManifold, DefMetric, DefTensor, ToCanonical,
-Contract, SignDetOfMetric) are now dispatched to the Julia XTensor module.
-Simplify remains deferred (Tier 2).
+Contract, SignDetOfMetric, Simplify) are dispatched to the Julia XTensor module.
 """
 
 from __future__ import annotations
@@ -126,11 +125,12 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             "DefPerturbation",
             "CheckMetricConsistency",
             "Perturb",
+            "Simplify",
         }
     )
 
     # Tier 2 deferred actions
-    _DEFERRED_ACTIONS = frozenset({"Simplify"})
+    _DEFERRED_ACTIONS: frozenset[str] = frozenset()
 
     # XCore module-level mutable state to reset on teardown
     _RESET_STMTS = [
@@ -281,6 +281,8 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 return self._perturb(args)
             if action == "CheckMetricConsistency":
                 return self._check_metric_consistency(args)
+            if action == "Simplify":
+                return self._simplify(args)
         except Exception as exc:
             return Result(
                 status="error", type="", repr="", normalized="", error=str(exc)
@@ -445,6 +447,12 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         result = self._jl.seval(f"XTensor.check_metric_consistency(:{metric})")
         raw = "True" if result is True or str(result).lower() == "true" else "False"
         return Result(status="ok", type="Bool", repr=raw, normalized=raw)
+
+    def _simplify(self, args: dict[str, Any]) -> Result:
+        expr = _jl_escape(str(args["expression"]))
+        result = self._jl.seval(f'XTensor.Simplify("{expr}")')
+        s = str(result)
+        return Result(status="ok", type="String", repr=s, normalized=s)
 
     def _execute_expr(self, wolfram_expr: str) -> Result:
         julia_expr = _wl_to_jl(wolfram_expr)

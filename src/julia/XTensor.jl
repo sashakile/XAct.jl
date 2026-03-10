@@ -40,7 +40,7 @@ export Dimension, IndicesOfVBundle, SlotsOfTensor
 export MemberQ
 
 # Canonicalization and contraction
-export ToCanonical, Contract, CommuteCovDs
+export ToCanonical, Contract, CommuteCovDs, Simplify
 
 # Contract support
 export SignDetOfMetric
@@ -1530,8 +1530,8 @@ function _contract_one_metric(term::TermAST)::Union{TermAST,Nothing}
                     idx for idx in new_other.indices if
                     !(_bare(idx) == bare_1 || _bare(idx) == bare_2)
                 ]
-                # If all original contracted slots are consumed, check trace rule
-                if isempty(remaining_free) || all(b -> b == bare_1 || b == bare_2, bare_new)
+                # Fire trace rule only when no free indices remain outside the contracted pair
+                if isempty(remaining_free)
                     (scalar_name, coeff_int) = _trace_scalars[other.tensor_name]
                     new_factors = FactorAST[]
                     scalar_factor = FactorAST(scalar_name, String[])
@@ -1543,6 +1543,25 @@ function _contract_one_metric(term::TermAST)::Union{TermAST,Nothing}
                     push!(new_factors, scalar_factor)
                     new_coeff = term.coeff * coeff_int
                     return TermAST(new_coeff, new_factors)
+                end
+            end
+            # Special case: metric contracted with itself → dimension (trace = g^ab g_ab = n)
+            if has_1 && has_2
+                other_as_metric = _factor_as_metric(other)
+                if !isnothing(other_as_metric)
+                    # Get the manifold dimension for this metric
+                    (_, other_metric_obj, _) = other_as_metric
+                    manifold = get(_manifolds, other_metric_obj.manifold, nothing)
+                    if !isnothing(manifold) && other_metric_obj.name == metric_obj.name
+                        dim = manifold.dimension
+                        # Return a pure scalar term with no factors, coefficient = dim
+                        remaining = [
+                            ff for
+                            (k, ff) in enumerate(factors) if k != metric_pos && k != j
+                        ]
+                        new_coeff = term.coeff * dim
+                        return TermAST(new_coeff, remaining)
+                    end
                 end
             end
             # No special rule: keep the self-trace factor (ToCanonical handles)
@@ -1812,6 +1831,30 @@ function perturb(expr::AbstractString, order::Int)::String
         end
     end
     isempty(terms) ? "0" : join(terms, " + ")
+end
+
+"""
+    Simplify(expression::AbstractString) → String
+
+Algebraic simplification of a tensor expression.
+
+Applies ToCanonical, which provides:
+
+  - Index canonicalization and sign normalization
+  - Like-term collection (sum simplification)
+  - Bianchi identity reduction
+  - Einstein tensor expansion
+
+**Note:** Metric self-trace (`g^{ab}g_{ab} = n`) requires a preceding
+`Contract` call, which performs the contraction and returns the numeric
+scalar. `Simplify` then passes that scalar through `ToCanonical` unchanged.
+Calling `Simplify` alone on an uncontracted metric product does **not**
+evaluate the trace.
+"""
+function Simplify(expression::AbstractString)::String
+    # ToCanonical already handles: index canonicalization, like-term collection,
+    # Bianchi identity, and Einstein expansion.
+    ToCanonical(expression)
 end
 
 end  # module XTensor

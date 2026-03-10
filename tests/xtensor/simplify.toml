@@ -1,0 +1,113 @@
+# xtensor/simplify.toml
+# Tests for the Simplify action.
+# Validates against schema: tests/schema/test-schema.json
+
+[meta]
+id              = "xtensor/simplify"
+description     = "Simplify: scalar reduction and canonical form"
+tags            = ["xtensor", "simplify", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Setup: 4D Euclidean manifold with metric and an antisymmetric tensor.
+# ---------------------------------------------------------------------------
+
+[[setup]]
+action   = "DefManifold"
+store_as = "Sm"
+[setup.args]
+name      = "Sm"
+dimension = 4
+indices   = ["sma", "smb", "smc", "smd"]
+
+[[setup]]
+action   = "DefMetric"
+store_as = "Sg"
+[setup.args]
+signdet = 1
+metric  = "Sg[-sma,-smb]"
+covd    = "Sd"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "SAT"
+[setup.args]
+name     = "SAT"
+indices  = ["-sma", "-smb"]
+manifold = "Sm"
+symmetry = "Antisymmetric[{-sma,-smb}]"
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "simplify_metric_trace"
+description = "Simplify on g^{ab}g_{ab} after Contract gives dimension 4"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "expr"
+[tests.operations.args]
+expression = "Sg[sma,smb] Sg[-sma,-smb]"
+
+[[tests.operations]]
+action   = "Contract"
+store_as = "contracted"
+[tests.operations.args]
+expression = "$expr"
+
+[[tests.operations]]
+action   = "Simplify"
+store_as = "result"
+[tests.operations.args]
+expression = "$contracted"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 4"
+message   = "Trace g^{ab}g_{ab} should equal dimension 4"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "simplify_to_canonical_sum"
+description = "Simplify on antisymmetric tensor sum T[-a,-b] + T[-b,-a] gives 0"
+
+[[tests.operations]]
+action   = "Simplify"
+store_as = "result"
+[tests.operations.args]
+expression = "SAT[-sma,-smb] + SAT[-smb,-sma]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 0"
+message   = "SAT[-a,-b] + SAT[-b,-a] should be 0 for antisymmetric SAT"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "simplify_metric_trace_with_coefficient"
+description = "2 g^{ab}g_{ab} through Contract+Simplify gives 8"
+
+[[tests.operations]]
+action   = "Contract"
+store_as = "contracted"
+[tests.operations.args]
+expression = "2 Sg[sma,smb] Sg[-sma,-smb]"
+
+[[tests.operations]]
+action   = "Simplify"
+store_as = "result"
+[tests.operations.args]
+expression = "$contracted"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 8"
+message   = "2 g^{ab}g_{ab} should give 2 * dim = 8"
