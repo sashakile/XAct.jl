@@ -1,0 +1,11 @@
+{
+  "test_id": "row_sgs_unsigned",
+  "oracle_version": "julia-axiom",
+  "mathematica_version": "N/A",
+  "timestamp": "2026-03-10T01:06:03.361265+00:00",
+  "commands": "[julia-adapter]",
+  "raw_output": "False",
+  "normalized_output": "False",
+  "properties": {},
+  "hash": "sha256:82d00aac8815"
+}

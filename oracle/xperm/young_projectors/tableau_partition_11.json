@@ -1,0 +1,11 @@
+{
+  "test_id": "tableau_partition_11",
+  "oracle_version": "julia-axiom",
+  "mathematica_version": "N/A",
+  "timestamp": "2026-03-10T00:56:38.917370+00:00",
+  "commands": "[julia-adapter]",
+  "raw_output": "False",
+  "normalized_output": "False",
+  "properties": {},
+  "hash": "sha256:82d00aac8815"
+}

@@ -91,6 +91,9 @@
         "ToCanonical",
         "Simplify",
         "Contract",
+        "CommuteCovDs",
+        "DefPerturbation",
+        "CheckMetricConsistency",
         "Assert"
       ]
     },
@@ -104,6 +107,9 @@
         { "$ref": "#/$defs/args/ToCanonical" },
         { "$ref": "#/$defs/args/Simplify" },
         { "$ref": "#/$defs/args/Contract" },
+        { "$ref": "#/$defs/args/CommuteCovDs" },
+        { "$ref": "#/$defs/args/DefPerturbation" },
+        { "$ref": "#/$defs/args/CheckMetricConsistency" },
         { "$ref": "#/$defs/args/Assert" }
       ]
     },
@@ -309,6 +315,12 @@
             "description": "Manifold name this tensor lives on (resolved via store_as context)",
             "type": "string"
           },
+          "manifolds": {
+            "description": "List of manifold names for multi-index-set tensors (indices from different manifolds). Use instead of 'manifold' when indices span multiple manifolds.",
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
           "symmetry": {
             "description": "Symmetry in xAct notation, e.g. 'Symmetric[{-a,-b}]' or 'Antisymmetric[{1,2}]'",
             "type": "string"
@@ -376,6 +388,62 @@
         "properties": {
           "expression": {
             "description": "Expression with repeated indices to contract",
+            "type": "string"
+          }
+        }
+      },
+      "CommuteCovDs": {
+        "description": "Arguments for CommuteCovDs action. Applies commutation identity: ∇_a ∇_b T = ∇_b ∇_a T + Riemann correction terms.",
+        "type": "object",
+        "required": ["expression", "covd", "indices"],
+        "additionalProperties": false,
+        "properties": {
+          "expression": {
+            "description": "Expression of the form 'covd[-a][covd[-b][tensor[slots]]]'",
+            "type": "string"
+          },
+          "covd": {
+            "description": "Name of the covariant derivative operator, e.g. 'CVD'",
+            "type": "string"
+          },
+          "indices": {
+            "description": "Exactly two derivative index strings to commute, e.g. ['-cva', '-cvb']",
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      },
+      "DefPerturbation": {
+        "description": "Arguments for DefPerturbation action. Registers a perturbation tensor with its background tensor and perturbation order.",
+        "type": "object",
+        "required": ["tensor", "background", "order"],
+        "additionalProperties": false,
+        "properties": {
+          "tensor": {
+            "description": "Name of the perturbed tensor (must be previously defined via DefTensor)",
+            "type": "string"
+          },
+          "background": {
+            "description": "Name of the background tensor being perturbed",
+            "type": "string"
+          },
+          "order": {
+            "description": "Perturbation order (≥ 1; 1 = first-order, 2 = second-order, ...)",
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "CheckMetricConsistency": {
+        "description": "Arguments for CheckMetricConsistency action. Returns True if the background metric is internally consistent (symmetric, registered, rank-2).",
+        "type": "object",
+        "required": ["metric"],
+        "additionalProperties": false,
+        "properties": {
+          "metric": {
+            "description": "Name of the background metric tensor to check",
             "type": "string"
           }
         }

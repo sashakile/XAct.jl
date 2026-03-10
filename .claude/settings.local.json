@@ -20,7 +20,8 @@
       "Bash(ls:*)",
       "Bash(bd list:*)",
       "Bash(wc:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(do:*)"
     ]
   }
 }

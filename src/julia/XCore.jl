@@ -584,6 +584,7 @@ end
 Recursively collect all `Symbol`s in `expr` (including inside `Expr` args and
 collections).  Returns a deduplicated vector.
 """
+FindSymbols() = Symbol[]
 FindSymbols(s::Symbol) = [s]
 FindSymbols(e::Expr) = unique(vcat(FindSymbols.(e.args)...))
 FindSymbols(v::Union{AbstractVector,Tuple}) = unique(vcat(FindSymbols.(v)...))

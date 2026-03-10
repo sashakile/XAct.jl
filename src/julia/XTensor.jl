@@ -25,17 +25,17 @@ export ManifoldObj, VBundleObj, TensorObj, MetricObj, IndexSpec, SymmetrySpec
 export reset_state!
 
 # Global registry collections (mutable; exported for MemberQ use in conditions)
-export Manifolds, Tensors, VBundles
+export Manifolds, Tensors, VBundles, Perturbations
 
 # Def functions
-export def_manifold!, def_tensor!, def_metric!
+export def_manifold!, def_tensor!, def_metric!, def_perturbation!
 
 # Accessor functions
 export get_manifold, get_tensor, get_vbundle, get_metric
 export list_manifolds, list_tensors, list_vbundles
 
 # Query predicates (Wolfram-named, used by _wl_to_jl translator)
-export ManifoldQ, TensorQ, VBundleQ, MetricQ, CovDQ
+export ManifoldQ, TensorQ, VBundleQ, MetricQ, CovDQ, PerturbationQ
 export Dimension, IndicesOfVBundle, SlotsOfTensor
 export MemberQ
 
@@ -44,6 +44,9 @@ export ToCanonical, Contract, CommuteCovDs
 
 # Contract support
 export SignDetOfMetric
+
+# xPert background metric consistency
+export check_metric_consistency, check_perturbation_order
 
 # ============================================================
 # Types
@@ -98,6 +101,16 @@ struct MetricObj
     signdet::Int     # +1 (Riemannian) or -1 (Lorentzian)
 end
 
+"""
+A perturbation of a tensor: records the perturbed tensor name, its background
+tensor name, and the perturbation order (1 = first order, 2 = second order, ...).
+"""
+struct PerturbationObj
+    name::Symbol        # e.g. :Pertg1 (the perturbed tensor)
+    background::Symbol  # e.g. :g (the background tensor)
+    order::Int          # perturbation order ≥ 1
+end
+
 # ============================================================
 # Global state
 # ============================================================
@@ -106,10 +119,12 @@ const _manifolds = Dict{Symbol,ManifoldObj}()
 const _vbundles = Dict{Symbol,VBundleObj}()
 const _tensors = Dict{Symbol,TensorObj}()
 const _metrics = Dict{Symbol,MetricObj}()
+const _perturbations = Dict{Symbol,PerturbationObj}()
 
 const Manifolds = Symbol[]   # ordered list
 const Tensors = Symbol[]
 const VBundles = Symbol[]
+const Perturbations = Symbol[]   # perturbation tensor names (ordered)
 
 # Contract support: physics rules
 # Tensors whose full trace vanishes (e.g. Weyl tensor)
@@ -130,10 +145,12 @@ function reset_state!()
     empty!(_manifolds);
     empty!(_vbundles);
     empty!(_tensors);
-    empty!(_metrics)
+    empty!(_metrics);
+    empty!(_perturbations)
     empty!(Manifolds);
     empty!(Tensors);
-    empty!(VBundles)
+    empty!(VBundles);
+    empty!(Perturbations)
     empty!(_traceless_tensors);
     empty!(_trace_scalars)
     empty!(_einstein_expansion)
@@ -170,6 +187,8 @@ MetricQ(s::Symbol) = haskey(_metrics, s)
 MetricQ(s::AbstractString) = MetricQ(Symbol(s))
 CovDQ(s::Symbol) = haskey(_metrics, s)
 CovDQ(s::AbstractString) = CovDQ(Symbol(s))
+PerturbationQ(s::Symbol) = haskey(_perturbations, s)
+PerturbationQ(s::AbstractString) = PerturbationQ(Symbol(s))
 
 function Dimension(s::Symbol)
     m = get(_manifolds, s, nothing)
@@ -199,6 +218,8 @@ function MemberQ(collection::Symbol, s::Symbol)
         s in Tensors
     elseif collection == :VBundles
         s in VBundles
+    elseif collection == :Perturbations
+        s in Perturbations
     else
         false
     end
@@ -350,6 +371,67 @@ function def_tensor!(
     sym_manifold = Symbol(manifold)
     str_specs = [string(s) for s in index_specs]
     def_tensor!(sym_name, str_specs, sym_manifold; symmetry_str=symmetry_str)
+end
+
+"""
+    def_tensor!(name, index_specs, manifolds::Vector{Symbol}; symmetry_str=nothing) → TensorObj
+
+Multi-index-set variant: each index label must belong to one of the given manifolds.
+The first manifold in the list is used as the primary manifold stored in TensorObj.manifold.
+This enables tensors that mix indices from e.g. spacetime and internal gauge manifolds.
+"""
+function def_tensor!(
+    name::Symbol,
+    index_specs::Vector{String},
+    manifolds::Vector{Symbol};
+    symmetry_str::Union{String,Nothing}=nothing,
+)::TensorObj
+    isempty(manifolds) && error("def_tensor!: manifolds list is empty")
+
+    # Validate all listed manifolds exist and build union of allowed labels
+    allowed = Set{Symbol}()
+    for mname in manifolds
+        m = get(_manifolds, mname, nothing)
+        isnothing(m) && error("def_tensor!: manifold $mname not defined")
+        union!(allowed, m.index_labels)
+    end
+
+    # Parse index specs into IndexSpec
+    slots = IndexSpec[]
+    for spec in index_specs
+        if startswith(spec, "-")
+            push!(slots, IndexSpec(Symbol(spec[2:end]), true))
+        else
+            push!(slots, IndexSpec(Symbol(spec), false))
+        end
+    end
+
+    # Validate each label belongs to one of the manifolds
+    for s in slots
+        s.label in allowed ||
+            error("Index label $(s.label) not found in any of manifolds $manifolds")
+    end
+
+    # Primary manifold = first in list (used by CommuteCovDs for fresh index selection)
+    primary_manifold = manifolds[1]
+    sym = _parse_symmetry(symmetry_str, slots)
+    t = TensorObj(name, slots, primary_manifold, sym)
+    _tensors[name] = t
+    push!(Tensors, name)
+    t
+end
+
+# Convenience overload: Vector of manifold name strings
+function def_tensor!(
+    name::AbstractString,
+    index_specs::Vector,
+    manifolds::Vector;
+    symmetry_str::Union{String,Nothing}=nothing,
+)::TensorObj
+    sym_name = Symbol(name)
+    sym_manifolds = Symbol[Symbol(string(m)) for m in manifolds]
+    str_specs = [string(s) for s in index_specs]
+    def_tensor!(sym_name, str_specs, sym_manifolds; symmetry_str=symmetry_str)
 end
 
 """
@@ -1498,6 +1580,99 @@ function _serialize_terms(terms::Vector{TermAST})::String
         end
     end
     String(take!(result))
+end
+
+# ============================================================
+# xPert: Background metric consistency and perturbation order
+# ============================================================
+
+"""
+    def_perturbation!(tensor, background, order) → PerturbationObj
+
+Register a perturbation tensor.
+
+  - `tensor`     — name of the perturbed tensor (e.g. `:Pertg1`)
+  - `background` — name of the background tensor it perturbs (e.g. `:g`)
+  - `order`      — perturbation order (≥ 1)
+
+The perturbed tensor must already be registered (via `def_tensor!`).
+The background tensor must already be registered (via `def_tensor!` or `def_metric!`).
+Raises an error if either tensor is unknown, `order < 1`, or the perturbation
+is already defined.
+"""
+function def_perturbation!(tensor::Symbol, background::Symbol, order::Int)::PerturbationObj
+    order < 1 && error("def_perturbation!: order must be ≥ 1, got $order")
+    haskey(_perturbations, tensor) &&
+        error("def_perturbation!: perturbation $tensor already defined")
+    haskey(_tensors, tensor) ||
+        error("def_perturbation!: tensor $tensor not registered — call def_tensor! first")
+    haskey(_tensors, background) ||
+        error("def_perturbation!: background tensor $background not registered")
+
+    p = PerturbationObj(tensor, background, order)
+    _perturbations[tensor] = p
+    push!(Perturbations, tensor)
+    p
+end
+
+function def_perturbation!(tensor::AbstractString, background::AbstractString, order::Int)
+    def_perturbation!(Symbol(tensor), Symbol(background), order)
+end
+
+"""
+    check_metric_consistency(metric_name) → Bool
+
+Verify that a registered metric is internally consistent: its metric tensor
+is symmetric and its inverse (raised-index version) is registered as its own
+symmetric tensor.  Currently validates:
+
+ 1. The metric tensor exists in the tensor registry.
+ 2. The metric is recorded in the metric registry (via `def_metric!`).
+ 3. The metric tensor is symmetric (rank-2 with Symmetric symmetry).
+
+Returns `true` if all checks pass, `false` otherwise (never throws).
+"""
+function check_metric_consistency(metric_name::Symbol)::Bool
+    # Check metric tensor is defined
+    t = get(_tensors, metric_name, nothing)
+    isnothing(t) && return false
+
+    # Check metric is registered in the metric registry
+    found = false
+    for (_, m) in _metrics
+        if m.name == metric_name
+            found = true
+            break
+        end
+    end
+    found || return false
+
+    # Check rank-2 symmetric
+    length(t.slots) == 2 || return false
+    t.symmetry.type == :Symmetric || return false
+
+    true
+end
+
+function check_metric_consistency(metric_name::AbstractString)::Bool
+    check_metric_consistency(Symbol(metric_name))
+end
+
+"""
+    check_perturbation_order(tensor_name, order) → Bool
+
+Verify that a perturbation tensor is registered with the given perturbation order.
+Returns `true` if `tensor_name` is a registered perturbation of exactly `order`,
+`false` otherwise.
+"""
+function check_perturbation_order(tensor_name::Symbol, order::Int)::Bool
+    p = get(_perturbations, tensor_name, nothing)
+    isnothing(p) && return false
+    p.order == order
+end
+
+function check_perturbation_order(tensor_name::AbstractString, order::Int)::Bool
+    check_perturbation_order(Symbol(tensor_name), order)
 end
 
 end  # module XTensor

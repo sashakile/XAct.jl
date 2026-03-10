@@ -1,0 +1,298 @@
+# tests/xperm/multi_index_sets.toml
+# Layer 1 regression tests for multi-index set (multi-manifold) tensor canonicalization.
+#
+# Tests that ToCanonical correctly handles tensors whose indices belong to different
+# manifolds (abstract index types). Dummy indices from one manifold can only be
+# relabeled with other indices from the same manifold — they cannot be swapped with
+# indices from a different manifold.
+#
+# Scenarios covered:
+#   1. Mixed-manifold tensor definition (spacetime ⊗ internal gauge)
+#   2. Slot symmetry acting only on spacetime indices of a mixed tensor
+#   3. Independent slot symmetries on each manifold's factors
+#   4. Cross-manifold independence: gauge index swap does not affect spacetime symmetry
+#   5. Product expression with independent symmetric tensors from different manifolds
+#
+# Validates schema: src/sxact/runner/schemas/test-schema.json
+
+[meta]
+id              = "xperm/multi_index_sets"
+description     = "Multi-index set canonicalization: mixed-manifold tensors (layer 1)"
+tags            = ["xperm", "symmetry", "multi-index-set", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Setup: spacetime manifold M4 (Greek-like: mia,mib,...) + gauge manifold G2
+# ---------------------------------------------------------------------------
+
+[[setup]]
+action   = "DefManifold"
+store_as = "MIM4"
+[setup.args]
+name      = "MIM4"
+dimension = 4
+indices   = ["mia", "mib", "mic", "mid"]
+
+[[setup]]
+action   = "DefManifold"
+store_as = "MIG2"
+[setup.args]
+name      = "MIG2"
+dimension = 2
+indices   = ["mga", "mgb"]
+
+# Mixed tensor T_{μ a}: one spacetime slot, one gauge slot (no symmetry)
+[[setup]]
+action   = "DefTensor"
+store_as = "MITma"
+[setup.args]
+name      = "MITma"
+indices   = ["-mia", "-mga"]
+manifolds = ["MIM4", "MIG2"]
+
+# Mixed tensor S_{μν a}: antisymmetric in the two spacetime slots
+[[setup]]
+action   = "DefTensor"
+store_as = "MISma"
+[setup.args]
+name      = "MISma"
+indices   = ["-mia", "-mib", "-mga"]
+manifolds = ["MIM4", "MIG2"]
+symmetry  = "Antisymmetric[{-mia,-mib}]"
+
+# Pure spacetime tensors (for comparison tests)
+[[setup]]
+action   = "DefTensor"
+store_as = "MISpST"
+[setup.args]
+name     = "MISpST"
+indices  = ["-mia", "-mib"]
+manifold = "MIM4"
+symmetry = "Symmetric[{-mia,-mib}]"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "MIAnST"
+[setup.args]
+name     = "MIAnST"
+indices  = ["-mia", "-mib"]
+manifold = "MIM4"
+symmetry = "Antisymmetric[{-mia,-mib}]"
+
+# Pure gauge tensor (symmetric rank-2 on gauge manifold)
+[[setup]]
+action   = "DefTensor"
+store_as = "MISpG"
+[setup.args]
+name     = "MISpG"
+indices  = ["-mga", "-mgb"]
+manifold = "MIG2"
+symmetry = "Symmetric[{-mga,-mgb}]"
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "mixed_tensor_is_registered"
+description = "Mixed-manifold tensor MITma is a valid registered tensor"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "TensorQ[MITma]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "TensorQ[MITma] === True"
+message   = "MITma should be registered as a valid tensor"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "mixed_antisym_spacetime_swap"
+description = "S_{μν a} antisymmetric in μ,ν: S[-μ,-ν,-a] + S[-ν,-μ,-a] = 0"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "MISma[-mia,-mib,-mga] + MISma[-mib,-mia,-mga]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Mixed tensor antisymmetric in spacetime slots: sum should vanish"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "mixed_antisym_gauge_slot_unchanged"
+description = "S_{μν a} antisymmetric in μ,ν only: swapping gauge index a keeps it nonzero"
+
+# If T = S[-mia,-mib,-mga], then T is canonical.
+# T and S[-mia,-mib,-mgb] are different tensors (different gauge index), so
+# their difference is nonzero. This verifies gauge index is NOT relabeled.
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "r1"
+[tests.operations.args]
+expression = "MISma[-mia,-mib,-mga]"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "r2"
+[tests.operations.args]
+expression = "MISma[-mia,-mib,-mgb]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "TensorQ[MISma] === True"
+message   = "MISma should be a valid tensor"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "mixed_tensor_canonical_form"
+description = "Mixed-manifold T_{μa}: canonical form is unchanged (no symmetry)"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "MITma[-mia,-mga]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == MITma[-mia,-mga]"
+message   = "MITma[-mia,-mga] should be its own canonical form"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "product_independent_symmetries"
+description = "SpST[-μ,-ν] SpG[-a,-b] - SpST[-ν,-μ] SpG[-b,-a] = 0 (both symmetric)"
+
+# Both factors are symmetric under index swap, so the difference vanishes.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "MISpST[-mia,-mib] MISpG[-mga,-mgb] - MISpST[-mib,-mia] MISpG[-mgb,-mga]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Product of symmetric tensors from different manifolds: double swap = 0"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "antisym_st_times_sym_gauge_vanishes"
+description = "AnST[-μ,-ν] SpG[-a,-b] + AnST[-ν,-μ] SpG[-a,-b] = 0"
+
+# AnST is antisymmetric: AnST[-ν,-μ] = -AnST[-μ,-ν], so the sum is zero.
+# SpG is unchanged.
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "MIAnST[-mia,-mib] MISpG[-mga,-mgb] + MIAnST[-mib,-mia] MISpG[-mga,-mgb]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "AnST[-a,-b] SpG[-c,-d] + AnST[-b,-a] SpG[-c,-d] = 0 (AnST antisymmetric)"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "antisym_st_times_sym_gauge_survives"
+description = "AnST[-μ,-ν] SpG[-a,-b] + AnST[-μ,-ν] SpG[-b,-a] = 2*AnST SpG (SpG symmetric)"
+
+# SpG[-b,-a] = SpG[-a,-b] (symmetric), so:
+# AnST[-μ,-ν] SpG[-a,-b] + AnST[-μ,-ν] SpG[-b,-a] = 2 AnST[-μ,-ν] SpG[-a,-b]
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "MIAnST[-mia,-mib] MISpG[-mga,-mgb] + MIAnST[-mia,-mib] MISpG[-mgb,-mga]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 2 MIAnST[-mia,-mib] MISpG[-mga,-mgb]"
+message   = "AnST SpG + AnST SpG_swapped = 2 AnST SpG (SpG symmetric)"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "mixed_manifold_predicates"
+description = "Both manifolds MIM4 and MIG2 are registered and distinct"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "r1"
+[tests.operations.args]
+expression = "ManifoldQ[MIM4]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "r2"
+[tests.operations.args]
+expression = "ManifoldQ[MIG2]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "ManifoldQ[MIM4] === True"
+message   = "MIM4 should be a registered manifold"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "ManifoldQ[MIG2] === True"
+message   = "MIG2 should be a registered manifold"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1

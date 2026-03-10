@@ -229,4 +229,116 @@ using .XTensor
             Contract("CIg[cxa,cxb] EinsteinCxD[-cxa,-cxb]") * " + RicciScalarCxD[]"
         ) == "0"
     end
+
+    # ============================================================
+    # Multi-Index Set (multi-manifold tensor) tests
+    # ============================================================
+
+    @testset "DefTensor — multi-manifold (multi-index set)" begin
+        reset_state!()
+        # Spacetime manifold M4 with indices spa, spb, spc, spd
+        def_manifold!(:MIM4, 4, [:mia, :mib, :mic, :mid])
+        # Internal gauge manifold G2 with indices ga, gb
+        def_manifold!(:MIG2, 2, [:mga, :mgb])
+
+        # Mixed tensor: spacetime covariant index + gauge covariant index
+        # T_{μ a} where μ ∈ M4, a ∈ G2
+        t = def_tensor!(:MITma, ["-mia", "-mga"], [:MIM4, :MIG2])
+        @test TensorQ(:MITma)
+        @test t.symmetry.type == :NoSymmetry
+        @test t.manifold == :MIM4  # primary manifold
+
+        # Mixed tensor with symmetry on spacetime indices
+        # S_{μν a} antisymmetric in μ,ν
+        s = def_tensor!(
+            :MISma,
+            ["-mia", "-mib", "-mga"],
+            [:MIM4, :MIG2];
+            symmetry_str="Antisymmetric[{-mia,-mib}]",
+        )
+        @test TensorQ(:MISma)
+        @test s.symmetry.type == :Antisymmetric
+        @test s.symmetry.slots == [1, 2]
+
+        # Mixed tensor with internal index first (gauge then spacetime)
+        u = def_tensor!(:MIUam, ["-mga", "-mia"], [:MIG2, :MIM4])
+        @test TensorQ(:MIUam)
+        @test u.manifold == :MIG2  # first manifold is primary
+
+        # Error: index not in any manifold
+        @test_throws Exception def_tensor!(:MIBad, ["-mia", "-zzz"], [:MIM4, :MIG2])
+    end
+
+    @testset "ToCanonical — multi-manifold antisymmetry" begin
+        reset_state!()
+        def_manifold!(:MIM4, 4, [:mia, :mib, :mic, :mid])
+        def_manifold!(:MIG2, 2, [:mga, :mgb])
+
+        # S_{μν a} antisymmetric in μ,ν (spacetime indices)
+        def_tensor!(
+            :MISma,
+            ["-mia", "-mib", "-mga"],
+            [:MIM4, :MIG2];
+            symmetry_str="Antisymmetric[{-mia,-mib}]",
+        )
+
+        # S[-μ,-ν,-a] + S[-ν,-μ,-a] = 0  (antisymmetry in first pair)
+        result = ToCanonical("MISma[-mia,-mib,-mga] + MISma[-mib,-mia,-mga]")
+        @test result == "0"
+
+        # S[-μ,-ν,-a] - S[-ν,-μ,-a] = 2*S[-μ,-ν,-a]  (antisymmetry → stays)
+        result2 = ToCanonical("MISma[-mia,-mib,-mga] - MISma[-mib,-mia,-mga]")
+        @test result2 != "0"  # should NOT be zero: it's 2*S[-mia,-mib,-mga]
+    end
+
+    @testset "ToCanonical — multi-manifold index independence" begin
+        reset_state!()
+        def_manifold!(:MIM4, 4, [:mia, :mib, :mic, :mid])
+        def_manifold!(:MIG2, 2, [:mga, :mgb])
+
+        # Symmetric tensor on spacetime indices only
+        def_tensor!(:MISpST, ["-mia", "-mib"], :MIM4; symmetry_str="Symmetric[{-mia,-mib}]")
+        # Symmetric tensor on gauge indices only
+        def_tensor!(:MISpG, ["-mga", "-mgb"], :MIG2; symmetry_str="Symmetric[{-mga,-mgb}]")
+
+        # Product: SpST[-μ,-ν] SpG[-a,-b] = SpST[-ν,-μ] SpG[-b,-a] (both symmetric)
+        result = ToCanonical(
+            "MISpST[-mia,-mib] MISpG[-mga,-mgb] - MISpST[-mib,-mia] MISpG[-mgb,-mga]"
+        )
+        @test result == "0"
+
+        # Antisymmetric on spacetime; symmetric on gauge: mixed product
+        def_tensor!(
+            :MIAnST, ["-mia", "-mib"], :MIM4; symmetry_str="Antisymmetric[{-mia,-mib}]"
+        )
+
+        # AnST[-μ,-ν] SpG[-a,-b] + AnST[-ν,-μ] SpG[-a,-b] = 0
+        result2 = ToCanonical(
+            "MIAnST[-mia,-mib] MISpG[-mga,-mgb] + MIAnST[-mib,-mia] MISpG[-mga,-mgb]"
+        )
+        @test result2 == "0"
+    end
+
+    @testset "ToCanonical — multi-manifold mixed tensor canonical form" begin
+        reset_state!()
+        def_manifold!(:MIM4, 4, [:mia, :mib, :mic, :mid])
+        def_manifold!(:MIG2, 2, [:mga, :mgb])
+
+        # T_{μa} with no symmetry
+        def_tensor!(:MITma, ["-mia", "-mga"], [:MIM4, :MIG2])
+
+        # T[-μ,-a] is already canonical; no symmetry so no simplification
+        result = ToCanonical("MITma[-mia,-mga]")
+        @test result == "MITma[-mia,-mga]"
+
+        # Sum of two unrelated terms stays as sum
+        result2 = ToCanonical("MITma[-mia,-mga] + MITma[-mib,-mgb]")
+        @test result2 != "0"
+
+        # Idempotency: ToCanonical applied twice gives the same result
+        expr = "MITma[-mia,-mga]"
+        once = ToCanonical(expr)
+        twice = ToCanonical(once)
+        @test once == twice
+    end
 end

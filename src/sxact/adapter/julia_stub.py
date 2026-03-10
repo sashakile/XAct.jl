@@ -120,6 +120,8 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             "ToCanonical",
             "Contract",
             "CommuteCovDs",
+            "DefPerturbation",
+            "CheckMetricConsistency",
         }
     )
 
@@ -269,6 +271,10 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 return self._contract(args)
             if action == "CommuteCovDs":
                 return self._commute_covds(args)
+            if action == "DefPerturbation":
+                return self._def_perturbation(ctx, args)
+            if action == "CheckMetricConsistency":
+                return self._check_metric_consistency(args)
         except Exception as exc:
             return Result(
                 status="error", type="", repr="", normalized="", error=str(exc)
@@ -303,16 +309,33 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
 
         name = str(args["name"])
         indices = args["indices"]
-        manifold = str(args["manifold"])
         sym_str = args.get("symmetry") or ""
         idx_jl = "[" + ", ".join(f'"{_jl_escape(i)}"' for i in indices) + "]"
         sym_arg = f', symmetry_str="{_jl_escape(sym_str)}"' if sym_str else ""
-        self._jl.seval(f"XTensor.def_tensor!(:{name}, {idx_jl}, :{manifold}{sym_arg})")
+
+        # Support both "manifold" (single) and "manifolds" (list, multi-index-set)
+        raw_manifolds = args.get("manifolds")
+        if raw_manifolds is not None:
+            # Multi-index-set: pass a Vector of Symbols to Julia
+            manifold_names = [str(m) for m in raw_manifolds]
+            jl_manifolds = "Symbol[" + ", ".join(f":{m}" for m in manifold_names) + "]"
+            self._jl.seval(
+                f"XTensor.def_tensor!(:{name}, {idx_jl}, {jl_manifolds}{sym_arg})"
+            )
+            # Primary manifold for TensorContext = first in list
+            primary_manifold_name = manifold_names[0] if manifold_names else None
+        else:
+            manifold = str(args["manifold"])
+            self._jl.seval(
+                f"XTensor.def_tensor!(:{name}, {idx_jl}, :{manifold}{sym_arg})"
+            )
+            primary_manifold_name = manifold
+
         # Bind tensor name in Main as a Symbol for TensorQ(Bts) etc.
         self._jl.seval(f"Main.eval(:(global {name} = :{name}))")
         # Record for TensorContext (Tier 3 numeric comparison)
         manifold_obj = next(
-            (m for m in reversed(ctx._manifolds) if m.name == manifold),
+            (m for m in reversed(ctx._manifolds) if m.name == primary_manifold_name),
             ctx._manifolds[-1] if ctx._manifolds else None,
         )
         if manifold_obj is not None:
@@ -395,10 +418,26 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         raw = str(result)
         return Result(status="ok", type="Expr", repr=raw, normalized=_normalize(raw))
 
+    def _def_perturbation(self, ctx: _JuliaContext, args: dict[str, Any]) -> Result:
+        tensor = str(args["tensor"])
+        background = str(args["background"])
+        order = int(args["order"])
+        self._jl.seval(f"XTensor.def_perturbation!(:{tensor}, :{background}, {order})")
+        # Bind the perturbation tensor name in Main as a Symbol (for PerturbationQ assertions)
+        self._jl.seval(f"Main.eval(:(global {tensor} = :{tensor}))")
+        return Result(status="ok", type="Handle", repr=tensor, normalized=tensor)
+
+    def _check_metric_consistency(self, args: dict[str, Any]) -> Result:
+        metric = str(args["metric"])
+        result = self._jl.seval(f"XTensor.check_metric_consistency(:{metric})")
+        raw = "True" if result is True or str(result).lower() == "true" else "False"
+        return Result(status="ok", type="Bool", repr=raw, normalized=raw)
+
     def _execute_expr(self, wolfram_expr: str) -> Result:
         julia_expr = _wl_to_jl(wolfram_expr)
         julia_expr = _postprocess_dimino(julia_expr)
         _bind_fresh_symbols(self._jl, julia_expr)
+        _bind_wl_atoms(self._jl, julia_expr)
         try:
             val = self._jl.seval(julia_expr)
             # PythonCall adds "Julia: " prefix for custom types inside containers.
@@ -456,7 +495,13 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             )
 
         julia_cond = _wl_to_jl(wolfram_condition)
+        # If preprocessing reduced the condition to a trivially true "X == X" form,
+        # return True immediately without calling Julia (avoids issues with unbound
+        # symbol atoms that cannot be called as functions).
+        if _is_trivially_equal(julia_cond):
+            return Result(status="ok", type="Bool", repr="True", normalized="True")
         _bind_fresh_symbols(self._jl, julia_cond)
+        _bind_wl_atoms(self._jl, julia_cond)
         try:
             val = self._jl.seval(julia_cond)
             passed = val is True or str(val).lower() == "true"
@@ -770,6 +815,187 @@ def _try_numerical_tolerance_via_canonical(jl: Any, wolfram_expr: str) -> Result
     return None
 
 
+# Julia reserved keywords that must NOT be re-bound as Symbols.
+_JULIA_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "abstract",
+        "baremodule",
+        "begin",
+        "break",
+        "catch",
+        "const",
+        "continue",
+        "do",
+        "else",
+        "elseif",
+        "end",
+        "export",
+        "false",
+        "finally",
+        "for",
+        "function",
+        "global",
+        "if",
+        "import",
+        "in",
+        "isa",
+        "let",
+        "local",
+        "macro",
+        "module",
+        "mutable",
+        "new",
+        "nothing",
+        "primitive",
+        "quote",
+        "return",
+        "struct",
+        "true",
+        "try",
+        "type",
+        "using",
+        "where",
+        "while",
+    }
+)
+
+# Identifiers that are known Julia built-in names and should not be shadowed.
+_JULIA_BUILTINS: frozenset[str] = frozenset(
+    {
+        "length",
+        "unique",
+        "string",
+        "string",
+        "println",
+        "print",
+        "show",
+        "collect",
+        "filter",
+        "map",
+        "push",
+        "pop",
+        "sort",
+        "sum",
+        "prod",
+        "any",
+        "all",
+        "issubset",
+        "in",
+        "vcat",
+        "hcat",
+        "first",
+        "last",
+        "isempty",
+        "empty",
+        "haskey",
+        "get",
+        "Dict",
+        "Set",
+        "Vector",
+        "Matrix",
+        "Tuple",
+        "Array",
+        "Int",
+        "Float64",
+        "Bool",
+        "Symbol",
+        "String",
+        "Expr",
+        "Nothing",
+    }
+)
+
+# Regex to find all identifiers in a Julia expression (not inside strings).
+_IDENTIFIER_RE = re.compile(r"\b([A-Za-z_]\w*)\b")
+
+# Mapping from WL built-in head names to the Julia operator Symbol they correspond to.
+# Used when MemberQ checks reference WL operator names like Plus, Times, etc.,
+# but FindSymbols returns Julia operator Symbols like :+, :*, etc.
+_WL_OP_TO_JULIA: dict[str, str] = {
+    "Plus": "+",
+    "Times": "*",
+    "Power": "^",
+    "Subtract": "-",
+    "Divide": "/",
+}
+
+
+def _bind_wl_atoms(jl: Any, julia_expr: str) -> None:
+    """Bind WL atom-like identifiers in *julia_expr* as Julia Symbols in Main.
+
+    Scans the expression for identifiers that:
+    1. Are NOT Julia keywords or known built-in names
+    2. Are NOT followed by ``(`` (i.e., not function calls)
+    3. Are NOT inside string literals
+
+    These are treated as WL symbolic atoms and pre-bound as Julia Symbols
+    (``Main.x = :x``) so that functions like ``SubHead``, ``NoPattern``,
+    ``MemberQ``, and ``FindSymbols`` receive the right types.
+
+    This is idempotent: re-binding an already-bound symbol is harmless.
+    """
+    # Scan token by token, skipping string literals
+    expr = julia_expr
+    n = len(expr)
+    i = 0
+    candidates: set[str] = set()
+    while i < n:
+        ch = expr[i]
+        # Skip string literals
+        if ch == '"':
+            i += 1
+            while i < n:
+                if expr[i] == "\\":
+                    i += 2
+                    continue
+                if expr[i] == '"':
+                    i += 1
+                    break
+                i += 1
+            continue
+        # Identifier token
+        if ch.isalpha() or ch == "_":
+            j = i
+            while j < n and (expr[j].isalnum() or expr[j] == "_"):
+                j += 1
+            name = expr[i:j]
+            # Skip if followed by ( — that's a function call, not an atom
+            k = j
+            while k < n and expr[k] == " ":
+                k += 1
+            if k < n and expr[k] == "(":
+                i = j
+                continue
+            # Skip Julia keywords and known built-ins
+            if name in _JULIA_KEYWORDS or name in _JULIA_BUILTINS:
+                i = j
+                continue
+            # Skip numeric literals start (shouldn't happen here but be safe)
+            if name[0].isdigit():
+                i = j
+                continue
+            candidates.add(name)
+            i = j
+            continue
+        i += 1
+
+    for sym in candidates:
+        try:
+            # Only bind if the symbol is not already defined in Julia Main.
+            # This prevents overwriting Perm/tensor objects defined during setup.
+            already_defined = bool(jl.seval(f"isdefined(Main, :{sym})"))
+            if already_defined:
+                continue
+            if sym in _WL_OP_TO_JULIA:
+                # WL operator head name (e.g. Plus) → Julia operator Symbol (e.g. :+)
+                julia_sym = _WL_OP_TO_JULIA[sym]
+                jl.seval(f'Main.eval(:(global {sym} = Symbol("{julia_sym}")))')
+            else:
+                jl.seval(f"Main.eval(:(global {sym} = :{sym}))")
+        except Exception:
+            pass  # If binding fails, skip — symbol may already be defined correctly
+
+
 def _bind_fresh_symbols(jl: Any, julia_expr: str) -> None:
     """Bind any fresh property-test symbols found in *julia_expr* as Julia Symbols in Main.
 
@@ -889,6 +1115,15 @@ def _postprocess_dimino(julia_expr: str) -> str:
 
     return _DIMINO_GENSET_POST_RE.sub(replace_dimino, julia_expr)
 
+
+# WL pattern notation: strip Blank/BlankSequence/BlankNullSequence suffixes.
+# Matches: word_Type, word__, word_, word___ (in that priority order).
+# The pattern must start with a lowercase letter (WL pattern variable convention)
+# followed by one or more underscores and an optional uppercase-starting type name.
+# Examples: x_ → x, x_Integer → x, x__ → x, y___ → y, myVar_Real → myVar
+# We avoid stripping uppercase symbols like _Symbol (bare blank), which are
+# handled separately.
+_WL_PATTERN_RE = re.compile(r"\b([a-z]\w*)_+(?:[A-Z]\w*)?")
 
 _PREFIX_AT_RE = re.compile(r"(\b[A-Za-z_]\w*)\s*@(?!@)")
 
@@ -1067,6 +1302,134 @@ def _preprocess_schreier_orbit(expr: str) -> str:
     return expr
 
 
+def _preprocess_wl_patterns(expr: str) -> str:
+    """Strip WL pattern (Blank) notation from identifiers.
+
+    Converts WL pattern variables to their base symbol name:
+    - ``x_``        → ``x``   (Blank pattern)
+    - ``x_Integer`` → ``x``   (typed Blank pattern)
+    - ``x__``       → ``x``   (BlankSequence)
+    - ``x___``      → ``x``   (BlankNullSequence)
+
+    Only strips from lowercase-starting identifiers (WL pattern variable
+    convention).  Uppercase-only identifiers like ``_Symbol`` (bare blanks)
+    are untouched — they are handled separately (e.g. the ``Cases`` rewrite).
+    """
+    return _WL_PATTERN_RE.sub(r"\1", expr)
+
+
+def _wl_subhead(wl_arg: str) -> str:
+    """Extract the outermost function head from a WL expression string.
+
+    For ``f[x, y]`` → ``"f"``.
+    For ``f[g[x]]`` → ``"f"``.
+    For a bare symbol ``x`` → ``"x"``.
+
+    Used to rewrite ``SubHead[f[x]]`` → ``:f`` in Julia without needing to
+    construct a Julia Expr from bound symbols.
+    """
+    wl_arg = wl_arg.strip()
+    # Find the first [ — everything before it is the head
+    pos = wl_arg.find("[")
+    if pos == -1:
+        # Bare atom: SubHead[x] === x → head is x itself
+        return wl_arg
+    return wl_arg[:pos]
+
+
+def _is_trivially_equal(julia_cond: str) -> bool:
+    """Return True if *julia_cond* is syntactically of the form ``X == X``.
+
+    After WL pattern stripping and NoPattern/SubHead preprocessing, some
+    conditions reduce to ``f(x, y) == f(x, y)`` where both sides are identical.
+    These cannot be evaluated in Julia when ``f`` is a Symbol (not callable),
+    but they are trivially true by syntactic identity.
+
+    Handles ``==`` (from ``===``) and ``&&``/``||`` conjunctions of trivially
+    equal clauses.
+    """
+    julia_cond = julia_cond.strip()
+    # Split on == at top level
+    parts = _top_level_split(julia_cond, " == ")
+    if len(parts) == 2:
+        return parts[0].strip() == parts[1].strip()
+    return False
+
+
+def _preprocess_nopattern(expr: str) -> str:
+    """Replace ``NoPattern[...]`` with its argument (NoPattern is identity).
+
+    In WL, ``NoPattern[x_]`` strips the pattern wrapper and returns ``x``.
+    After ``_preprocess_wl_patterns`` has already stripped ``x_`` → ``x``,
+    ``NoPattern[x]`` is equivalent to ``x``.  This preprocessor removes the
+    ``NoPattern[...]`` wrapper so the remaining expression evaluates correctly
+    in Julia without needing to call a function on a potentially unbound symbol.
+
+    Must be applied AFTER ``_preprocess_wl_patterns`` so that pattern
+    variables like ``x_`` are already reduced to ``x``.
+    """
+    result: list[str] = []
+    i = 0
+    n = len(expr)
+    while i < n:
+        if expr[i : i + 10] == "NoPattern[":
+            # Find the matching ]
+            depth = 1
+            j = i + 10
+            while j < n and depth > 0:
+                if expr[j] == "[":
+                    depth += 1
+                elif expr[j] == "]":
+                    depth -= 1
+                j += 1
+            # Replace NoPattern[inner] with just inner
+            inner = expr[i + 10 : j - 1]
+            result.append(inner)
+            i = j
+            continue
+        result.append(expr[i])
+        i += 1
+    return "".join(result)
+
+
+def _preprocess_subhead(expr: str) -> str:
+    """Rewrite ``SubHead[...]`` in WL notation to a Julia Symbol literal.
+
+    ``SubHead[f[x]]``   → ``:f``
+    ``SubHead[f[g[x]]]`` → ``:f``
+    ``SubHead[x]``       → ``:x``
+
+    This avoids the impossible Julia translation of ``SubHead(f(x))`` when
+    ``f`` is a Symbol (calling a Symbol as a function is invalid in Julia).
+
+    The rewrite happens before the main WL→Julia translation so the resulting
+    ``:name`` literal passes through the character loop unchanged.
+    """
+    result: list[str] = []
+    i = 0
+    n = len(expr)
+    while i < n:
+        # Look for SubHead[
+        if expr[i : i + 8] == "SubHead[":
+            # Find the matching ]
+            depth = 1
+            j = i + 8
+            while j < n and depth > 0:
+                if expr[j] == "[":
+                    depth += 1
+                elif expr[j] == "]":
+                    depth -= 1
+                j += 1
+            inner = expr[i + 8 : j - 1]
+            head = _wl_subhead(inner)
+            result.append(f":{head}")
+            i = j
+            continue
+        result.append(expr[i])
+        i += 1
+    return "".join(result)
+
+
 def _wl_to_jl(expr: str) -> str:
     """Translate basic Wolfram xCore notation to Julia syntax.
 
@@ -1080,11 +1443,25 @@ def _wl_to_jl(expr: str) -> str:
     - SubsetQ[A, B] → issubset(B, A)  (note: args reversed in Julia)
     - \\[Equal] → ==              (Wolfram Unicode Equal operator)
     - SchreierOrbit[pt, GenSet[g1,...], n] → SchreierOrbit(pt, [...], n, ["g1",...])
+    - x_, x_Type patterns → x    (WL pattern notation stripped)
 
     Abstract Wolfram symbols used as atoms (e.g. ``a``, ``b``) are left
     as-is; they will cause Julia ``UndefVarError`` for tests that rely on
     Wolfram's symbolic algebra — those tests correctly fail in Julia.
     """
+    # Pre-process SubHead[f[x]] → :f (extract outermost WL head as a Julia Symbol).
+    # Must run before pattern stripping and bracket translation so that f[x]
+    # is still in WL notation when the head is extracted.
+    expr = _preprocess_subhead(expr)
+
+    # Pre-process WL pattern notation: x_ → x, x_Integer → x, etc.
+    # Must run before NoPattern expansion and other passes.
+    expr = _preprocess_wl_patterns(expr)
+
+    # Pre-process NoPattern[...] → its argument (NoPattern is identity).
+    # Must run after _preprocess_wl_patterns so x_ has been reduced to x.
+    expr = _preprocess_nopattern(expr)
+
     # Pre-process WL prefix @: f@expr → f[expr] (f @ g returns f applied to g).
     # This must run before Apply @@ handling.
     expr = _preprocess_prefix_at(expr)

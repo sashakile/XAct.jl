@@ -1,0 +1,686 @@
+# xperm/young_projectors.toml
+# Layer 1 regression tests for Young tableaux and Young projectors.
+# Tests StandardTableau construction, RowSymmetrySGS/ColAntisymmetrySGS groups,
+# and the YoungProjector P_λ = Q_λ · R_λ.
+# Validates against schema: tests/schema/test-schema.json
+#
+# NOTE: CamelCase function aliases (StandardTableau, RowSymmetrySGS, etc.) are
+# used because the _wl_to_jl adapter translation strips underscores from
+# snake_case function names (WL pattern notation).
+
+[meta]
+id              = "xperm/young_projectors"
+description     = "Young tableaux: StandardTableau, RowSymmetrySGS, ColAntisymmetrySGS, YoungProjector (layer 1)"
+tags            = ["xperm", "young", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Tests: StandardTableau construction
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "tableau_partition_2"
+description = "StandardTableau({2}, {1,2}) fills one row with {1,2}"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{2}, {1, 2}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "TableauPartition[$tab]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === {2}"
+message   = "Expected: partition == {2}"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "tableau_filling_11"
+description = "StandardTableau({1,1}, {1,2}) fills two rows: row1={1}, row2={2}"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{1, 1}, {1, 2}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "TableauFilling[$tab]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === {{1}, {2}}"
+message   = "Expected: filling == {{1}, {2}}"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "tableau_filling_hook_21"
+description = "StandardTableau({2,1}, {1,2,3}) gives hook shape: row1={1,2}, row2={3}"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{2, 1}, {1, 2, 3}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "TableauFilling[$tab]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === {{1, 2}, {3}}"
+message   = "Expected: filling == {{1, 2}, {3}}"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+# Tests: RowSymmetrySGS group orders
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "row_sgs_order_sym2"
+description = "RowSymmetrySGS for partition {2}: S_2 has order 2"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{2}, {1, 2}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "sgs"
+[tests.operations.args]
+expression = "RowSymmetrySGS[$tab, 2]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "OrderOfGroup[$sgs]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 2"
+message   = "Expected: order == 2 for S_2"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "row_sgs_order_sym3"
+description = "RowSymmetrySGS for partition {3}: S_3 has order 6"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{3}, {1, 2, 3}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "sgs"
+[tests.operations.args]
+expression = "RowSymmetrySGS[$tab, 3]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "OrderOfGroup[$sgs]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 6"
+message   = "Expected: order == 6 for S_3"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "row_sgs_order_hook_21"
+description = "RowSymmetrySGS for partition {2,1}: row group S_2 x trivial has order 2"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{2, 1}, {1, 2, 3}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "sgs"
+[tests.operations.args]
+expression = "RowSymmetrySGS[$tab, 3]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "OrderOfGroup[$sgs]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 2"
+message   = "Expected: order == 2 (S_2 x trivial)"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "row_sgs_order_22"
+description = "RowSymmetrySGS for partition {2,2}: S_2 x S_2 has order 4"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{2, 2}, {1, 2, 3, 4}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "sgs"
+[tests.operations.args]
+expression = "RowSymmetrySGS[$tab, 4]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "OrderOfGroup[$sgs]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 4"
+message   = "Expected: order == 4 (S_2 x S_2)"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "row_sgs_trivial_11"
+description = "RowSymmetrySGS for partition {1,1}: singleton rows → trivial group of order 1"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{1, 1}, {1, 2}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "sgs"
+[tests.operations.args]
+expression = "RowSymmetrySGS[$tab, 2]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "OrderOfGroup[$sgs]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 1"
+message   = "Expected: order == 1 (trivial)"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+# Tests: ColAntisymmetrySGS group orders
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "col_sgs_order_11"
+description = "ColAntisymmetrySGS for partition {1,1}: antisym S_2 has order 2"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{1, 1}, {1, 2}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "sgs"
+[tests.operations.args]
+expression = "ColAntisymmetrySGS[$tab, 2]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "OrderOfGroup[$sgs]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 2"
+message   = "Expected: order == 2 for antisym S_2"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "col_sgs_order_111"
+description = "ColAntisymmetrySGS for partition {1,1,1}: antisym S_3 has order 6"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{1, 1, 1}, {1, 2, 3}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "sgs"
+[tests.operations.args]
+expression = "ColAntisymmetrySGS[$tab, 3]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "OrderOfGroup[$sgs]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 6"
+message   = "Expected: order == 6 for antisym S_3"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "col_sgs_order_hook_21"
+description = "ColAntisymmetrySGS for partition {2,1}: col group on column 1 = {1,3} has order 2"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{2, 1}, {1, 2, 3}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "sgs"
+[tests.operations.args]
+expression = "ColAntisymmetrySGS[$tab, 3]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "OrderOfGroup[$sgs]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 2"
+message   = "Expected: order == 2 (sign transposition on column 1)"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "col_sgs_trivial_3"
+description = "ColAntisymmetrySGS for partition {3}: single row, all cols singletons → trivial order 1"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{3}, {1, 2, 3}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "sgs"
+[tests.operations.args]
+expression = "ColAntisymmetrySGS[$tab, 3]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "OrderOfGroup[$sgs]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 1"
+message   = "Expected: order == 1 (trivial column group for single row)"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "col_sgs_order_22"
+description = "ColAntisymmetrySGS for partition {2,2}: Z_2 x Z_2 antisym cols has order 4"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{2, 2}, {1, 2, 3, 4}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "sgs"
+[tests.operations.args]
+expression = "ColAntisymmetrySGS[$tab, 4]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "OrderOfGroup[$sgs]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 4"
+message   = "Expected: order == 4 (sign S_2 x sign S_2)"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+# Tests: YoungProjector term counts
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "projector_sym2_terms"
+description = "YoungProjector for {2}: fully symmetric on 2 indices gives 2 positive terms"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{2}, {1, 2}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "terms"
+[tests.operations.args]
+expression = "YoungProjector[$tab, 2]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "length[$terms]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 2"
+message   = "Expected: 2 terms in projector for partition {2}"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "projector_anti2_terms"
+description = "YoungProjector for {1,1}: fully antisymmetric on 2 indices gives 2 terms (+1 and -1)"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{1, 1}, {1, 2}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "terms"
+[tests.operations.args]
+expression = "YoungProjector[$tab, 2]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "length[$terms]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 2"
+message   = "Expected: 2 terms in projector for partition {1,1}"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "projector_hook21_terms"
+description = "YoungProjector for {2,1} hook shape on 3 indices gives 4 terms"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{2, 1}, {1, 2, 3}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "terms"
+[tests.operations.args]
+expression = "YoungProjector[$tab, 3]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "length[$terms]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 4"
+message   = "Expected: 4 terms in hook projector (|R| * |Q| = 2 * 2 = 4, all distinct)"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "projector_sym3_terms"
+description = "YoungProjector for {3}: fully symmetric on 3 indices gives 6 terms (all of S_3)"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{3}, {1, 2, 3}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "terms"
+[tests.operations.args]
+expression = "YoungProjector[$tab, 3]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "length[$terms]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 6"
+message   = "Expected: 6 terms (all of S_3) for partition {3}"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "projector_anti3_terms"
+description = "YoungProjector for {1,1,1}: fully antisymmetric on 3 indices gives 6 terms"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{1, 1, 1}, {1, 2, 3}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "terms"
+[tests.operations.args]
+expression = "YoungProjector[$tab, 3]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "length[$terms]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 6"
+message   = "Expected: 6 terms (all of S_3) for partition {1,1,1}"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "row_sgs_identity_member"
+description = "RowSymmetrySGS for {2}: identity permutation is always a member"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{2}, {1, 2}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "sgs"
+[tests.operations.args]
+expression = "RowSymmetrySGS[$tab, 2]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "PermMemberQ[ID, $sgs]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === True"
+message   = "Expected: identity is a member of RowSymmetrySGS"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "col_sgs_identity_member"
+description = "ColAntisymmetrySGS for {1,1}: identity permutation is a member"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "tab"
+[tests.operations.args]
+expression = "StandardTableau[{1, 1}, {1, 2}]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "sgs"
+[tests.operations.args]
+expression = "ColAntisymmetrySGS[$tab, 2]"
+
+[[tests.operations]]
+action   = "Evaluate"
+store_as = "result"
+[tests.operations.args]
+expression = "PermMemberQ[ID, $sgs]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === True"
+message   = "Expected: identity is a member of ColAntisymmetrySGS"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1

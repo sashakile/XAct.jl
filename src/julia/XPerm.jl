@@ -591,7 +591,19 @@ end
 """
     double_coset_rep(perm, sgs, dummy_groups) → (Perm, Int)
 
-Find the canonical representative of S · perm · D.
+Find the canonical representative of S · perm · D where D is the dummy symmetry group.
+
+`dummy_groups` is a Vector of Vector{Int}: each inner vector lists positions (1-indexed)
+that are freely exchangeable (dummy index relabeling symmetry).  For each group, every
+transposition of two positions in the group is a generator of D.
+
+Algorithm:
+
+ 1. Build generators of D from transpositions within each dummy group.
+ 2. Enumerate all elements of D by BFS over the Cayley graph (small groups in practice).
+ 3. For each d ∈ D, compute right_coset_rep(perm ∘ d, sgs).
+ 4. Return the lex-minimum result (by comparing the returned unsigned perm).
+
 For Tier 1 tests (no dummy indices), dummy_groups is empty → reduces to right_coset_rep.
 """
 function double_coset_rep(
@@ -600,9 +612,74 @@ function double_coset_rep(
     # For Tier 1: no dummy indices → dummy group is trivial
     isempty(dummy_groups) && return right_coset_rep(perm, sgs)
 
-    # Full double coset: deferred to Tier 2 implementation
-    # For now, fall back to right coset rep (correct when D is trivial)
-    right_coset_rep(perm, sgs)
+    n = sgs.n
+
+    # Step 1: Build generators of D — transpositions within each dummy group.
+    # Each generator acts on 1..n (unsigned, degree n).
+    d_gens = Vector{Vector{Int}}()
+    for grp in dummy_groups
+        length(grp) <= 1 && continue
+        for ii in 1:length(grp)
+            for jj in (ii + 1):length(grp)
+                a, b = grp[ii], grp[jj]
+                g = identity_perm(n)
+                g[a], g[b] = b, a
+                push!(d_gens, g)
+            end
+        end
+    end
+
+    # If all dummy groups are singletons, D is trivial.
+    if isempty(d_gens)
+        return right_coset_rep(perm, sgs)
+    end
+
+    # Step 2: Enumerate all elements of D by BFS over the Cayley graph.
+    id_n = identity_perm(n)
+    d_elements = Vector{Vector{Int}}([id_n])
+    seen_d = Set{Vector{Int}}([id_n])
+    head = 1
+    while head <= length(d_elements)
+        cur_d = d_elements[head]
+        head += 1
+        for g in d_gens
+            new_d = compose(g, cur_d)
+            if !(new_d in seen_d)
+                push!(seen_d, new_d)
+                push!(d_elements, new_d)
+            end
+        end
+    end
+
+    # Determine generator degree (n for unsigned, n+2 for signed).
+    gdeg = sgs.signed ? n + 2 : n
+
+    # Step 3: For each d ∈ D, compute right_coset_rep(perm ∘ d, sgs).
+    best_perm = nothing
+    best_sign = 1
+
+    for d in d_elements
+        # Compose perm ∘ d (right-multiply: apply d first, then perm).
+        # perm is length n (unsigned part from a prior right_coset_rep call).
+        # d is length n.
+        pd = [perm[d[i]] for i in 1:n]
+
+        # Pad to generator degree if sgs is signed.
+        if gdeg > n
+            pd_full = vcat(pd, collect((n + 1):gdeg))
+        else
+            pd_full = pd
+        end
+
+        cand_perm, cand_sign = right_coset_rep(pd_full, sgs)
+
+        if best_perm === nothing || cand_perm < best_perm
+            best_perm = cand_perm
+            best_sign = cand_sign
+        end
+    end
+
+    (best_perm, best_sign)
 end
 
 # ============================================================
@@ -1714,5 +1791,329 @@ function DeleteRedundantGenerators(sgs::StrongGenSet)::StrongGenSet
 end
 
 export DeleteRedundantGenerators
+
+# ============================================================
+# Young Tableaux and Young Projectors
+# ============================================================
+
+"""
+    YoungTableau
+
+Represents a Young tableau for a partition λ = (λ₁ ≥ λ₂ ≥ ... ≥ λₖ) of n.
+
+Fields:
+partition  — row lengths in descending order, e.g. [3, 2, 1] for a 6-index tensor.
+filling    — filling[row] = sorted list of index positions (1-indexed) in that row.
+
+The standard filling places indices left-to-right in each row:
+row 1: positions 1..λ₁
+row 2: positions λ₁+1..λ₁+λ₂
+etc.
+
+For a custom filling (e.g. to apply the symmetrizer to specific slot positions),
+use `standard_tableau(partition, indices)` which reindexes from an arbitrary
+list of `n` slot positions.
+"""
+struct YoungTableau
+    partition::Vector{Int}        # row lengths, sorted descending
+    filling::Vector{Vector{Int}}  # filling[row] = list of slot positions in that row
+end
+
+"""
+    standard_tableau(partition, indices) → YoungTableau
+
+Construct a Young tableau for `partition` using the given `indices` (slot positions).
+The filling is assigned left-to-right within each row, top-to-bottom across rows.
+
+# Arguments
+
+  - `partition::Vector{Int}`: row lengths in descending order, must sum to length(indices).
+  - `indices::Vector{Int}`: 1-indexed slot positions to fill into the tableau.
+
+# Example
+
+```julia
+# Partition [3,2] on indices [1,2,3,4,5]
+tab = standard_tableau([3, 2], [1, 2, 3, 4, 5])
+# tab.filling == [[1, 2, 3], [4, 5]]
+```
+"""
+function standard_tableau(partition::Vector{Int}, indices::Vector{Int})::YoungTableau
+    n = length(indices)
+    sum(partition) == n ||
+        error("standard_tableau: partition sum $(sum(partition)) ≠ length(indices) $n")
+    issorted(partition; rev=true) ||
+        error("standard_tableau: partition must be in descending order")
+    filling = Vector{Vector{Int}}()
+    offset = 0
+    for row_len in partition
+        push!(filling, indices[(offset + 1):(offset + row_len)])
+        offset += row_len
+    end
+    YoungTableau(copy(partition), filling)
+end
+
+"""
+    row_symmetry_sgs(tableau, n) → StrongGenSet
+
+Return the unsigned StrongGenSet for the row symmetrization group of `tableau`.
+The row group is the direct product S_{λ₁} × S_{λ₂} × ... where S_{λᵢ} permutes
+within row i.  Generators are adjacent transpositions within each row.
+
+The group acts on points 1..n (unsigned permutations, sign = +1 for all elements).
+"""
+function row_symmetry_sgs(tableau::YoungTableau, n::Int)::StrongGenSet
+    gens = Vector{Vector{Int}}()
+    base_pts = Vector{Int}()
+    for row in tableau.filling
+        k = length(row)
+        k <= 1 && continue
+        for i in 1:(k - 1)
+            g = identity_perm(n)
+            g[row[i]], g[row[i + 1]] = row[i + 1], row[i]
+            push!(gens, g)
+            push!(base_pts, row[i])
+        end
+    end
+    isempty(gens) && return StrongGenSet(Int[], Vector{Int}[], n, false)
+    # Build proper BSGS via Schreier-Sims
+    schreier_sims(base_pts, gens, n)
+end
+
+"""
+    col_antisymmetry_sgs(tableau, n) → StrongGenSet
+
+Return the signed StrongGenSet for the column antisymmetrization group of `tableau`.
+The column group permutes within each column, with sign = sign(permutation).
+Generators are adjacent transpositions within each column (degree n, signed = true).
+
+For partition [λ₁, λ₂, ...], column j contains the j-th element of each row
+that is long enough.
+"""
+function col_antisymmetry_sgs(tableau::YoungTableau, n::Int)::StrongGenSet
+    # Compute columns: column j contains filling[row][j] for rows long enough
+    max_row_len = isempty(tableau.partition) ? 0 : tableau.partition[1]
+    gens = Vector{Vector{Int}}()
+    base_pts = Vector{Int}()
+    for col_idx in 1:max_row_len
+        # Collect the slot positions in this column (rows that have >= col_idx elements)
+        col_slots = Vector{Int}()
+        for row in tableau.filling
+            col_idx <= length(row) && push!(col_slots, row[col_idx])
+        end
+        length(col_slots) <= 1 && continue
+        for i in 1:(length(col_slots) - 1)
+            g = identity_signed_perm(n)  # degree n+2
+            g[col_slots[i]], g[col_slots[i + 1]] = col_slots[i + 1], col_slots[i]
+            g[n + 1], g[n + 2] = n + 2, n + 1  # flip sign
+            push!(gens, g)
+            push!(base_pts, col_slots[i])
+        end
+    end
+    isempty(gens) && return StrongGenSet(Int[], Vector{Int}[], n, true)
+    schreier_sims(base_pts, gens, n)
+end
+
+"""
+    _enumerate_group_elements(sgs) → Vector{Perm}
+
+Enumerate all elements of the group described by `sgs` via BFS on the Cayley graph.
+Returns unsigned permutations of degree `sgs.n`.
+"""
+function _enumerate_group_elements(sgs::StrongGenSet)::Vector{Vector{Int}}
+    n = sgs.n
+    id = identity_perm(n)
+    isempty(sgs.GS) && return [id]
+
+    # Use unsigned generators (strip sign bits if signed)
+    unsigned_gens = Vector{Vector{Int}}()
+    for g in sgs.GS
+        push!(unsigned_gens, g[1:n])
+    end
+    # Also include inverses for complete BFS
+    for g in copy(unsigned_gens)
+        inv_g = inverse_perm(g)
+        push!(unsigned_gens, inv_g)
+    end
+
+    seen = Set{Vector{Int}}([id])
+    queue = [id]
+    head = 1
+    while head <= length(queue)
+        cur = queue[head];
+        head += 1
+        for g in unsigned_gens
+            new_elem = compose(g, cur)  # left-multiply
+            if !(new_elem in seen)
+                push!(seen, new_elem)
+                push!(queue, new_elem)
+            end
+        end
+    end
+    queue
+end
+
+"""
+    _enumerate_signed_group_elements(sgs) → Vector{Tuple{Perm, Int}}
+
+Enumerate all elements of a signed group described by `sgs` via BFS.
+Returns (unsigned_perm, sign) pairs where unsigned_perm has degree `sgs.n`.
+"""
+function _enumerate_signed_group_elements(sgs::StrongGenSet)::Vector{Tuple{Vector{Int},Int}}
+    n = sgs.n
+    id_unsigned = identity_perm(n)
+    isempty(sgs.GS) && return [(id_unsigned, 1)]
+
+    # Include generators and their inverses for BFS
+    gen_pairs = Vector{Tuple{Vector{Int},Int}}()
+    for g in sgs.GS
+        unsigned_g = g[1:n]
+        sign_g = _extract_sign(g, n, true)
+        push!(gen_pairs, (unsigned_g, sign_g))
+        inv_g = inverse_perm(unsigned_g)
+        push!(gen_pairs, (inv_g, sign_g))  # inverse has same sign as transposition
+    end
+
+    seen = Dict{Vector{Int},Int}()  # perm -> sign
+    seen[id_unsigned] = 1
+    queue = [(id_unsigned, 1)]
+    head = 1
+    while head <= length(queue)
+        (cur_p, cur_s) = queue[head];
+        head += 1
+        for (g, sg) in gen_pairs
+            new_p = compose(g, cur_p)
+            new_s = sg * cur_s
+            if !haskey(seen, new_p)
+                seen[new_p] = new_s
+                push!(queue, (new_p, new_s))
+            end
+        end
+    end
+    collect((_ -> [(k, v) for (k, v) in seen])(values(seen)))
+end
+
+"""
+    young_projector(tableau, n) → Vector{Tuple{Vector{Int}, Int}}
+
+Compute the Young projector (symmetrizer) P_λ = Q_λ · R_λ for the given Young tableau.
+
+The Young projector is:
+P_λ = Σ_{q ∈ col_group} Σ_{r ∈ row_group} sign(q) · q · r
+
+Returns a vector of `(perm, sign)` pairs representing the expansion of P_λ in S_n,
+where `perm` is a permutation of degree `n` and `sign` ∈ {-1, +1}.
+
+Duplicate permutations are collected and their signs summed; entries with net
+sign zero are dropped.  The result is the "support" of the projector.
+
+# Arguments
+
+  - `tableau::YoungTableau`: the Young tableau.
+  - `n::Int`: degree of the symmetric group (total number of physical points).
+
+# Example
+
+```julia
+# Partition [2,1]: hook shape on n=3 indices [1,2,3]
+# Row group: {e, (12)};  Column group: {e, -(13)}
+# P = e·e + e·(12) - (13)·e - (13)·(12)
+tab = standard_tableau([2, 1], [1, 2, 3])
+terms = young_projector(tab, 3)
+# 4 terms (before collecting): each with sign ±1
+```
+"""
+function young_projector(tableau::YoungTableau, n::Int)::Vector{Tuple{Vector{Int},Int}}
+    row_sgs = row_symmetry_sgs(tableau, n)
+    col_sgs = col_antisymmetry_sgs(tableau, n)
+
+    # Enumerate row group (unsigned)
+    row_elems = _enumerate_group_elements(row_sgs)
+
+    # Enumerate column group (signed)
+    col_elems = _enumerate_signed_group_elements(col_sgs)
+
+    # Build P_λ = Σ_q Σ_r sign(q) · (q ∘ r)
+    # Collect sign contributions for each permutation
+    sign_map = Dict{Vector{Int},Int}()
+    for (q, sq) in col_elems
+        for r in row_elems
+            # q ∘ r: apply r first, then q
+            qr = compose(q, r)
+            current = get(sign_map, qr, 0)
+            sign_map[qr] = current + sq
+        end
+    end
+
+    # Drop zero contributions, return sorted list
+    result = [(p, s) for (p, s) in sign_map if s != 0]
+    sort!(result; by=x -> x[1])
+    result
+end
+
+export YoungTableau, standard_tableau
+export row_symmetry_sgs, col_antisymmetry_sgs, young_projector
+
+# ---------------------------------------------------------------------------
+# WL-compatible CamelCase aliases for Young tableau functions
+# These are used by the TOML test adapter (which translates WL bracket syntax
+# but cannot preserve underscores in snake_case function names).
+# ---------------------------------------------------------------------------
+
+"""
+    YoungTableau(partition, indices) → YoungTableau
+
+WL-compatible constructor alias for `standard_tableau`.
+"""
+function YoungTableau(partition::Vector{Int}, indices::Vector{Int})
+    standard_tableau(partition, indices)
+end
+
+"""
+    StandardTableau(partition, indices) → YoungTableau
+
+WL-compatible alias for `standard_tableau`.
+"""
+function StandardTableau(partition::Vector{Int}, indices::Vector{Int})
+    standard_tableau(partition, indices)
+end
+
+"""
+    RowSymmetrySGS(tableau, n) → StrongGenSet
+
+WL-compatible alias for `row_symmetry_sgs`.
+"""
+RowSymmetrySGS(tableau::YoungTableau, n::Int) = row_symmetry_sgs(tableau, n)
+
+"""
+    ColAntisymmetrySGS(tableau, n) → StrongGenSet
+
+WL-compatible alias for `col_antisymmetry_sgs`.
+"""
+ColAntisymmetrySGS(tableau::YoungTableau, n::Int) = col_antisymmetry_sgs(tableau, n)
+
+"""
+    YoungProjector(tableau, n) → Vector{Tuple{Vector{Int}, Int}}
+
+WL-compatible alias for `young_projector`.
+"""
+YoungProjector(tableau::YoungTableau, n::Int) = young_projector(tableau, n)
+
+"""
+    TableauFilling(tableau) → Vector{Vector{Int}}
+
+Return the filling of a YoungTableau (for WL-compatible field access).
+"""
+TableauFilling(tableau::YoungTableau) = tableau.filling
+
+"""
+    TableauPartition(tableau) → Vector{Int}
+
+Return the partition of a YoungTableau (for WL-compatible field access).
+"""
+TableauPartition(tableau::YoungTableau) = tableau.partition
+
+export StandardTableau, RowSymmetrySGS, ColAntisymmetrySGS, YoungProjector
+export TableauFilling, TableauPartition
 
 end  # module XPerm

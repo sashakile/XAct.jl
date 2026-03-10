@@ -1,0 +1,189 @@
+# xtensor/xpert_background.toml
+# xPert background metric consistency checks.
+# Tests DefPerturbation, CheckMetricConsistency, PerturbationQ, and
+# check_perturbation_order via Assert conditions.
+# All tests use oracle_is_axiom = true: the Julia adapter is the ground truth.
+
+[meta]
+id              = "xtensor/xpert_background"
+description     = "xPert: background metric consistency and perturbation order checks"
+tags            = ["xtensor", "xpert", "perturbation", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Setup: define a 4D Lorentzian manifold, background metric, and perturbation
+# tensors.
+# ---------------------------------------------------------------------------
+
+[[setup]]
+action   = "DefManifold"
+store_as = "Bxp"
+[setup.args]
+name      = "Bxp"
+dimension = 4
+indices   = ["bxpa", "bxpb", "bxpc", "bxpd"]
+
+[[setup]]
+action   = "DefMetric"
+store_as = "Cng"
+[setup.args]
+signdet = -1
+metric  = "Cng[-bxpa,-bxpb]"
+covd    = "Cnd"
+
+# First-order metric perturbation (symmetric rank-2)
+[[setup]]
+action   = "DefTensor"
+store_as = "Pertg1"
+[setup.args]
+name     = "Pertg1"
+indices  = ["-bxpa", "-bxpb"]
+manifold = "Bxp"
+symmetry = "Symmetric[{-bxpa,-bxpb}]"
+
+[[setup]]
+action   = "DefPerturbation"
+store_as = "Pertg1"
+[setup.args]
+tensor     = "Pertg1"
+background = "Cng"
+order      = 1
+
+# Second-order metric perturbation (symmetric rank-2)
+[[setup]]
+action   = "DefTensor"
+store_as = "Pertg2"
+[setup.args]
+name     = "Pertg2"
+indices  = ["-bxpa", "-bxpb"]
+manifold = "Bxp"
+symmetry = "Symmetric[{-bxpa,-bxpb}]"
+
+[[setup]]
+action   = "DefPerturbation"
+store_as = "Pertg2"
+[setup.args]
+tensor     = "Pertg2"
+background = "Cng"
+order      = 2
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "metric_consistency_true"
+description = "CheckMetricConsistency returns True for a properly defined background metric"
+
+[[tests.operations]]
+action = "CheckMetricConsistency"
+[tests.operations.args]
+metric = "Cng"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "metric_consistency_undefined"
+description = "CheckMetricConsistency returns False for an undefined metric"
+
+[[tests.operations]]
+action = "CheckMetricConsistency"
+[tests.operations.args]
+metric = "DoesNotExist"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "perturbation_q_first_order"
+description = "PerturbationQ returns True for a registered first-order perturbation"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "PerturbationQ[Pertg1] === True"
+message   = "Pertg1 should be recognized as a perturbation by PerturbationQ"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "perturbation_q_second_order"
+description = "PerturbationQ returns True for a registered second-order perturbation"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "PerturbationQ[Pertg2] === True"
+message   = "Pertg2 should be recognized as a perturbation by PerturbationQ"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "perturbation_q_background"
+description = "PerturbationQ returns False for the background metric itself"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "PerturbationQ[Cng] === False"
+message   = "Cng (background metric) should not be a perturbation"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "perturbation_in_registry"
+description = "Defined perturbation tensors appear in the Perturbations registry"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "MemberQ[Perturbations, Pertg1] && MemberQ[Perturbations, Pertg2]"
+message   = "Both Pertg1 and Pertg2 should appear in the Perturbations registry"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "perturbation_order_1"
+description = "check_perturbation_order returns True for Pertg1 at order 1"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "check_perturbation_order(Pertg1, 1) === true"
+message   = "Pertg1 should have perturbation order 1"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "perturbation_order_2"
+description = "check_perturbation_order returns True for Pertg2 at order 2"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "check_perturbation_order(Pertg2, 2) === true"
+message   = "Pertg2 should have perturbation order 2"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "perturbation_order_wrong"
+description = "check_perturbation_order returns False when queried with wrong order"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "check_perturbation_order(Pertg1, 2) === false"
+message   = "Pertg1 should not match order 2"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "perturbation_tensor_still_tensorq"
+description = "A perturbation tensor is still recognized as a tensor by TensorQ"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "TensorQ[Pertg1] === True"
+message   = "Pertg1 should still be a tensor after DefPerturbation"

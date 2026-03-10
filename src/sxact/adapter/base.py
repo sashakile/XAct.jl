@@ -249,6 +249,8 @@ class TestAdapter(abc.ABC, Generic[ContextT]):
                 "Contract",
                 "CommuteCovDs",
                 "Assert",
+                "DefPerturbation",
+                "CheckMetricConsistency",
             }
         )
 
