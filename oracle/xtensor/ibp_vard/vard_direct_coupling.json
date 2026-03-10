@@ -1,0 +1,11 @@
+{
+  "test_id": "vard_direct_coupling",
+  "oracle_version": "julia-axiom",
+  "mathematica_version": "N/A",
+  "timestamp": "2026-03-10T20:50:29.150993+00:00",
+  "commands": "[julia-adapter]",
+  "raw_output": "RicciScalarIBD[]",
+  "normalized_output": "RicciScalarIBD[]",
+  "properties": {},
+  "hash": "sha256:5512d04b85cd"
+}

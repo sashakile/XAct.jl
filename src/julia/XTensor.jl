@@ -51,6 +51,9 @@ export check_metric_consistency, check_perturbation_order
 # xPert perturbation order queries
 export PerturbationOrder, PerturbationAtOrder
 
+# IBP and VarD
+export IBP, TotalDerivativeQ, VarD
+
 # ============================================================
 # Types
 # ============================================================
@@ -2256,5 +2259,515 @@ function perturb_curvature(
 end
 
 export perturb_curvature
+
+# ============================================================
+# IBP — Integration By Parts
+# ============================================================
+
+"""
+Simplify `expr` only if it contains no CovD-applied factors (patterns like
+`CovD[-a][inner]`).  `_parse_monomial` truncates such factors at the first
+bracket group, so `Simplify` would corrupt them.  A quick regex scan over
+registered CovD names is sufficient; full factor parsing is not needed.
+"""
+function _safe_simplify(expr::AbstractString)::String
+    for (covd_sym, _) in _metrics
+        occursin(Regex(string(covd_sym) * raw"\[-\w+\]\["), expr) && return String(expr)
+    end
+    Simplify(expr)
+end
+
+"""
+Split a multiplicative term body into individual factor strings.
+Each factor is `Name[...]` or `CovD[-a][inner_expr]` (CovD has two bracket groups).
+"""
+function _split_factor_strings(term_body::AbstractString)::Vector{String}
+    body = strip(term_body)
+    factors = String[]
+    i = firstindex(body)
+    n = lastindex(body)
+    while i <= n
+        # skip whitespace between factors
+        while i <= n && isspace(body[i])
+            i = nextind(body, i)
+        end
+        i > n && break
+        # Read identifier (name token)
+        j = i
+        while j <= n && (isletter(body[j]) || isdigit(body[j]) || body[j] == '_')
+            j = nextind(body, j)
+        end
+        if j == i
+            # Not an identifier character — skip
+            i = nextind(body, i)
+            continue
+        end
+        name_end = j  # exclusive end of name
+        # Now consume all consecutive bracket groups
+        groups = String[]
+        k = name_end
+        while k <= n
+            # skip whitespace
+            while k <= n && isspace(body[k])
+                k = nextind(body, k)
+            end
+            k > n && break
+            body[k] != '[' && break
+            # consume matching bracket group
+            depth = 0
+            start_k = k
+            while k <= n
+                c = body[k]
+                if c == '['
+                    depth += 1
+                elseif c == ']'
+                    depth -= 1
+                    if depth == 0
+                        k = nextind(body, k)
+                        break
+                    end
+                end
+                k = nextind(body, k)
+            end
+            push!(groups, body[start_k:prevind(body, k)])
+        end
+        factor_str = body[i:prevind(body, name_end)] * join(groups)
+        push!(factors, factor_str)
+        i = k
+    end
+    factors
+end
+
+"""
+Parse `covd_name[-der_idx][inner_expr]` from a factor string.
+Returns a named tuple `(der_idx, inner)` or `nothing`.
+"""
+function _parse_covd_application(factor::AbstractString, covd::AbstractString)
+    prefix = covd * "["
+    startswith(factor, prefix) || return nothing
+    fstr = factor
+    # Find the end of the first bracket group (der_idx group)
+    depth = 0
+    i = firstindex(fstr) + length(prefix) - 1  # points to '['
+    j = i
+    while j <= lastindex(fstr)
+        c = fstr[j]
+        if c == '['
+            depth += 1
+        elseif c == ']'
+            depth -= 1
+            if depth == 0
+                j = nextind(fstr, j)
+                break
+            end
+        end
+        j = nextind(fstr, j)
+    end
+    # fstr[i:prevind(fstr,j)] is the der_idx bracket group e.g. "[-ia]"
+    der_bracket = fstr[i:prevind(fstr, j)]  # "[-ia]"
+    # Strip outer brackets to get "-ia"
+    der_idx_raw = strip(
+        der_bracket[nextind(der_bracket, firstindex(der_bracket)):prevind(
+            der_bracket, lastindex(der_bracket)
+        )],
+    )
+    # Now consume inner bracket group
+    k = j
+    while k <= lastindex(fstr) && isspace(fstr[k])
+        k = nextind(fstr, k)
+    end
+    k > lastindex(fstr) && return nothing
+    fstr[k] != '[' && return nothing
+    depth2 = 0
+    start_inner = k
+    while k <= lastindex(fstr)
+        c = fstr[k]
+        if c == '['
+            depth2 += 1
+        elseif c == ']'
+            depth2 -= 1
+            if depth2 == 0
+                k = nextind(fstr, k)
+                break
+            end
+        end
+        k = nextind(fstr, k)
+    end
+    # Must have consumed entire string
+    k <= lastindex(fstr) && return nothing
+    inner_bracket = fstr[start_inner:prevind(fstr, k)]  # "[expr]"
+    # Strip outer brackets
+    inner = strip(
+        inner_bracket[nextind(inner_bracket, firstindex(inner_bracket)):prevind(
+            inner_bracket, lastindex(inner_bracket)
+        )],
+    )
+    # Strip the leading '-' from der_idx to get the bare index label
+    bare_idx = if startswith(der_idx_raw, "-")
+        der_idx_raw[nextind(der_idx_raw, firstindex(der_idx_raw)):end]
+    else
+        der_idx_raw
+    end
+    return (der_idx=der_idx_raw, bare_idx=bare_idx, inner=String(inner))
+end
+
+"""
+Check if bare index `idx` (e.g. "a") appears as a contracted (dummy) index inside `expr`.
+"""
+function _index_appears_in(expr::AbstractString, idx::AbstractString)::Bool
+    any(
+        p -> occursin(p, expr),
+        ["[" * idx * ",", "[" * idx * "]", "," * idx * ",", "," * idx * "]"],
+    )
+end
+
+"""
+Extract leading coefficient from term body string.
+Returns `(coeff::Rational{Int}, remaining_str)`.
+Matches `(N/D) rest` or `N rest` (integer followed by whitespace). Otherwise coeff=1//1.
+"""
+function _extract_leading_coeff(body::AbstractString)
+    s = String(strip(body))
+    # Try rational: "(N/D) rest"
+    m = match(r"^\((-?\d+)/(\d+)\)\s*(.*)"s, s)
+    if m !== nothing
+        num = parse(Int, m.captures[1])
+        den = parse(Int, m.captures[2])
+        return (num // den, String(strip(m.captures[3])))
+    end
+    # Try integer followed by space: "N rest"
+    m2 = match(r"^(-?\d+)\s+(.*)"s, s)
+    if m2 !== nothing
+        num = parse(Int, m2.captures[1])
+        return (num // 1, String(strip(m2.captures[2])))
+    end
+    return (1 // 1, s)
+end
+
+"""
+Format rational coefficient for positive printing.
+"""
+function _fmt_pos_coeff(c::Rational{Int})::String
+    c == 1 // 1 && return ""
+    denominator(c) == 1 && return "$(numerator(c)) "
+    return "($(numerator(c))/$(denominator(c))) "
+end
+
+"""
+Format (coeff, body) as a signed term string suitable for joining.
+"""
+function _term_string(c::Rational{Int}, body::AbstractString)::String
+    body_s = String(body)
+    if c == 1 // 1
+        return body_s
+    elseif c == -1 // 1
+        return "-" * body_s
+    elseif c > 0
+        return _fmt_pos_coeff(c) * body_s
+    else
+        return "-" * _fmt_pos_coeff(-c) * body_s
+    end
+end
+
+"""
+Split expression into signed string terms. Returns `Vector{Tuple{Int, String}}` = [(sign, body), ...].
+Splits on top-level `+` and `-`, tracking bracket depth.
+"""
+function _split_string_terms(expr::AbstractString)::Vector{Tuple{Int,String}}
+    s = String(strip(expr))
+    isempty(s) && return [(1, "0")]
+    terms = Tuple{Int,String}[]
+    depth = 0
+    current = IOBuffer()
+    current_sign = 1
+    i = firstindex(s)
+    n = lastindex(s)
+    # Handle leading sign
+    if i <= n && s[i] == '-'
+        current_sign = -1
+        i = nextind(s, i)
+    elseif i <= n && s[i] == '+'
+        current_sign = 1
+        i = nextind(s, i)
+    end
+    while i <= n
+        c = s[i]
+        if c == '[' || c == '('
+            depth += 1
+            write(current, c)
+        elseif c == ']' || c == ')'
+            depth -= 1
+            write(current, c)
+        elseif depth == 0 && (c == '+' || c == '-')
+            chunk = strip(String(take!(current)))
+            if !isempty(chunk)
+                push!(terms, (current_sign, chunk))
+            end
+            current_sign = c == '-' ? -1 : 1
+            current = IOBuffer()
+        else
+            write(current, c)
+        end
+        i = nextind(s, i)
+    end
+    chunk = strip(String(take!(current)))
+    if !isempty(chunk)
+        push!(terms, (current_sign, chunk))
+    end
+    isempty(terms) && return [(1, "0")]
+    terms
+end
+
+"""
+Apply one IBP step to factors of a single term.
+Returns `(new_coeff, new_body)` or `nothing` (no CovD found).
+Returns `(0//1, "0")` for a pure total divergence.
+"""
+function _ibp_term_factors(
+    factors::Vector{String}, coeff::Rational{Int}, covd::AbstractString
+)
+    # Find the first CovD factor
+    covd_idx = findfirst(f -> startswith(f, covd * "["), factors)
+    covd_idx === nothing && return nothing
+    covd_factor = factors[covd_idx]
+    parsed = _parse_covd_application(covd_factor, covd)
+    parsed === nothing && return nothing
+    der_idx = parsed.der_idx    # e.g. "-ia"
+    bare_idx = parsed.bare_idx  # e.g. "ia"
+    inner = parsed.inner        # inner expression
+
+    # Remaining factors (all except this CovD)
+    other_factors = [factors[k] for k in eachindex(factors) if k != covd_idx]
+
+    if isempty(other_factors)
+        # Pure divergence: covd[-a][expr_with_a_contracted]?
+        if _index_appears_in(inner, bare_idx)
+            return (0 // 1, "0")
+        else
+            # Not contracted — can't simplify (unusual), return unchanged as nothing
+            return nothing
+        end
+    end
+
+    # IBP: A * ∇_a B → -(∇_a A) * B, picking A = first non-CovD factor
+    partner_idx = findfirst(f -> !startswith(f, covd * "["), other_factors)
+    if partner_idx === nothing
+        # All remaining are CovDs — take the first one
+        partner_idx = 1
+    end
+    partner = other_factors[partner_idx]
+    rest_others = [other_factors[k] for k in eachindex(other_factors) if k != partner_idx]
+
+    # New CovD applied to the partner
+    new_covd_factor = covd * "[" * der_idx * "][" * partner * "]"
+    # New body = new_covd_factor * inner * rest_others
+    new_factors_strs = String[]
+    push!(new_factors_strs, new_covd_factor)
+    push!(new_factors_strs, inner)
+    append!(new_factors_strs, rest_others)
+    new_body = join(filter(!isempty, new_factors_strs), " ")
+    new_coeff = -coeff
+    return (new_coeff, new_body)
+end
+
+"""
+Join a vector of signed term strings into a sum expression.
+Each element may start with `"-"` (negative) or not (positive).
+Adjacent terms are separated by `" - "` or `" + "` as appropriate.
+"""
+function _join_term_strings(parts::Vector{String})::String
+    isempty(parts) && return "0"
+    out = IOBuffer()
+    for (k, p) in enumerate(parts)
+        if k == 1
+            write(out, p)
+        elseif startswith(p, "-")
+            write(out, " - ", p[nextind(p, firstindex(p)):end])
+        else
+            write(out, " + ", p)
+        end
+    end
+    String(take!(out))
+end
+
+"""
+    IBP(expr, covd_name) → String
+
+Integrate `expr` by parts with respect to `covd_name`. For each term:
+
+  - Pure divergence `covd[-a][V[a]]`: dropped (→ 0)
+  - Product `A * covd[-a][B]`: → `-(covd[-a][A]) * B` (mod total derivative)
+  - Otherwise: unchanged
+    Result is passed through Simplify.
+"""
+function IBP(expr::AbstractString, covd_name::AbstractString)::String
+    terms = _split_string_terms(expr)
+    result_terms = Tuple{Rational{Int},String}[]
+    for (sign, body) in terms
+        (coeff0, remaining) = _extract_leading_coeff(body)
+        coeff = sign * coeff0
+        factors = _split_factor_strings(remaining)
+        ibp_result = _ibp_term_factors(factors, coeff, covd_name)
+        if ibp_result === nothing
+            # No CovD found — keep term unchanged
+            push!(result_terms, (coeff, remaining))
+        else
+            (new_coeff, new_body) = ibp_result
+            if new_coeff != 0 // 1
+                push!(result_terms, (new_coeff, new_body))
+            end
+            # new_coeff == 0 means total divergence, drop the term
+        end
+    end
+    isempty(result_terms) && return "0"
+    raw = _join_term_strings([_term_string(c, b) for (c, b) in result_terms])
+    _safe_simplify(raw)
+end
+
+function IBP(expr::AbstractString, covd::Symbol)::String
+    IBP(expr, String(covd))
+end
+
+"""
+    TotalDerivativeQ(expr, covd_name) → Bool
+
+Return `true` iff `expr` is a total divergence (IBP drops it entirely).
+"""
+function TotalDerivativeQ(expr::AbstractString, covd_name::AbstractString)::Bool
+    IBP(expr, covd_name) == "0"
+end
+
+function TotalDerivativeQ(expr::AbstractString, covd::Symbol)::Bool
+    TotalDerivativeQ(expr, String(covd))
+end
+
+# ============================================================
+# VarD — Variational (Euler-Lagrange) Derivative
+# ============================================================
+
+"""
+Expand `covd[der_idx][f1 f2 ... fn]` via Leibniz product rule.
+Returns a Vector of term strings, each with CovD applied to one factor.
+"""
+function _leibniz_covd(
+    covd::AbstractString, der_idx::AbstractString, factors::Vector{String}
+)::Vector{String}
+    result = String[]
+    for (i, f) in enumerate(factors)
+        rest = [factors[k] for k in eachindex(factors) if k != i]
+        new_covd = covd * "[" * der_idx * "][" * f * "]"
+        parts = String[new_covd]
+        append!(parts, rest)
+        push!(result, join(filter(!isempty, parts), " "))
+    end
+    result
+end
+
+"""
+Compute all EL contributions from a single term for variational derivative w.r.t. `field`.
+Returns `Vector{Tuple{Rational{Int}, String}}` of `(coeff, body)` contributions.
+"""
+function _vard_term_contributions(
+    factors::Vector{String},
+    coeff::Rational{Int},
+    field::AbstractString,
+    covd::AbstractString,
+)::Vector{Tuple{Rational{Int},String}}
+    contributions = Tuple{Rational{Int},String}[]
+    for (i, factor) in enumerate(factors)
+        rest = [factors[k] for k in eachindex(factors) if k != i]
+        rest_str = join(filter(!isempty, rest), " ")
+
+        # Case 1: Direct field occurrence — factor starts with "field["
+        if startswith(factor, field * "[")
+            # Contribution: (+coeff, rest_str) or (+coeff, "1") if no rest
+            body = isempty(rest_str) ? "1" : rest_str
+            push!(contributions, (coeff, body))
+            continue
+        end
+
+        # Case 2: covd[-a][field[...]] — first-order derivative
+        parsed1 = _parse_covd_application(factor, covd)
+        if parsed1 !== nothing && startswith(parsed1.inner, field * "[")
+            # IBP: contribution is (-coeff, leibniz expansion applied to rest)
+            # The EL term is -∇_a (rest) when field is ∇_a φ
+            # i.e. we integrate by parts: -(∇_a rest)  → for each factor in rest
+            der_bracket = covd * "[" * parsed1.der_idx * "]"
+            if isempty(rest_str)
+                # No other factors: contribution is trivially 0 (total div) — skip
+                continue
+            end
+            rest_factors = _split_factor_strings(rest_str)
+            leibniz_terms = _leibniz_covd(covd, parsed1.der_idx, rest_factors)
+            for lt in leibniz_terms
+                push!(contributions, (-coeff, lt))
+            end
+            continue
+        end
+
+        # Case 3: covd[-a][covd[-b][field[...]]] — second-order derivative
+        if parsed1 !== nothing
+            inner1 = parsed1.inner
+            parsed2 = _parse_covd_application(inner1, covd)
+            if parsed2 !== nothing && startswith(parsed2.inner, field * "[")
+                # Two IBP steps → sign is +coeff
+                # Apply outer Leibniz on rest, then wrap inner derivative
+                der_outer = parsed1.der_idx
+                der_inner = parsed2.der_idx
+                inner_covd = covd * "[" * der_inner * "]"
+                if isempty(rest_str)
+                    # Only factor: ∇_a ∇_b φ — contribution is ∇_a ∇_b(1) = 0
+                    continue
+                end
+                rest_factors = _split_factor_strings(rest_str)
+                # Leibniz on rest with the outer derivative
+                leibniz_terms = _leibniz_covd(covd, der_outer, rest_factors)
+                for lt in leibniz_terms
+                    # Wrap each leibniz term in the inner derivative
+                    inner_lt_covd = covd * "[" * der_inner * "][" * lt * "]"
+                    push!(contributions, (coeff, inner_lt_covd))
+                end
+                continue
+            end
+        end
+    end
+    contributions
+end
+
+"""
+    VarD(expr, field_name, covd_name) → String
+
+Euler-Lagrange derivative of Lagrangian `expr` w.r.t. field `field_name`.
+Uses IBP to move derivatives off the field variation.
+Result is simplified.
+"""
+function VarD(
+    expr::AbstractString, field_name::AbstractString, covd_name::AbstractString
+)::String
+    terms = _split_string_terms(expr)
+    all_contributions = Tuple{Rational{Int},String}[]
+    for (sign, body) in terms
+        (coeff0, remaining) = _extract_leading_coeff(body)
+        coeff = sign * coeff0
+        factors = _split_factor_strings(remaining)
+        contribs = _vard_term_contributions(factors, coeff, field_name, covd_name)
+        append!(all_contributions, contribs)
+    end
+    isempty(all_contributions) && return "0"
+    raw = _join_term_strings([_term_string(c, b) for (c, b) in all_contributions])
+    _safe_simplify(raw)
+end
+
+function VarD(expr::AbstractString, field::Symbol, covd::Symbol)::String
+    VarD(expr, String(field), String(covd))
+end
+
+function VarD(expr::AbstractString, field::AbstractString, covd::Symbol)::String
+    VarD(expr, field, String(covd))
+end
+
+function VarD(expr::AbstractString, field::Symbol, covd::AbstractString)::String
+    VarD(expr, String(field), covd)
+end
 
 end  # module XTensor

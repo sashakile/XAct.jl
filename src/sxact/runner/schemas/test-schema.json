@@ -98,6 +98,9 @@
         "PerturbCurvature",
         "PerturbationOrder",
         "PerturbationAtOrder",
+        "IntegrateByParts",
+        "TotalDerivativeQ",
+        "VarD",
         "Assert"
       ]
     },
@@ -118,6 +121,9 @@
         { "$ref": "#/$defs/args/PerturbCurvature" },
         { "$ref": "#/$defs/args/PerturbationOrder" },
         { "$ref": "#/$defs/args/PerturbationAtOrder" },
+        { "$ref": "#/$defs/args/IntegrateByParts" },
+        { "$ref": "#/$defs/args/TotalDerivativeQ" },
+        { "$ref": "#/$defs/args/VarD" },
         { "$ref": "#/$defs/args/Assert" }
       ]
     },
@@ -156,6 +162,10 @@
         "skip": {
           "description": "If set, skip this test with the given reason",
           "type": "string"
+        },
+        "oracle_is_axiom": {
+          "description": "Override file-level oracle_is_axiom for this specific test",
+          "type": "boolean"
         },
         "operations": {
           "description": "Ordered list of operations to execute for this test",
@@ -541,6 +551,58 @@
           },
           "message": {
             "description": "Message to include in the failure report if the assertion fails",
+            "type": "string"
+          }
+        }
+      },
+      "IntegrateByParts": {
+        "description": "Arguments for IntegrateByParts (IBP) action. Integrates an expression by parts w.r.t. a covariant derivative.",
+        "type": "object",
+        "required": ["expression", "covd"],
+        "additionalProperties": false,
+        "properties": {
+          "expression": {
+            "description": "Lagrangian expression to integrate by parts",
+            "type": "string"
+          },
+          "covd": {
+            "description": "Name of the covariant derivative operator to integrate by parts w.r.t.",
+            "type": "string"
+          }
+        }
+      },
+      "TotalDerivativeQ": {
+        "description": "Arguments for TotalDerivativeQ action. Returns True iff the expression is a total divergence.",
+        "type": "object",
+        "required": ["expression", "covd"],
+        "additionalProperties": false,
+        "properties": {
+          "expression": {
+            "description": "Expression to test for being a total derivative",
+            "type": "string"
+          },
+          "covd": {
+            "description": "Name of the covariant derivative operator",
+            "type": "string"
+          }
+        }
+      },
+      "VarD": {
+        "description": "Arguments for VarD action. Computes the Euler-Lagrange (variational) derivative of a Lagrangian w.r.t. a field.",
+        "type": "object",
+        "required": ["expression", "field", "covd"],
+        "additionalProperties": false,
+        "properties": {
+          "expression": {
+            "description": "Lagrangian expression to vary",
+            "type": "string"
+          },
+          "field": {
+            "description": "Name of the field to vary w.r.t.",
+            "type": "string"
+          },
+          "covd": {
+            "description": "Name of the covariant derivative operator (for IBP steps)",
             "type": "string"
           }
         }

@@ -255,6 +255,9 @@ class TestAdapter(abc.ABC, Generic[ContextT]):
                 "PerturbCurvature",
                 "PerturbationOrder",
                 "PerturbationAtOrder",
+                "IntegrateByParts",
+                "TotalDerivativeQ",
+                "VarD",
             }
         )
 

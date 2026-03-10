@@ -1,0 +1,11 @@
+{
+  "test_id": "vard_phi_squared",
+  "oracle_version": "julia-axiom",
+  "mathematica_version": "N/A",
+  "timestamp": "2026-03-10T20:50:29.150993+00:00",
+  "commands": "[julia-adapter]",
+  "raw_output": "2 IBphi[]",
+  "normalized_output": "2 IBphi[]",
+  "properties": {},
+  "hash": "sha256:445648ab28a0"
+}

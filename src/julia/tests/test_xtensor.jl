@@ -537,4 +537,77 @@ using .XTensor
         @test check_perturbation_order(:PoPert1, PerturbationOrder(:PoPert1))
         @test !check_perturbation_order(:PoPert1, PerturbationOrder(:PoPert2))
     end
+
+    @testset "IBP and VarD" begin
+        reset_state!()
+        def_manifold!(:IBm, 4, [:ia, :ib, :ic, :id, :ie])
+        def_metric!(-1, "IBg[-ia,-ib]", :IBD)
+        def_tensor!(:IBphi, String[], :IBm)
+        def_tensor!(:IBV, ["ia"], :IBm)
+        def_tensor!(:IBT, ["-ia", "-ib"], :IBm; symmetry_str="Symmetric[{-ia,-ib}]")
+
+        # Pure divergence → 0
+        @test IBP("IBD[-ia][IBV[ia]]", "IBD") == "0"
+
+        # TotalDerivativeQ
+        @test TotalDerivativeQ("IBD[-ia][IBV[ia]]", "IBD") == true
+        @test TotalDerivativeQ("IBphi[] IBD[-ia][IBV[ia]]", "IBD") == false
+
+        # IBP: phi * div(V) → -(grad phi) . V (non-zero, non-trivial)
+        ibp_result = IBP("IBphi[] IBD[-ia][IBV[ia]]", "IBD")
+        @test !isempty(ibp_result) && ibp_result != "0"
+
+        # IBP: no CovD present → simplified form returned unchanged
+        no_covd = IBP("IBphi[] RicciScalarIBD[]", "IBD")
+        @test no_covd == Simplify("IBphi[] RicciScalarIBD[]")
+
+        # IBP: V^a ∂_a phi (covd applied to phi, partner is V) → non-zero result
+        ibp_grad = IBP("IBV[ia] IBD[-ia][IBphi[]]", "IBD")
+        @test !isempty(ibp_grad) && ibp_grad != "0"
+
+        # VarD tests
+        # δ(phi * R) / δφ = R
+        @test VarD("IBphi[] RicciScalarIBD[]", "IBphi", "IBD") ==
+            Simplify("RicciScalarIBD[]")
+
+        # δ(phi * div V) / δφ = div V
+        # Note: VarD returns CovD expressions as-is (Simplify cannot handle CovD factors)
+        let vard_div = VarD("IBphi[] IBD[-ia][IBV[ia]]", "IBphi", "IBD")
+            @test !isempty(vard_div) && vard_div != "0"
+            # Should contain IBD and IBV
+            @test occursin("IBD", vard_div) && occursin("IBV", vard_div)
+        end
+
+        # δ(V^a ∂_a φ) / δφ = -∂_a V^a  (IBP moves derivative off φ)
+        vard_grad = VarD("IBV[ia] IBD[-ia][IBphi[]]", "IBphi", "IBD")
+        @test !isempty(vard_grad)
+
+        # δ(φ²) / δφ = 2φ
+        @test VarD("IBphi[] IBphi[]", "IBphi", "IBD") == Simplify("2 IBphi[]")
+
+        # VarD with no field occurrence → 0
+        @test VarD("RicciScalarIBD[]", "IBphi", "IBD") == "0"
+
+        # TotalDerivativeQ on a non-total-derivative → false
+        @test TotalDerivativeQ("IBphi[] IBV[ia]", "IBD") == false
+
+        # Helper: _split_factor_strings
+        @test XTensor._split_factor_strings("IBphi[] IBV[ia]") == ["IBphi[]", "IBV[ia]"]
+        @test XTensor._split_factor_strings("IBD[-ia][IBV[ia]]") == ["IBD[-ia][IBV[ia]]"]
+        @test length(XTensor._split_factor_strings("IBphi[] IBD[-ia][IBV[ia]]")) == 2
+
+        # Helper: _extract_leading_coeff
+        @test XTensor._extract_leading_coeff("2 IBphi[]") == (2 // 1, "IBphi[]")
+        @test XTensor._extract_leading_coeff("(1/2) IBphi[]") == (1 // 2, "IBphi[]")
+        @test XTensor._extract_leading_coeff("IBphi[]") == (1 // 1, "IBphi[]")
+
+        # Helper: _split_string_terms
+        terms = XTensor._split_string_terms("IBphi[] + IBV[ia]")
+        @test length(terms) == 2
+        terms_neg = XTensor._split_string_terms("IBphi[] - IBV[ia]")
+        @test length(terms_neg) == 2
+        @test terms_neg[2][1] == -1
+
+        reset_state!()
+    end
 end

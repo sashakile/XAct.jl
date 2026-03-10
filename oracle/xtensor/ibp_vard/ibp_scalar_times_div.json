@@ -1,0 +1,11 @@
+{
+  "test_id": "ibp_scalar_times_div",
+  "oracle_version": "julia-axiom",
+  "mathematica_version": "N/A",
+  "timestamp": "2026-03-10T20:50:29.150993+00:00",
+  "commands": "[julia-adapter]",
+  "raw_output": "-IBD[-iba][IBphi[]] IBV[iba]",
+  "normalized_output": "-IBD[-ib$1][IBphi[]] IBV[ib$1]",
+  "properties": {},
+  "hash": "sha256:969c7b12aec2"
+}

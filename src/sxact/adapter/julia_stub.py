@@ -103,6 +103,9 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             "Simplify",
             "PerturbationOrder",
             "PerturbationAtOrder",
+            "IntegrateByParts",
+            "TotalDerivativeQ",
+            "VarD",
         }
     )
 
@@ -234,6 +237,12 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 return self._perturbation_order(args)
             if action == "PerturbationAtOrder":
                 return self._perturbation_at_order(args)
+            if action == "IntegrateByParts":
+                return self._integrate_by_parts(args)
+            if action == "TotalDerivativeQ":
+                return self._total_derivative_q(args)
+            if action == "VarD":
+                return self._vard(args)
         except Exception as exc:
             return Result(
                 status="error", type="", repr="", normalized="", error=str(exc)
@@ -456,6 +465,37 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         lines = [f"{k}: {v}" for k, v in sorted(jl_dict.items())]
         raw = "\n".join(lines)
         return Result(status="ok", type="Dict", repr=raw, normalized=raw)
+
+    def _integrate_by_parts(self, args: dict[str, Any]) -> Result:
+        expr = str(args["expression"])
+        covd = str(args["covd"])
+        expr_jl = _jl_escape(expr)
+        covd_jl = _jl_escape(covd)
+        raw = self._jl.seval(f'XTensor.IBP("{expr_jl}", "{covd_jl}")')
+        s = str(raw).strip()
+        return Result(status="ok", type="Expr", repr=s, normalized=_normalize(s))
+
+    def _total_derivative_q(self, args: dict[str, Any]) -> Result:
+        expr = str(args["expression"])
+        covd = str(args["covd"])
+        expr_jl = _jl_escape(expr)
+        covd_jl = _jl_escape(covd)
+        raw = self._jl.seval(f'XTensor.TotalDerivativeQ("{expr_jl}", "{covd_jl}")')
+        val = str(raw).strip()
+        is_true = val.lower() == "true"
+        s = "True" if is_true else "False"
+        return Result(status="ok", type="Bool", repr=s, normalized=s)
+
+    def _vard(self, args: dict[str, Any]) -> Result:
+        expr = str(args["expression"])
+        field = str(args["field"])
+        covd = str(args["covd"])
+        expr_jl = _jl_escape(expr)
+        field_jl = _jl_escape(field)
+        covd_jl = _jl_escape(covd)
+        raw = self._jl.seval(f'XTensor.VarD("{expr_jl}", "{field_jl}", "{covd_jl}")')
+        s = str(raw).strip()
+        return Result(status="ok", type="Expr", repr=s, normalized=_normalize(s))
 
     def _execute_expr(self, wolfram_expr: str) -> Result:
         julia_expr = _wl_to_jl(wolfram_expr)

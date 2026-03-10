@@ -60,6 +60,14 @@
 {"created_at":"2026-02-23T16:51:38Z","created_by":"sashakile","depends_on_id":"sxAct-zaj","issue_id":"sxAct-caj","type":"blocks"}
 {"created_at":"2026-01-22T04:17:55Z","created_by":"sashakile","depends_on_id":"sxAct-rl6","issue_id":"sxAct-ctx","type":"blocks"}
 {"created_at":"2026-03-09T17:06:32Z","created_by":"sashakile","depends_on_id":"sxAct-l1w","issue_id":"sxAct-dic","type":"discovered-from"}
+{"created_at":"2026-03-10T17:25:50Z","created_by":"sashakile","depends_on_id":"sxAct-ead","issue_id":"sxAct-ead.1","type":"parent-child"}
+{"created_at":"2026-03-10T17:25:56Z","created_by":"sashakile","depends_on_id":"sxAct-ead","issue_id":"sxAct-ead.2","type":"parent-child"}
+{"created_at":"2026-03-10T17:26:01Z","created_by":"sashakile","depends_on_id":"sxAct-ead","issue_id":"sxAct-ead.3","type":"parent-child"}
+{"created_at":"2026-03-10T17:26:06Z","created_by":"sashakile","depends_on_id":"sxAct-ead","issue_id":"sxAct-ead.4","type":"parent-child"}
+{"created_at":"2026-03-10T17:26:11Z","created_by":"sashakile","depends_on_id":"sxAct-ead","issue_id":"sxAct-ead.5","type":"parent-child"}
+{"created_at":"2026-03-10T17:26:16Z","created_by":"sashakile","depends_on_id":"sxAct-ead","issue_id":"sxAct-ead.6","type":"parent-child"}
+{"created_at":"2026-03-10T17:26:21Z","created_by":"sashakile","depends_on_id":"sxAct-ead","issue_id":"sxAct-ead.7","type":"parent-child"}
+{"created_at":"2026-03-10T17:26:26Z","created_by":"sashakile","depends_on_id":"sxAct-ead","issue_id":"sxAct-ead.8","type":"parent-child"}
 {"created_at":"2026-03-09T17:10:38Z","created_by":"sashakile","depends_on_id":"sxAct-00d","issue_id":"sxAct-eex","type":"blocks"}
 {"created_at":"2026-03-09T17:06:27Z","created_by":"sashakile","depends_on_id":"sxAct-l1w","issue_id":"sxAct-eex","type":"discovered-from"}
 {"created_at":"2026-03-09T17:45:30Z","created_by":"sashakile","depends_on_id":"sxAct-3et","issue_id":"sxAct-eig","type":"discovered-from"}

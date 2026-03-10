@@ -1,0 +1,227 @@
+# xtensor/ibp_vard.toml
+# Tests for Integration By Parts (IBP) and Variational Derivative (VarD) actions.
+# IBP integrates a Lagrangian term by parts w.r.t. a given covariant derivative.
+# VarD computes the Euler-Lagrange derivative w.r.t. a field.
+
+[meta]
+id              = "xtensor/ibp_vard"
+description     = "IBP and VarD: integration by parts and Euler-Lagrange derivative"
+tags            = ["xtensor", "ibp", "vard", "layer:1"]
+layer           = 1
+oracle_is_axiom = false
+
+# ---------------------------------------------------------------------------
+# Setup: 4D Lorentzian manifold with metric, CovD, and test fields.
+# ---------------------------------------------------------------------------
+
+[[setup]]
+action   = "DefManifold"
+store_as = "IBm4"
+[setup.args]
+name      = "IBm4"
+dimension = 4
+indices   = ["iba", "ibb", "ibc", "ibd", "ibe"]
+
+[[setup]]
+action   = "DefMetric"
+store_as = "IBg"
+[setup.args]
+signdet = -1
+metric  = "IBg[-iba,-ibb]"
+covd    = "IBD"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "IBphi"
+[setup.args]
+name     = "IBphi"
+indices  = []
+manifold = "IBm4"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "IBV"
+[setup.args]
+name     = "IBV"
+indices  = ["iba"]
+manifold = "IBm4"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "IBT"
+[setup.args]
+name     = "IBT"
+indices  = ["-iba", "-ibb"]
+manifold = "IBm4"
+symmetry = "Symmetric[{-iba,-ibb}]"
+
+# ---------------------------------------------------------------------------
+# IBP tests
+# ---------------------------------------------------------------------------
+
+# Test 1: Pure divergence IBD[-a][V^a] → 0 (total derivative, dropped)
+[[tests]]
+id              = "ibp_pure_div"
+description     = "IBP of pure divergence IBD[-iba][IBV[iba]] yields 0"
+oracle_is_axiom = true
+
+[[tests.operations]]
+action   = "IntegrateByParts"
+store_as = "result"
+[tests.operations.args]
+expression = "IBD[-iba][IBV[iba]]"
+covd       = "IBD"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === 0"
+message   = "Pure divergence should integrate to 0 via IBP"
+
+# ---------------------------------------------------------------------------
+
+# Test 2: phi * div(V) → IBP moves CovD onto phi
+[[tests]]
+id          = "ibp_scalar_times_div"
+description = "IBP of IBphi[] IBD[-iba][IBV[iba]] moves derivative onto phi"
+
+[[tests.operations]]
+action   = "IntegrateByParts"
+store_as = "result"
+[tests.operations.args]
+expression = "IBphi[] IBD[-iba][IBV[iba]]"
+covd       = "IBD"
+
+# ---------------------------------------------------------------------------
+
+# Test 3: V^a ∂_a phi → IBP moves derivative onto V
+[[tests]]
+id          = "ibp_vector_grad"
+description = "IBP of IBV[iba] IBD[-iba][IBphi[]] moves derivative onto V"
+
+[[tests.operations]]
+action   = "IntegrateByParts"
+store_as = "result"
+[tests.operations.args]
+expression = "IBV[iba] IBD[-iba][IBphi[]]"
+covd       = "IBD"
+
+# ---------------------------------------------------------------------------
+
+# Test 4: No CovD present — expression returned unchanged (after Simplify)
+[[tests]]
+id          = "ibp_unchanged_no_covd"
+description = "IBP of an expression with no CovD returns simplified form unchanged"
+
+[[tests.operations]]
+action   = "IntegrateByParts"
+store_as = "result"
+[tests.operations.args]
+expression = "IBV[iba] IBT[-iba,-ibb] IBg[iba,ibb]"
+covd       = "IBD"
+
+# ---------------------------------------------------------------------------
+# TotalDerivativeQ tests
+# ---------------------------------------------------------------------------
+
+# Test 5: TotalDerivativeQ of pure divergence → True
+[[tests]]
+id              = "total_div_q_true"
+description     = "TotalDerivativeQ returns True for a pure divergence"
+oracle_is_axiom = true
+
+[[tests.operations]]
+action   = "TotalDerivativeQ"
+store_as = "result"
+[tests.operations.args]
+expression = "IBD[-iba][IBV[iba]]"
+covd       = "IBD"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === True"
+message   = "IBD[-iba][IBV[iba]] should be a total derivative"
+
+# ---------------------------------------------------------------------------
+
+# Test 6: TotalDerivativeQ of phi * div(V) → False
+[[tests]]
+id              = "total_div_q_false"
+description     = "TotalDerivativeQ returns False for phi * div(V)"
+oracle_is_axiom = true
+
+[[tests.operations]]
+action   = "TotalDerivativeQ"
+store_as = "result"
+[tests.operations.args]
+expression = "IBphi[] IBD[-iba][IBV[iba]]"
+covd       = "IBD"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result === False"
+message   = "IBphi[] IBD[-iba][IBV[iba]] is not a total derivative"
+
+# ---------------------------------------------------------------------------
+# VarD tests
+# ---------------------------------------------------------------------------
+
+# Test 7: VarD of phi * RicciScalar → RicciScalar
+[[tests]]
+id          = "vard_direct_coupling"
+description = "VarD of IBphi[] RicciScalarIBD[] w.r.t. IBphi gives RicciScalarIBD[]"
+
+[[tests.operations]]
+action   = "VarD"
+store_as = "result"
+[tests.operations.args]
+expression = "IBphi[] RicciScalarIBD[]"
+field      = "IBphi"
+covd       = "IBD"
+
+# ---------------------------------------------------------------------------
+
+# Test 8: VarD of phi * div(V) w.r.t. phi → div(V)
+[[tests]]
+id          = "vard_field_times_div"
+description = "VarD of IBphi[] IBD[-iba][IBV[iba]] w.r.t. IBphi gives IBD[-iba][IBV[iba]]"
+
+[[tests.operations]]
+action   = "VarD"
+store_as = "result"
+[tests.operations.args]
+expression = "IBphi[] IBD[-iba][IBV[iba]]"
+field      = "IBphi"
+covd       = "IBD"
+
+# ---------------------------------------------------------------------------
+
+# Test 9: VarD of V^a ∂_a phi → -∂_a V^a (IBP moves derivative off phi)
+[[tests]]
+id          = "vard_grad_coupling"
+description = "VarD of IBV[iba] IBD[-iba][IBphi[]] w.r.t. IBphi gives -IBD[-iba][IBV[iba]]"
+
+[[tests.operations]]
+action   = "VarD"
+store_as = "result"
+[tests.operations.args]
+expression = "IBV[iba] IBD[-iba][IBphi[]]"
+field      = "IBphi"
+covd       = "IBD"
+
+# ---------------------------------------------------------------------------
+
+# Test 10: VarD of phi^2 → 2 phi
+[[tests]]
+id          = "vard_phi_squared"
+description = "VarD of IBphi[] IBphi[] w.r.t. IBphi gives 2 IBphi[]"
+
+[[tests.operations]]
+action   = "VarD"
+store_as = "result"
+[tests.operations.args]
+expression = "IBphi[] IBphi[]"
+field      = "IBphi"
+covd       = "IBD"
