@@ -82,7 +82,9 @@ For :NoSymmetry, empty.
 struct SymmetrySpec
     type::Symbol
     slots::Vector{Int}
+    partition::Vector{Int}  # non-empty for :YoungSymmetry only
 end
+SymmetrySpec(type::Symbol, slots::Vector{Int}) = SymmetrySpec(type, slots, Int[])
 
 """
 A fully defined tensor object.
@@ -260,6 +262,17 @@ function _parse_symmetry(
     sym_str::Union{String,Nothing}, slot_specs::Vector{IndexSpec}
 )::SymmetrySpec
     (isnothing(sym_str) || isempty(sym_str)) && return SymmetrySpec(:NoSymmetry, Int[])
+
+    # Young[{k1,k2,...}] — applies to all tensor slots in order
+    m_young = match(r"^Young\[\{([^}]*)\}\]$", sym_str)
+    if !isnothing(m_young)
+        partition = [parse(Int, strip(s)) for s in split(m_young.captures[1], ",")]
+        all_slots = collect(1:length(slot_specs))
+        sum(partition) == length(all_slots) || error(
+            "Young partition sum $(sum(partition)) ≠ tensor arity $(length(all_slots))"
+        )
+        return SymmetrySpec(:YoungSymmetry, all_slots, partition)
+    end
 
     m = match(r"^(Symmetric|Antisymmetric|RiemannSymmetric)\[\{([^}]*)\}\]$", sym_str)
     isnothing(m) && error("Cannot parse symmetry string: $sym_str")
@@ -1214,7 +1227,9 @@ function _canonicalize_term(term::TermAST)::Union{TermAST,Nothing}
             continue
         end
 
-        (canon_indices, factor_sign) = canonicalize_slots(current, sym.type, sym.slots)
+        (canon_indices, factor_sign) = canonicalize_slots(
+            current, sym.type, sym.slots, sym.partition
+        )
 
         if factor_sign == 0
             return nothing  # term is zero

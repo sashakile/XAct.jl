@@ -1,0 +1,11 @@
+{
+  "test_id": "young_sym2_sum_collapses",
+  "oracle_version": "julia-axiom",
+  "mathematica_version": "N/A",
+  "timestamp": "2026-03-10T15:08:08.929496+00:00",
+  "commands": "[julia-adapter]",
+  "raw_output": "True",
+  "normalized_output": "True",
+  "properties": {},
+  "hash": "sha256:7a834da09e03"
+}

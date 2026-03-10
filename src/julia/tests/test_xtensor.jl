@@ -341,4 +341,57 @@ using .XTensor
         twice = ToCanonical(once)
         @test once == twice
     end
+
+    @testset "YoungSymmetry — def_tensor! and ToCanonical" begin
+        reset_state!()
+        def_manifold!(:Ym4, 4, [:ya, :yb, :yc, :yd, :ye])
+
+        # --- Young {2}: symmetric on 2 slots ---
+        def_tensor!(:YT2, ["-ya", "-yb"], :Ym4; symmetry_str="Young[{2}]")
+        t2 = get_tensor(:YT2)
+        @test t2.symmetry.type == :YoungSymmetry
+        @test t2.symmetry.partition == [2]
+        @test t2.symmetry.slots == [1, 2]
+
+        # Row symmetry: T2[-b,-a] = T2[-a,-b]
+        @test ToCanonical("YT2[-yb,-ya]") == "YT2[-ya,-yb]"
+        # Already canonical
+        @test ToCanonical("YT2[-ya,-yb]") == "YT2[-ya,-yb]"
+        # Sum collapses
+        @test ToCanonical("YT2[-ya,-yb] + YT2[-yb,-ya]") == "2 YT2[-ya,-yb]"
+
+        # --- Young {1,1}: antisymmetric on 2 slots ---
+        def_tensor!(:YT11, ["-ya", "-yb"], :Ym4; symmetry_str="Young[{1,1}]")
+        t11 = get_tensor(:YT11)
+        @test t11.symmetry.type == :YoungSymmetry
+        @test t11.symmetry.partition == [1, 1]
+
+        # Col antisymmetry: T11[-b,-a] = -T11[-a,-b]
+        @test ToCanonical("YT11[-yb,-ya]") == "-YT11[-ya,-yb]"
+        # Repeated index → zero
+        @test ToCanonical("YT11[-ya,-ya]") == "0"
+        # Antisymmetric sum cancels
+        @test ToCanonical("YT11[-ya,-yb] + YT11[-yb,-ya]") == "0"
+
+        # --- Young {2,1}: hook shape on 3 slots ---
+        def_tensor!(:YT21, ["-ya", "-yb", "-yc"], :Ym4; symmetry_str="Young[{2,1}]")
+        t21 = get_tensor(:YT21)
+        @test t21.symmetry.type == :YoungSymmetry
+        @test t21.symmetry.partition == [2, 1]
+        @test t21.symmetry.slots == [1, 2, 3]
+
+        # Row symmetry (slots 1,2): T21[-b,-a,-c] = T21[-a,-b,-c]
+        @test ToCanonical("YT21[-yb,-ya,-yc]") == "YT21[-ya,-yb,-yc]"
+        # Col antisymmetry (slots 1,3): T21[-c,-b,-a] = -T21[-a,-b,-c]
+        @test ToCanonical("YT21[-yc,-yb,-ya]") == "-YT21[-ya,-yb,-yc]"
+        # Sum using row symmetry: T21[-a,-b,-c] + T21[-b,-a,-c] = 2 T21[-a,-b,-c]
+        @test ToCanonical("YT21[-ya,-yb,-yc] + YT21[-yb,-ya,-yc]") == "2 YT21[-ya,-yb,-yc]"
+        # Sum using col antisymmetry: T21[-a,-b,-c] + T21[-c,-b,-a] = 0
+        @test ToCanonical("YT21[-ya,-yb,-yc] + YT21[-yc,-yb,-ya]") == "0"
+
+        # --- Wrong partition sum raises error ---
+        @test_throws Exception def_tensor!(
+            :YTbad, ["-ya", "-yb"], :Ym4; symmetry_str="Young[{2,1}]"
+        )
+    end
 end

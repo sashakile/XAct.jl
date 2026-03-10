@@ -907,14 +907,79 @@ function _canonicalize_riemann(
 end
 
 """
-    canonicalize_slots(indices, sym_type, slots) → (Vector{String}, Int)
+    _canonicalize_young(indices, partition, slots) → (Vector{String}, Int)
+
+Canonicalize `indices` at `slots` under the Young symmetry group defined by `partition`.
+
+The Young symmetry group is {c·r : c ∈ col_group, r ∈ row_group} with sign = sgn(c).
+We enumerate all orbit elements and return the lexicographically minimal representative
+together with its sign s such that T[canonical] = s · T[original].
+"""
+function _canonicalize_young(
+    indices::Vector{String}, partition::Vector{Int}, slots::Vector{Int}
+)::Tuple{Vector{String},Int}
+    n = length(indices)
+    k = length(slots)
+    sum(partition) == k || error("Young partition sum $(sum(partition)) ≠ slot count $k")
+
+    tab = standard_tableau(partition, slots)
+
+    # If any column has repeated bare indices, the tensor is zero.
+    # (Antisymmetrization over identical indices vanishes.)
+    slot_vals = [indices[s] for s in slots]
+    slot_bare = [_bare_label(v) for v in slot_vals]
+    for col in _young_columns(tab)
+        col_bare = [slot_bare[findfirst(==(s), slots)] for s in col]
+        if length(unique(col_bare)) < length(col_bare)
+            return (String[], 0)
+        end
+    end
+
+    row_sgs = row_symmetry_sgs(tab, n)
+    col_sgs = col_antisymmetry_sgs(tab, n)
+
+    row_elems = _enumerate_group_elements(row_sgs)
+    col_elems = _enumerate_signed_group_elements(col_sgs)
+
+    best_bare = nothing
+    best_vals = nothing
+    best_sign = 1
+
+    for r in row_elems
+        for (c, c_sign) in col_elems
+            σ = compose(c, r)
+            σ_inv = inverse_perm(σ)
+            variant_vals = [indices[σ_inv[s]] for s in slots]
+            variant_bare = [_bare_label(v) for v in variant_vals]
+
+            if isnothing(best_bare) || variant_bare < best_bare
+                best_bare = variant_bare
+                best_vals = variant_vals
+                best_sign = c_sign
+            end
+        end
+    end
+
+    new_indices = copy(indices)
+    for (i, s) in enumerate(slots)
+        new_indices[s] = best_vals[i]
+    end
+    (new_indices, best_sign)
+end
+
+"""
+    canonicalize_slots(indices, sym_type, slots[, partition]) → (Vector{String}, Int)
 
 Apply symmetry canonicalization to `indices` at the given `slots`.
-sym_type: one of :Symmetric, :Antisymmetric, :RiemannSymmetric, :NoSymmetry
+sym_type: one of :Symmetric, :Antisymmetric, :RiemannSymmetric, :YoungSymmetry, :NoSymmetry
+For :YoungSymmetry, `partition` must be provided (e.g. [2,1]).
 Returns (new_indices, sign) where sign ∈ {-1, 0, +1}.
 """
 function canonicalize_slots(
-    indices::Vector{String}, sym_type::Symbol, slots::Vector{Int}
+    indices::Vector{String},
+    sym_type::Symbol,
+    slots::Vector{Int},
+    partition::Vector{Int}=Int[],
 )::Tuple{Vector{String},Int}
     if sym_type == :NoSymmetry || isempty(slots)
         return (indices, 1)
@@ -924,6 +989,8 @@ function canonicalize_slots(
         return _canonicalize_antisymmetric(indices, slots)
     elseif sym_type == :RiemannSymmetric
         return _canonicalize_riemann(indices, slots)
+    elseif sym_type == :YoungSymmetry
+        return _canonicalize_young(indices, partition, slots)
     else
         error("Unknown symmetry type: $sym_type")
     end
@@ -1851,6 +1918,23 @@ function standard_tableau(partition::Vector{Int}, indices::Vector{Int})::YoungTa
         offset += row_len
     end
     YoungTableau(copy(partition), filling)
+end
+
+"""
+    _young_columns(tab) → Vector{Vector{Int}}
+
+Return the columns of a YoungTableau as lists of slot positions.
+Column j contains tab.filling[i][j] for each row i that has ≥ j elements.
+"""
+function _young_columns(tab::YoungTableau)::Vector{Vector{Int}}
+    ncols = tab.partition[1]
+    cols = [Int[] for _ in 1:ncols]
+    for row in tab.filling
+        for (j, s) in enumerate(row)
+            push!(cols[j], s)
+        end
+    end
+    cols
 end
 
 """

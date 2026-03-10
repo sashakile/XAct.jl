@@ -1,0 +1,249 @@
+# xtensor/young_symmetry.toml
+# Layer 1 regression tests for Young-tableau symmetry in def_tensor! and ToCanonical.
+# Covers {2} (symmetric), {1,1} (antisymmetric), and {2,1} (hook) partitions.
+
+[meta]
+id              = "xtensor/young_symmetry"
+description     = "YoungSymmetry: def_tensor! accepts Young[{...}]; ToCanonical uses Young group"
+tags            = ["xtensor", "young", "canonicalization", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Setup: 4D manifold and Young-symmetric tensors
+# ---------------------------------------------------------------------------
+
+[[setup]]
+action   = "DefManifold"
+store_as = "Ywm"
+[setup.args]
+name      = "Ywm"
+dimension = 4
+indices   = ["ywa", "ywb", "ywc", "ywd"]
+
+[[setup]]
+action   = "DefTensor"
+store_as = "YwS2"
+[setup.args]
+name     = "YwS2"
+indices  = ["-ywa", "-ywb"]
+manifold = "Ywm"
+symmetry = "Young[{2}]"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "YwA11"
+[setup.args]
+name     = "YwA11"
+indices  = ["-ywa", "-ywb"]
+manifold = "Ywm"
+symmetry = "Young[{1,1}]"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "YwH21"
+[setup.args]
+name     = "YwH21"
+indices  = ["-ywa", "-ywb", "-ywc"]
+manifold = "Ywm"
+symmetry = "Young[{2,1}]"
+
+# ---------------------------------------------------------------------------
+# Tests: Young {2} — symmetric on 2 slots
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "young_sym2_swap"
+description = "Young {2}: T[-b,-a] = T[-a,-b] (row symmetry)"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "YwS2[-ywb,-ywa]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == YwS2[-ywa,-ywb]"
+message   = "Young {2}: slot swap should give same canonical form"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "young_sym2_sum_collapses"
+description = "Young {2}: T[-a,-b] + T[-b,-a] = 2 T[-a,-b]"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "YwS2[-ywa,-ywb] + YwS2[-ywb,-ywa]"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "twice"
+[tests.operations.args]
+expression = "2 YwS2[-ywa,-ywb]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == $twice"
+message   = "Young {2}: T + T_swapped should equal 2T"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+# Tests: Young {1,1} — antisymmetric on 2 slots
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "young_anti11_swap"
+description = "Young {1,1}: T[-b,-a] + T[-a,-b] = 0 (antisymmetric)"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "YwA11[-ywa,-ywb] + YwA11[-ywb,-ywa]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Young {1,1}: T + T_swapped should cancel"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "young_anti11_repeated"
+description = "Young {1,1}: repeated index gives 0"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "YwA11[-ywa,-ywa]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Young {1,1}: repeated index should vanish"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+# Tests: Young {2,1} — hook shape on 3 slots
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "young_hook21_row_symmetry"
+description = "Young {2,1}: T[-b,-a,-c] = T[-a,-b,-c] (row symmetry in slots 1,2)"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "YwH21[-ywb,-ywa,-ywc]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == YwH21[-ywa,-ywb,-ywc]"
+message   = "Young {2,1}: row swap should give same canonical form"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "young_hook21_col_antisymmetry"
+description = "Young {2,1}: T[-c,-b,-a] = -T[-a,-b,-c] (col antisymmetry in slots 1,3)"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "lhs"
+[tests.operations.args]
+expression = "YwH21[-ywc,-ywb,-ywa]"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "rhs"
+[tests.operations.args]
+expression = "-YwH21[-ywa,-ywb,-ywc]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$lhs == $rhs"
+message   = "Young {2,1}: col swap should flip sign"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "young_hook21_row_sum"
+description = "Young {2,1}: T[-a,-b,-c] + T[-b,-a,-c] = 2 T[-a,-b,-c]"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "YwH21[-ywa,-ywb,-ywc] + YwH21[-ywb,-ywa,-ywc]"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "expected"
+[tests.operations.args]
+expression = "2 YwH21[-ywa,-ywb,-ywc]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == $expected"
+message   = "Young {2,1}: row-symmetric sum should give 2T"
+
+[tests.expected]
+is_zero         = false
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "young_hook21_col_sum_zero"
+description = "Young {2,1}: T[-a,-b,-c] + T[-c,-b,-a] = 0 (col antisymmetry cancels)"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "YwH21[-ywa,-ywb,-ywc] + YwH21[-ywc,-ywb,-ywa]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Young {2,1}: col-antisymmetric sum should vanish"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
