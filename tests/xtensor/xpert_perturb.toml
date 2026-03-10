@@ -1,0 +1,157 @@
+# xpert_perturb.toml - Tests for perturb() Leibniz expansion
+[meta]
+id              = "xtensor/xpert_perturb"
+description     = "xPert: perturb() Leibniz expansion rules"
+tags            = ["xtensor", "xpert", "perturbation", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Setup: 4D Lorentzian manifold, background metric, perturbation tensors
+# ---------------------------------------------------------------------------
+
+[[setup]]
+action   = "DefManifold"
+store_as = "Bxp"
+[setup.args]
+name      = "Bxp"
+dimension = 4
+indices   = ["bxpa", "bxpb", "bxpc", "bxpd"]
+
+[[setup]]
+action   = "DefMetric"
+store_as = "Cng"
+[setup.args]
+signdet = -1
+metric  = "Cng[-bxpa,-bxpb]"
+covd    = "Cnd"
+
+# First-order metric perturbation (symmetric rank-2)
+[[setup]]
+action   = "DefTensor"
+store_as = "Pertg1"
+[setup.args]
+name     = "Pertg1"
+indices  = ["-bxpa", "-bxpb"]
+manifold = "Bxp"
+symmetry = "Symmetric[{-bxpa,-bxpb}]"
+
+[[setup]]
+action   = "DefPerturbation"
+store_as = "Pertg1"
+[setup.args]
+tensor     = "Pertg1"
+background = "Cng"
+order      = 1
+
+# Second-order metric perturbation (symmetric rank-2)
+[[setup]]
+action   = "DefTensor"
+store_as = "Pertg2"
+[setup.args]
+name     = "Pertg2"
+indices  = ["-bxpa", "-bxpb"]
+manifold = "Bxp"
+symmetry = "Symmetric[{-bxpa,-bxpb}]"
+
+[[setup]]
+action   = "DefPerturbation"
+store_as = "Pertg2"
+[setup.args]
+tensor     = "Pertg2"
+background = "Cng"
+order      = 2
+
+# A second rank-2 background tensor for product / sum tests
+[[setup]]
+action   = "DefTensor"
+store_as = "Psi"
+[setup.args]
+name     = "Psi"
+indices  = ["-bxpa", "-bxpb"]
+manifold = "Bxp"
+symmetry = "Symmetric[{-bxpa,-bxpb}]"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "PertPsi1"
+[setup.args]
+name     = "PertPsi1"
+indices  = ["-bxpa", "-bxpb"]
+manifold = "Bxp"
+symmetry = "Symmetric[{-bxpa,-bxpb}]"
+
+[[setup]]
+action   = "DefPerturbation"
+store_as = "PertPsi1"
+[setup.args]
+tensor     = "PertPsi1"
+background = "Psi"
+order      = 1
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+# Test 1: perturb single tensor at order 1
+[[tests]]
+id          = "perturb_single_order1"
+description = "perturb(Cng, 1) returns the name of the registered first-order perturbation"
+
+[[tests.operations]]
+action = "Perturb"
+[tests.operations.args]
+expr  = "Cng"
+order = 1
+
+# ---------------------------------------------------------------------------
+
+# Test 2: perturb single tensor at order 2
+[[tests]]
+id          = "perturb_single_order2"
+description = "perturb(Cng, 2) returns the name of the registered second-order perturbation"
+
+[[tests.operations]]
+action = "Perturb"
+[tests.operations.args]
+expr  = "Cng"
+order = 2
+
+# ---------------------------------------------------------------------------
+
+# Test 3: perturb a second tensor at order 1
+[[tests]]
+id          = "perturb_psi_order1"
+description = "perturb(Psi, 1) returns the name of the registered Psi perturbation"
+
+[[tests.operations]]
+action = "Perturb"
+[tests.operations.args]
+expr  = "Psi"
+order = 1
+
+# ---------------------------------------------------------------------------
+
+# Test 4: Leibniz rule — sum of two tensors
+[[tests]]
+id          = "perturb_sum_leibniz"
+description = "perturb(Cng + Psi, 1) = perturb(Cng,1) + perturb(Psi,1)"
+
+[[tests.operations]]
+action = "Perturb"
+[tests.operations.args]
+expr  = "Cng + Psi"
+order = 1
+
+# ---------------------------------------------------------------------------
+
+# Test 5: Leibniz rule — product of two tensors (order 1)
+[[tests]]
+id          = "perturb_product_leibniz"
+description = "perturb(Cng Psi, 1) applies Leibniz: Pertg1 Psi + Cng PertPsi1"
+
+[[tests.operations]]
+action = "Perturb"
+[tests.operations.args]
+expr  = "Cng Psi"
+order = 1

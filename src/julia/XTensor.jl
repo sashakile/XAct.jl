@@ -1690,4 +1690,120 @@ function check_perturbation_order(tensor_name::AbstractString, order::Int)::Bool
     check_perturbation_order(Symbol(tensor_name), order)
 end
 
+# ============================================================
+# perturb() — Leibniz expansion of perturbations
+# ============================================================
+
+"""
+    perturb(tensor_name::Symbol, order::Int) → String
+
+Look up the registered perturbation tensor for `tensor_name` at the given
+perturbation order.  Returns the perturbation tensor name as a String, or
+throws an error if no such perturbation is registered.
+"""
+function perturb(tensor_name::Symbol, order::Int)::String
+    for (pname, p) in _perturbations
+        if p.background == tensor_name && p.order == order
+            return String(pname)
+        end
+    end
+    error("perturb: no order-$order perturbation registered for $tensor_name")
+end
+
+"""
+    perturb(expr::AbstractString, order::Int) → String
+
+Apply the Leibniz rule to expand perturbations of a tensor expression at
+the given order.
+
+## Supported forms
+
+  - Single tensor name  — looks up registered perturbation for that background.
+    Index decorations (e.g. `Cng[-a,-b]`) are stripped before lookup.
+  - Sum  `A + B`        — `perturb(A,n) + perturb(B,n)`.
+  - Difference `A - B`  — `perturb(A,n) - perturb(B,n)`.
+  - Product `A B` or `A * B` — first-order Leibniz:
+    `perturb(A,1) B + A perturb(B,1)`
+    For order > 1, throws "not yet implemented".
+  - Numeric coefficient `c A` — coefficient passes through unchanged.
+  - Factor with no registered perturbation — treated as background (variation = 0).
+"""
+function perturb(expr::AbstractString, order::Int)::String
+    s = strip(expr)
+
+    # ── 1. Sum / difference (split on " + " and " - ") ──────────────────────
+    plus_parts = split(s, " + ")
+    if length(plus_parts) > 1
+        perturbed = [perturb(strip(p), order) for p in plus_parts]
+        return join(perturbed, " + ")
+    end
+
+    minus_parts = split(s, " - ")
+    if length(minus_parts) > 1
+        result_parts = String[]
+        push!(result_parts, perturb(strip(minus_parts[1]), order))
+        for p in minus_parts[2:end]
+            push!(result_parts, perturb(strip(p), order))
+        end
+        return join(result_parts, " - ")
+    end
+
+    # ── 2. Product (space-separated or "*"-separated factors) ────────────────
+    s_norm = replace(s, " * " => " ")
+    factors = split(s_norm)
+
+    # Separate leading numeric coefficient (first factor only)
+    coeff = ""
+    tensor_factors = String[]
+    for (i, f) in enumerate(factors)
+        fs = String(f)
+        if i == 1 && (tryparse(Float64, fs) !== nothing || tryparse(Int, fs) !== nothing)
+            coeff = fs
+        else
+            push!(tensor_factors, fs)
+        end
+    end
+
+    if isempty(tensor_factors)
+        return "0"   # pure numeric — no variation
+    end
+
+    if length(tensor_factors) == 1
+        # Strip index decorations before registry lookup (e.g. "Cng[-a,-b]" → "Cng")
+        raw = tensor_factors[1]
+        bare = replace(raw, r"\[.*\]$" => "")
+        tname = Symbol(bare)
+        # If the factor is itself a registered perturbation, return it at its own
+        # order and 0 at any other order.
+        if haskey(_perturbations, tname)
+            p = _perturbations[tname]
+            result = p.order == order ? String(tname) : "0"
+            return coeff == "" ? result : "$coeff $result"
+        end
+        # Look up registered perturbation by background + order (throws if none)
+        perturbed_name = perturb(tname, order)
+        return coeff == "" ? perturbed_name : "$coeff $perturbed_name"
+    end
+
+    # Multiple tensor factors — first-order Leibniz rule only
+    order != 1 &&
+        error("perturb: order > 1 Leibniz expansion of products not yet implemented")
+
+    terms = String[]
+    for i in eachindex(tensor_factors)
+        # Only catch the specific "no perturbation registered" error; let
+        # genuine programming errors propagate.
+        try
+            pi = perturb(tensor_factors[i], 1)
+            others = [j == i ? pi : tensor_factors[j] for j in eachindex(tensor_factors)]
+            term = join(others, " ")
+            push!(terms, coeff == "" ? term : "$coeff $term")
+        catch e
+            e isa ErrorException || rethrow(e)
+            # Factor has no registered perturbation — its variation is 0; skip term
+        end
+    end
+    isempty(terms) ? "0" : join(terms, " + ")
+end
+
 end  # module XTensor

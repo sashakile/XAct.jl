@@ -94,6 +94,7 @@
         "CommuteCovDs",
         "DefPerturbation",
         "CheckMetricConsistency",
+        "Perturb",
         "Assert"
       ]
     },
@@ -110,6 +111,7 @@
         { "$ref": "#/$defs/args/CommuteCovDs" },
         { "$ref": "#/$defs/args/DefPerturbation" },
         { "$ref": "#/$defs/args/CheckMetricConsistency" },
+        { "$ref": "#/$defs/args/Perturb" },
         { "$ref": "#/$defs/args/Assert" }
       ]
     },
@@ -445,6 +447,23 @@
           "metric": {
             "description": "Name of the background metric tensor to check",
             "type": "string"
+          }
+        }
+      },
+      "Perturb": {
+        "description": "Arguments for Perturb action. Expands a tensor expression to its perturbation at the given order using the Leibniz rule.",
+        "type": "object",
+        "required": ["expr", "order"],
+        "additionalProperties": false,
+        "properties": {
+          "expr": {
+            "description": "Tensor expression to perturb (bare tensor names, sums, or products)",
+            "type": "string"
+          },
+          "order": {
+            "description": "Perturbation order (≥ 1)",
+            "type": "integer",
+            "minimum": 1
           }
         }
       },

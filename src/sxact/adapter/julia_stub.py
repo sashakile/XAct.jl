@@ -122,6 +122,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             "CommuteCovDs",
             "DefPerturbation",
             "CheckMetricConsistency",
+            "Perturb",
         }
     )
 
@@ -273,6 +274,8 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 return self._commute_covds(args)
             if action == "DefPerturbation":
                 return self._def_perturbation(ctx, args)
+            if action == "Perturb":
+                return self._perturb(args)
             if action == "CheckMetricConsistency":
                 return self._check_metric_consistency(args)
         except Exception as exc:
@@ -426,6 +429,13 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         # Bind the perturbation tensor name in Main as a Symbol (for PerturbationQ assertions)
         self._jl.seval(f"Main.eval(:(global {tensor} = :{tensor}))")
         return Result(status="ok", type="Handle", repr=tensor, normalized=tensor)
+
+    def _perturb(self, args: dict[str, Any]) -> Result:
+        expr = str(args["expr"])
+        order = int(args["order"])
+        result = self._jl.seval(f'XTensor.perturb("{_jl_escape(expr)}", {order})')
+        s = str(result)
+        return Result(status="ok", type="String", repr=s, normalized=s)
 
     def _check_metric_consistency(self, args: dict[str, Any]) -> Result:
         metric = str(args["metric"])

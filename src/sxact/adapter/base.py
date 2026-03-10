@@ -251,6 +251,7 @@ class TestAdapter(abc.ABC, Generic[ContextT]):
                 "Assert",
                 "DefPerturbation",
                 "CheckMetricConsistency",
+                "Perturb",
             }
         )
 
