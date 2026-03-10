@@ -252,6 +252,7 @@ class TestAdapter(abc.ABC, Generic[ContextT]):
                 "DefPerturbation",
                 "CheckMetricConsistency",
                 "Perturb",
+                "PerturbCurvature",
             }
         )
 

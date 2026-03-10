@@ -1849,4 +1849,352 @@ function Simplify(expression::AbstractString)::String
     current
 end
 
+# ============================================================
+# PerturbCurvature — first-order curvature perturbation formulas
+# ============================================================
+
+"""
+    perturb_curvature(covd_name, metric_pert_name; order=1) → Dict{String,String}
+
+Return the first-order perturbation formulas for the Riemann tensor, Ricci tensor,
+Ricci scalar, and Christoffel symbol perturbation for the metric associated with
+`covd_name`, using `metric_pert_name` as the first-order metric perturbation h_{ab}.
+
+The formulas are returned in the system's CovD string notation using the manifold's
+first four abstract index labels.  Index positions:
+a = idxs[1], b = idxs[2], c = idxs[3], d = idxs[4]
+
+## Standard GR perturbation theory (xPert conventions)
+
+First-order Christoffel perturbation:
+δΓ^a_{bc} = (1/2) g^{ad} (∇_b h_{cd} + ∇_c h_{bd} - ∇_d h_{bc})
+
+First-order Riemann perturbation (fully covariant):
+δR_{abcd} = ∇_c δΓ_{abd} - ∇_d δΓ_{abc}
+(with all indices lowered using the background metric)
+
+First-order Ricci perturbation:
+δR_{ab} = ∇_c δΓ^c_{ab} - ∇_b δΓ^c_{ac}
+= (1/2)(∇_c ∇_a h^c_b + ∇_c ∇_b h^c_a - □h_{ab} - ∇_a ∇_b h)
+
+First-order Ricci scalar perturbation:
+δR = g^{ab} δR_{ab} - R_{ab} h^{ab}
+
+The returned dict has keys:
+"Christoffel1" — δΓ expressed in CovD notation (mixed index)
+"Riemann1"     — δR_{abcd} in CovD notation
+"Ricci1"       — δR_{ab} in CovD notation
+"RicciScalar1" — δR string formula (contracted Ricci)
+
+All expressions use abstract index labels from the metric's manifold.
+"""
+function perturb_curvature(
+    covd_name::Symbol, metric_pert_name::Symbol; order::Int=1
+)::Dict{String,String}
+    order == 1 || error("perturb_curvature: only order=1 is implemented")
+
+    # Look up the metric
+    metric_obj = get(_metrics, covd_name, nothing)
+    isnothing(metric_obj) &&
+        error("perturb_curvature: no metric registered for covd $covd_name")
+
+    # Look up the perturbation tensor — it must be registered
+    haskey(_tensors, metric_pert_name) ||
+        error("perturb_curvature: perturbation tensor $metric_pert_name not registered")
+
+    # Fetch manifold and its index labels
+    manifold_sym = metric_obj.manifold
+    manifold_obj = get(_manifolds, manifold_sym, nothing)
+    isnothing(manifold_obj) && error("perturb_curvature: manifold $manifold_sym not found")
+
+    idxs = manifold_obj.index_labels
+    length(idxs) >= 4 ||
+        error("perturb_curvature: manifold needs ≥ 4 index labels, got $(length(idxs))")
+
+    # Short aliases for the abstract index labels (as strings).
+    # Free indices: a(1), b(2), c(3), d(4).
+    # Contraction dummy e: use 5th index if available, otherwise use the 4th
+    # (since d is only free in Riemann but not in Ricci/Christoffel, reusing it
+    # as a contraction dummy in those sub-expressions is valid).
+    a = string(idxs[1])
+    b = string(idxs[2])
+    c = string(idxs[3])
+    d = string(idxs[4])
+    # Dummy index for index contractions (e.g. in Christoffel, Ricci trace slot)
+    # Must not collide with free indices; use 5th label if available, else 4th.
+    e = length(idxs) >= 5 ? string(idxs[5]) : d
+
+    g = string(metric_obj.name)   # e.g. "Cng"
+    h = string(metric_pert_name)  # e.g. "Pertg1"
+    cd = string(covd_name)         # e.g. "Cnd"
+    ricci = "Ricci" * cd         # e.g. "RicciCnd"
+    rscalar = "RicciScalar" * cd
+
+    # ── Christoffel perturbation δΓ^a_{bc} ────────────────────────────────
+    # δΓ^a_{bc} = (1/2) g^{ae}(∇_b h_{ce} + ∇_c h_{be} - ∇_e h_{bc})
+    # Free indices: a (up), b (down), c (down); dummy: e.
+    christoffel1 = string(
+        "(1/2)*",
+        g,
+        "[",
+        a,
+        ",",
+        e,
+        "](",
+        cd,
+        "[-",
+        b,
+        "][",
+        h,
+        "[-",
+        c,
+        ",-",
+        e,
+        "]]",
+        " + ",
+        cd,
+        "[-",
+        c,
+        "][",
+        h,
+        "[-",
+        b,
+        ",-",
+        e,
+        "]]",
+        " - ",
+        cd,
+        "[-",
+        e,
+        "][",
+        h,
+        "[-",
+        b,
+        ",-",
+        c,
+        "]]",
+        ")",
+    )
+
+    # ── Riemann perturbation δR_{abcd} ────────────────────────────────────
+    # Palatini (linearized Riemann) formula — second-derivative form:
+    #   δR_{abcd} = (1/2)(∇_c ∇_a h_{bd} - ∇_c ∇_b h_{ad}
+    #                     - ∇_d ∇_a h_{bc} + ∇_d ∇_b h_{ac})
+    # Free indices: a,b (first pair), c,d (second pair) — all covariant.
+    # No dummy needed here.
+    riemann1 = string(
+        "(1/2)(",
+        cd,
+        "[-",
+        c,
+        "][",
+        cd,
+        "[-",
+        a,
+        "][",
+        h,
+        "[-",
+        b,
+        ",-",
+        d,
+        "]]]",
+        " - ",
+        cd,
+        "[-",
+        c,
+        "][",
+        cd,
+        "[-",
+        b,
+        "][",
+        h,
+        "[-",
+        a,
+        ",-",
+        d,
+        "]]]",
+        " - ",
+        cd,
+        "[-",
+        d,
+        "][",
+        cd,
+        "[-",
+        a,
+        "][",
+        h,
+        "[-",
+        b,
+        ",-",
+        c,
+        "]]]",
+        " + ",
+        cd,
+        "[-",
+        d,
+        "][",
+        cd,
+        "[-",
+        b,
+        "][",
+        h,
+        "[-",
+        a,
+        ",-",
+        c,
+        "]]]",
+        ")",
+    )
+
+    # ── Ricci perturbation δR_{ab} ────────────────────────────────────────
+    # de Donder / Lichnerowicz form (valid on any background):
+    #   δR_{ab} = (1/2)(∇^c ∇_a h_{bc} + ∇^c ∇_b h_{ac} - □h_{ab} - ∇_a ∇_b h)
+    # where h = g^{cd} h_{cd} and □ = g^{cd}∇_c∇_d.
+    # Written with explicit metric raising:
+    #   = (1/2)(g[c,e] cd[-e][cd[-a][h[-b,-c]]]
+    #         + g[c,e] cd[-e][cd[-b][h[-a,-c]]]
+    #         - g[c,e] cd[-c][cd[-e][h[-a,-b]]]
+    #         - cd[-a][cd[-b][g[c,e] h[-c,-e]]])
+    # Free indices: a,b. Dummies: c,e (c is free-slot dummy, e is raise dummy).
+    # For the box term and trace term we need two summation dummies.
+    # Use c and e where e = 5th index (or d if only 4 available).
+    ricci1 = string(
+        "(1/2)(",
+        g,
+        "[",
+        c,
+        ",",
+        e,
+        "] ",
+        cd,
+        "[-",
+        e,
+        "][",
+        cd,
+        "[-",
+        a,
+        "][",
+        h,
+        "[-",
+        b,
+        ",-",
+        c,
+        "]]]",
+        " + ",
+        g,
+        "[",
+        c,
+        ",",
+        e,
+        "] ",
+        cd,
+        "[-",
+        e,
+        "][",
+        cd,
+        "[-",
+        b,
+        "][",
+        h,
+        "[-",
+        a,
+        ",-",
+        c,
+        "]]]",
+        " - ",
+        g,
+        "[",
+        c,
+        ",",
+        e,
+        "] ",
+        cd,
+        "[-",
+        c,
+        "][",
+        cd,
+        "[-",
+        e,
+        "][",
+        h,
+        "[-",
+        a,
+        ",-",
+        b,
+        "]]]",
+        " - ",
+        cd,
+        "[-",
+        a,
+        "][",
+        cd,
+        "[-",
+        b,
+        "][",
+        g,
+        "[",
+        c,
+        ",",
+        e,
+        "] ",
+        h,
+        "[-",
+        c,
+        ",-",
+        e,
+        "]",
+        "]]",
+        ")",
+    )
+
+    # ── Ricci scalar perturbation δR ──────────────────────────────────────
+    # δR = g^{ab} δR_{ab} - R^{ab} h_{ab}
+    # g[a,b] * ricci1 gives g^{ab}δR_{ab} (ricci1 already carries the 1/2 factor).
+    # Background Ricci correction: R_{ac}g^{ab}h_b^c = R^{ab}h_{ab} (symmetric R,h).
+    # Free indices: none (scalar). Dummies: a,b,c.
+    ricci_scalar1 = string(
+        g,
+        "[",
+        a,
+        ",",
+        b,
+        "] ",
+        ricci1,
+        " - ",
+        ricci,
+        "[-",
+        a,
+        ",-",
+        c,
+        "] ",
+        g,
+        "[",
+        a,
+        ",",
+        b,
+        "] ",
+        h,
+        "[-",
+        b,
+        ",",
+        c,
+        "]",
+    )
+
+    Dict{String,String}(
+        "Christoffel1" => christoffel1,
+        "Riemann1" => riemann1,
+        "Ricci1" => ricci1,
+        "RicciScalar1" => ricci_scalar1,
+    )
+end
+
+function perturb_curvature(
+    covd_name::AbstractString, metric_pert_name::AbstractString; order::Int=1
+)::Dict{String,String}
+    perturb_curvature(Symbol(covd_name), Symbol(metric_pert_name); order=order)
+end
+
+export perturb_curvature
+
 end  # module XTensor

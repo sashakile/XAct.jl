@@ -1,0 +1,11 @@
+{
+  "test_id": "perturb_curvature_riemann",
+  "oracle_version": "julia-axiom",
+  "mathematica_version": "N/A",
+  "timestamp": "2026-03-10T18:46:58.866529+00:00",
+  "commands": "[julia-adapter]",
+  "raw_output": "(1/2)(Cnd[-bpcc][Cnd[-bpca][Pertg1[-bpcb,-bpcd]]] - Cnd[-bpcc][Cnd[-bpcb][Pertg1[-bpca,-bpcd]]] - Cnd[-bpcd][Cnd[-bpca][Pertg1[-bpcb,-bpcc]]] + Cnd[-bpcd][Cnd[-bpcb][Pertg1[-bpca,-bpcc]]])",
+  "normalized_output": "(1/2)(Cnd[-bpc$1][Cnd[-bpc$2][Pertg1[-bpc$3, -bpc$4]]] - Cnd[-bpc$1][Cnd[-bpc$3][Pertg1[-bpc$2, -bpc$4]]] - Cnd[-bpc$4][Cnd[-bpc$2][Pertg1[-bpc$3, -bpc$1]]] + Cnd[-bpc$4][Cnd[-bpc$3][Pertg1[-bpc$2, -bpc$1]]])",
+  "properties": {},
+  "hash": "sha256:8dec81b320d9"
+}

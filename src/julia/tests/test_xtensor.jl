@@ -420,6 +420,54 @@ using .XTensor
         @test ToCanonical("Psi[-ga,-ga]") == "0"
     end
 
+    @testset "perturb_curvature — first-order curvature perturbations" begin
+        reset_state!()
+        def_manifold!(:Bpc, 4, [:bpca, :bpcb, :bpcc, :bpcd])
+        def_metric!(-1, "Cng[-bpca,-bpcb]", :Cnd)
+        def_tensor!(
+            :Pertg1, ["-bpca", "-bpcb"], :Bpc; symmetry_str="Symmetric[{-bpca,-bpcb}]"
+        )
+        def_perturbation!(:Pertg1, :Cng, 1)
+
+        result = perturb_curvature(:Cnd, :Pertg1)
+
+        # Returns a Dict with the four expected keys
+        @test haskey(result, "Christoffel1")
+        @test haskey(result, "Riemann1")
+        @test haskey(result, "Ricci1")
+        @test haskey(result, "RicciScalar1")
+
+        # Each formula is non-empty
+        @test !isempty(result["Christoffel1"])
+        @test !isempty(result["Riemann1"])
+        @test !isempty(result["Ricci1"])
+        @test !isempty(result["RicciScalar1"])
+
+        # Christoffel formula uses the metric and CovD names
+        @test occursin("Cng", result["Christoffel1"])
+        @test occursin("Cnd", result["Christoffel1"])
+        @test occursin("Pertg1", result["Christoffel1"])
+
+        # Riemann formula uses CovD and perturbation tensor (no background Riemann needed)
+        @test occursin("Cnd", result["Riemann1"])
+        @test occursin("Pertg1", result["Riemann1"])
+
+        # Ricci formula uses the metric and CovD
+        @test occursin("Cng", result["Ricci1"])
+        @test occursin("Cnd", result["Ricci1"])
+        @test occursin("Pertg1", result["Ricci1"])
+
+        # RicciScalar formula references Ricci and metric
+        @test occursin("RicciCnd", result["RicciScalar1"])
+        @test occursin("Cng", result["RicciScalar1"])
+
+        # Error: unknown covd
+        @test_throws Exception perturb_curvature(:UnknownCovD, :Pertg1)
+
+        # Error: order > 1 not implemented
+        @test_throws Exception perturb_curvature(:Cnd, :Pertg1; order=2)
+    end
+
     @testset "Simplify — Contract+ToCanonical integration" begin
         reset_state!()
         def_manifold!(:Sm4, 4, [:sa, :sb, :sc, :sd])

@@ -1,0 +1,1 @@
+(1/2)(Cng[bpcc,bpcd] Cnd[-bpcd][Cnd[-bpca][Pertg1[-bpcb,-bpcc]]] + Cng[bpcc,bpcd] Cnd[-bpcd][Cnd[-bpcb][Pertg1[-bpca,-bpcc]]] - Cng[bpcc,bpcd] Cnd[-bpcc][Cnd[-bpcd][Pertg1[-bpca,-bpcb]]] - Cnd[-bpca][Cnd[-bpcb][Cng[bpcc,bpcd] Pertg1[-bpcc,-bpcd]]])

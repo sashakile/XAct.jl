@@ -1,0 +1,1 @@
+Cng[bpca,bpcb] (Cng[bpcc,bpcd] Cnd[-bpcd][Cnd[-bpca][Pertg1[-bpcb,-bpcc]]] + Cng[bpcc,bpcd] Cnd[-bpcd][Cnd[-bpcb][Pertg1[-bpca,-bpcc]]] - Cng[bpcc,bpcd] Cnd[-bpcc][Cnd[-bpcd][Pertg1[-bpca,-bpcb]]] - Cnd[-bpca][Cnd[-bpcb][Cng[bpcc,bpcd] Pertg1[-bpcc,-bpcd]]]) - 2 RicciCnd[-bpca,-bpcc] Cng[bpca,bpcb] Pertg1[-bpcb,bpcc]

@@ -1,0 +1,11 @@
+{
+  "test_id": "perturb_curvature_all",
+  "oracle_version": "julia-axiom",
+  "mathematica_version": "N/A",
+  "timestamp": "2026-03-10T18:46:58.866529+00:00",
+  "commands": "[julia-adapter]",
+  "raw_output": "Christoffel1: (1/2)*Cng[bpca,bpcd](Cnd[-bpcb][Pertg1[-bpcc,-bpcd]] + Cnd[-bpcc][Pertg1[-bpcb,-bpcd]] - Cnd[-bpcd][Pertg1[-bpcb,-bpcc]])\nRicci1: (1/2)(Cng[bpcc,bpcd] Cnd[-bpcd][Cnd[-bpca][Pertg1[-bpcb,-bpcc]]] + Cng[bpcc,bpcd] Cnd[-bpcd][Cnd[-bpcb][Pertg1[-bpca,-bpcc]]] - Cng[bpcc,bpcd] Cnd[-bpcc][Cnd[-bpcd][Pertg1[-bpca,-bpcb]]] - Cnd[-bpca][Cnd[-bpcb][Cng[bpcc,bpcd] Pertg1[-bpcc,-bpcd]]])\nRicciScalar1: Cng[bpca,bpcb] (1/2)(Cng[bpcc,bpcd] Cnd[-bpcd][Cnd[-bpca][Pertg1[-bpcb,-bpcc]]] + Cng[bpcc,bpcd] Cnd[-bpcd][Cnd[-bpcb][Pertg1[-bpca,-bpcc]]] - Cng[bpcc,bpcd] Cnd[-bpcc][Cnd[-bpcd][Pertg1[-bpca,-bpcb]]] - Cnd[-bpca][Cnd[-bpcb][Cng[bpcc,bpcd] Pertg1[-bpcc,-bpcd]]]) - RicciCnd[-bpca,-bpcc] Cng[bpca,bpcb] Pertg1[-bpcb,bpcc]\nRiemann1: (1/2)(Cnd[-bpcc][Cnd[-bpca][Pertg1[-bpcb,-bpcd]]] - Cnd[-bpcc][Cnd[-bpcb][Pertg1[-bpca,-bpcd]]] - Cnd[-bpcd][Cnd[-bpca][Pertg1[-bpcb,-bpcc]]] + Cnd[-bpcd][Cnd[-bpcb][Pertg1[-bpca,-bpcc]]])",
+  "normalized_output": "Christoffel1: (1/2)*Cng[bpca,bpcd](Cnd[-bpcb][Pertg1[-bpcc,-bpcd]] + Cnd[-bpcc][Pertg1[-bpcb,-bpcd]] - Cnd[-bpcd][Pertg1[-bpcb,-bpcc]])\nRicci1: (1/2)(Cng[bpcc,bpcd] Cnd[-bpcd][Cnd[-bpca][Pertg1[-bpcb,-bpcc]]] + Cng[bpcc,bpcd] Cnd[-bpcd][Cnd[-bpcb][Pertg1[-bpca,-bpcc]]] - Cng[bpcc,bpcd] Cnd[-bpcc][Cnd[-bpcd][Pertg1[-bpca,-bpcb]]] - Cnd[-bpca][Cnd[-bpcb][Cng[bpcc,bpcd] Pertg1[-bpcc,-bpcd]]])\nRicciScalar1: Cng[bpca,bpcb] (1/2)(Cng[bpcc,bpcd] Cnd[-bpcd][Cnd[-bpca][Pertg1[-bpcb,-bpcc]]] + Cng[bpcc,bpcd] Cnd[-bpcd][Cnd[-bpcb][Pertg1[-bpca,-bpcc]]] - Cng[bpcc,bpcd] Cnd[-bpcc][Cnd[-bpcd][Pertg1[-bpca,-bpcb]]] - Cnd[-bpca][Cnd[-bpcb][Cng[bpcc,bpcd] Pertg1[-bpcc,-bpcd]]]) - RicciCnd[-bpca,-bpcc] Cng[bpca,bpcb] Pertg1[-bpcb,bpcc]\nRiemann1: (1/2)(Cnd[-bpcc][Cnd[-bpca][Pertg1[-bpcb,-bpcd]]] - Cnd[-bpcc][Cnd[-bpcb][Pertg1[-bpca,-bpcd]]] - Cnd[-bpcd][Cnd[-bpca][Pertg1[-bpcb,-bpcc]]] + Cnd[-bpcd][Cnd[-bpcb][Pertg1[-bpca,-bpcc]]])",
+  "properties": {},
+  "hash": "sha256:f03f08212eaf"
+}

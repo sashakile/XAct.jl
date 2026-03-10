@@ -1,0 +1,152 @@
+# xtensor/pert_curvature.toml
+# Tests for PerturbCurvature action: first-order curvature perturbation formulas.
+#
+# The action returns symbolic string formulas for δΓ, δR_{abcd}, δR_{ab}, δR
+# in the system's CovD notation (abstract index algebra).
+#
+# Reference: Wald (1984) App. E; xPert paper (Brizuela, Martin-Garcia, Mena Marugan 2009).
+
+[meta]
+id              = "xtensor/pert_curvature"
+description     = "PerturbCurvature: first-order perturbations of Riemann, Ricci, and Ricci scalar"
+tags            = ["xtensor", "xpert", "perturbation", "curvature", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Setup: 4D Lorentzian manifold, background metric, first-order perturbation
+# ---------------------------------------------------------------------------
+
+[[setup]]
+action   = "DefManifold"
+store_as = "Bpc"
+[setup.args]
+name      = "Bpc"
+dimension = 4
+indices   = ["bpca", "bpcb", "bpcc", "bpcd"]
+
+[[setup]]
+action   = "DefMetric"
+store_as = "Cng"
+[setup.args]
+signdet = -1
+metric  = "Cng[-bpca,-bpcb]"
+covd    = "Cnd"
+
+# First-order metric perturbation h_{ab} (symmetric rank-2)
+[[setup]]
+action   = "DefTensor"
+store_as = "Pertg1"
+[setup.args]
+name     = "Pertg1"
+indices  = ["-bpca", "-bpcb"]
+manifold = "Bpc"
+symmetry = "Symmetric[{-bpca,-bpcb}]"
+
+[[setup]]
+action   = "DefPerturbation"
+store_as = "Pertg1"
+[setup.args]
+tensor     = "Pertg1"
+background = "Cng"
+order      = 1
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+# Test 1: PerturbCurvature returns a non-empty Christoffel formula
+[[tests]]
+id          = "perturb_curvature_christoffel"
+description = "PerturbCurvature returns a Christoffel perturbation formula for the metric"
+
+[[tests.operations]]
+action = "PerturbCurvature"
+[tests.operations.args]
+covd        = "Cnd"
+perturbation = "Pertg1"
+key         = "Christoffel1"
+
+# ---------------------------------------------------------------------------
+
+# Test 2: PerturbCurvature returns a non-empty Riemann formula
+[[tests]]
+id          = "perturb_curvature_riemann"
+description = "PerturbCurvature returns the first-order Riemann perturbation formula"
+
+[[tests.operations]]
+action = "PerturbCurvature"
+[tests.operations.args]
+covd        = "Cnd"
+perturbation = "Pertg1"
+key         = "Riemann1"
+
+# ---------------------------------------------------------------------------
+
+# Test 3: PerturbCurvature returns a non-empty Ricci formula
+[[tests]]
+id          = "perturb_curvature_ricci"
+description = "PerturbCurvature returns the first-order Ricci perturbation formula"
+
+[[tests.operations]]
+action = "PerturbCurvature"
+[tests.operations.args]
+covd        = "Cnd"
+perturbation = "Pertg1"
+key         = "Ricci1"
+
+# ---------------------------------------------------------------------------
+
+# Test 4: PerturbCurvature returns a non-empty Ricci scalar formula
+[[tests]]
+id          = "perturb_curvature_ricci_scalar"
+description = "PerturbCurvature returns the first-order Ricci scalar perturbation formula"
+
+[[tests.operations]]
+action = "PerturbCurvature"
+[tests.operations.args]
+covd        = "Cnd"
+perturbation = "Pertg1"
+key         = "RicciScalar1"
+
+# ---------------------------------------------------------------------------
+
+# Test 5: PerturbCurvature returns all formulas when no key is specified
+[[tests]]
+id          = "perturb_curvature_all"
+description = "PerturbCurvature without key returns all four formula strings"
+
+[[tests.operations]]
+action = "PerturbCurvature"
+[tests.operations.args]
+covd        = "Cnd"
+perturbation = "Pertg1"
+
+# ---------------------------------------------------------------------------
+
+# Test 6: Riemann formula uses the manifold's abstract index labels
+[[tests]]
+id          = "perturb_curvature_riemann_uses_metric_indices"
+description = "Riemann formula references the CovD name (Cnd) and perturbation tensor (Pertg1)"
+
+[[tests.operations]]
+action = "PerturbCurvature"
+[tests.operations.args]
+covd        = "Cnd"
+perturbation = "Pertg1"
+key         = "Riemann1"
+
+# ---------------------------------------------------------------------------
+
+# Test 7: Christoffel formula is antisymmetric in exchange of b,c
+#   δΓ^a_{bc} has the same free indices as a Christoffel symbol
+[[tests]]
+id          = "perturb_curvature_christoffel_symmetric"
+description = "Christoffel perturbation formula contains metric g and perturbation h with CovD"
+
+[[tests.operations]]
+action = "PerturbCurvature"
+[tests.operations.args]
+covd        = "Cnd"
+perturbation = "Pertg1"
+key         = "Christoffel1"

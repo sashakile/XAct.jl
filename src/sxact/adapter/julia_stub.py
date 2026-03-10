@@ -99,6 +99,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             "DefPerturbation",
             "CheckMetricConsistency",
             "Perturb",
+            "PerturbCurvature",
             "Simplify",
         }
     )
@@ -225,6 +226,8 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 return self._check_metric_consistency(args)
             if action == "Simplify":
                 return self._simplify(args)
+            if action == "PerturbCurvature":
+                return self._perturb_curvature(args)
         except Exception as exc:
             return Result(
                 status="error", type="", repr="", normalized="", error=str(exc)
@@ -395,6 +398,42 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         result = self._jl.seval(f'XTensor.Simplify("{expr}")')
         s = str(result)
         return Result(status="ok", type="String", repr=s, normalized=s)
+
+    def _perturb_curvature(self, args: dict[str, Any]) -> Result:
+        """Dispatch PerturbCurvature to Julia XTensor.perturb_curvature().
+
+        Args:
+            covd        — name of the covariant derivative (identifies the metric)
+            perturbation — name of the first-order metric perturbation tensor
+            order       — perturbation order (default: 1)
+            key         — which formula to return: "Christoffel1", "Riemann1",
+                          "Ricci1", or "RicciScalar1" (default: all as JSON)
+
+        Returns a Result whose repr is the requested formula string (or a
+        JSON-like dict repr when no key is specified).
+        """
+        covd = str(args["covd"])
+        perturbation = str(args["perturbation"])
+        order = int(args.get("order", 1))
+        key = args.get("key")
+
+        result = self._jl.seval(
+            f"XTensor.perturb_curvature(:{covd}, :{perturbation}; order={order})"
+        )
+        # result is a Julia Dict{String,String}; convert to Python dict
+        jl_dict: dict[str, str] = {str(k): str(v) for k, v in result.items()}
+
+        if key is not None:
+            key = str(key)
+            formula = jl_dict.get(key, "")
+            return Result(
+                status="ok", type="Expr", repr=formula, normalized=_normalize(formula)
+            )
+
+        # Return all formulas sorted by key, one per line (deterministic repr)
+        lines = [f"{k}: {v}" for k, v in sorted(jl_dict.items())]
+        raw = "\n".join(lines)
+        return Result(status="ok", type="Dict", repr=raw, normalized=raw)
 
     def _execute_expr(self, wolfram_expr: str) -> Result:
         julia_expr = _wl_to_jl(wolfram_expr)

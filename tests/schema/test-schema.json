@@ -95,6 +95,7 @@
         "DefPerturbation",
         "CheckMetricConsistency",
         "Perturb",
+        "PerturbCurvature",
         "Assert"
       ]
     },
@@ -112,6 +113,7 @@
         { "$ref": "#/$defs/args/DefPerturbation" },
         { "$ref": "#/$defs/args/CheckMetricConsistency" },
         { "$ref": "#/$defs/args/Perturb" },
+        { "$ref": "#/$defs/args/PerturbCurvature" },
         { "$ref": "#/$defs/args/Assert" }
       ]
     },
@@ -464,6 +466,33 @@
             "description": "Perturbation order (≥ 1)",
             "type": "integer",
             "minimum": 1
+          }
+        }
+      },
+      "PerturbCurvature": {
+        "description": "Arguments for PerturbCurvature action. Returns first-order curvature perturbation formulas for a given metric and metric perturbation tensor.",
+        "type": "object",
+        "required": ["covd", "perturbation"],
+        "additionalProperties": false,
+        "properties": {
+          "covd": {
+            "description": "Name of the covariant derivative operator identifying the background metric, e.g. 'Cnd'",
+            "type": "string"
+          },
+          "perturbation": {
+            "description": "Name of the first-order metric perturbation tensor h_{ab}, e.g. 'Pertg1'",
+            "type": "string"
+          },
+          "order": {
+            "description": "Perturbation order (currently only 1 is supported)",
+            "type": "integer",
+            "minimum": 1,
+            "default": 1
+          },
+          "key": {
+            "description": "Which formula to return: 'Christoffel1', 'Riemann1', 'Ricci1', or 'RicciScalar1'. When omitted, all formulas are returned.",
+            "type": "string",
+            "enum": ["Christoffel1", "Riemann1", "Ricci1", "RicciScalar1"]
           }
         }
       },

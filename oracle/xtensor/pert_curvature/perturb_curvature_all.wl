@@ -1,0 +1,4 @@
+Christoffel1: (1/2)*Cng[bpca,bpcd](Cnd[-bpcb][Pertg1[-bpcc,-bpcd]] + Cnd[-bpcc][Pertg1[-bpcb,-bpcd]] - Cnd[-bpcd][Pertg1[-bpcb,-bpcc]])
+Ricci1: (1/2)(Cng[bpcc,bpcd] Cnd[-bpcd][Cnd[-bpca][Pertg1[-bpcb,-bpcc]]] + Cng[bpcc,bpcd] Cnd[-bpcd][Cnd[-bpcb][Pertg1[-bpca,-bpcc]]] - Cng[bpcc,bpcd] Cnd[-bpcc][Cnd[-bpcd][Pertg1[-bpca,-bpcb]]] - Cnd[-bpca][Cnd[-bpcb][Cng[bpcc,bpcd] Pertg1[-bpcc,-bpcd]]])
+RicciScalar1: Cng[bpca,bpcb] (Cng[bpcc,bpcd] Cnd[-bpcd][Cnd[-bpca][Pertg1[-bpcb,-bpcc]]] + Cng[bpcc,bpcd] Cnd[-bpcd][Cnd[-bpcb][Pertg1[-bpca,-bpcc]]] - Cng[bpcc,bpcd] Cnd[-bpcc][Cnd[-bpcd][Pertg1[-bpca,-bpcb]]] - Cnd[-bpca][Cnd[-bpcb][Cng[bpcc,bpcd] Pertg1[-bpcc,-bpcd]]]) - 2 RicciCnd[-bpca,-bpcc] Cng[bpca,bpcb] Pertg1[-bpcb,bpcc]
+Riemann1: (1/2)(Cnd[-bpcc][Cnd[-bpca][Pertg1[-bpcb,-bpcd]]] - Cnd[-bpcc][Cnd[-bpcb][Pertg1[-bpca,-bpcd]]] - Cnd[-bpcd][Cnd[-bpca][Pertg1[-bpcb,-bpcc]]] + Cnd[-bpcd][Cnd[-bpcb][Pertg1[-bpca,-bpcc]]])
