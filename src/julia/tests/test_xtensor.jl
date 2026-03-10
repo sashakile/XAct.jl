@@ -419,4 +419,28 @@ using .XTensor
         # Repeated index → 0
         @test ToCanonical("Psi[-ga,-ga]") == "0"
     end
+
+    @testset "Simplify — Contract+ToCanonical integration" begin
+        reset_state!()
+        def_manifold!(:Sm4, 4, [:sa, :sb, :sc, :sd])
+        def_metric!(1, "Sg[-sa,-sb]", :SgD)
+        def_tensor!(:Sv, ["-sa"], :Sm4)
+
+        # Metric self-trace: g^{ab}g_{ab} = 4 (dimension)
+        @test Simplify("Sg[sa,sb] Sg[-sa,-sb]") == "4"
+
+        # Simplify also canonicalizes: swap indices on symmetric metric
+        @test Simplify("Sg[-sb,-sa]") == "Sg[-sa,-sb]"
+
+        # Raise then canonicalize: g^{ab} v_b → v^a, then canonical form
+        @test Simplify("Sg[sa,sb] Sv[-sb]") == "Sv[sa]"
+
+        # Pure scalar: already zero
+        @test Simplify("0") == "0"
+
+        # Idempotency: applying Simplify twice gives the same result
+        let once = Simplify("Sg[sa,sb] Sg[-sa,-sb]")
+            @test Simplify(once) == once
+        end
+    end
 end

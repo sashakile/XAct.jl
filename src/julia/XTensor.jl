@@ -1284,27 +1284,13 @@ function _serialize(
         else
             "($(numerator(abs_c))/$(denominator(abs_c)))"
         end
+        # mono is empty for pure-scalar terms (no tensor factors)
+        mono_part = isempty(mono) ? abs_str : (abs_c == 1 ? mono : abs_str * " " * mono)
         if first
-            if c == 1
-                print(result, mono)
-            elseif c == -1
-                print(result, "-", mono)
-            elseif sign_c > 0
-                print(result, abs_str, " ", mono)
-            else
-                print(result, "-", abs_str, " ", mono)
-            end
+            print(result, sign_c > 0 ? mono_part : "-" * mono_part)
             first = false
         else
-            if c == 1
-                print(result, " + ", mono)
-            elseif c == -1
-                print(result, " - ", mono)
-            elseif sign_c > 0
-                print(result, " + ", abs_str, " ", mono)
-            else
-                print(result, " - ", abs_str, " ", mono)
-            end
+            print(result, sign_c > 0 ? " + " * mono_part : " - " * mono_part)
         end
     end
 
@@ -1838,23 +1824,29 @@ end
 
 Algebraic simplification of a tensor expression.
 
-Applies ToCanonical, which provides:
+Iterates `Contract` followed by `ToCanonical` until the expression stops
+changing (convergence), providing:
 
+  - Metric contraction (index raising/lowering, self-trace → dimension)
+  - Weyl-tracelessness and Einstein-trace physics rules
   - Index canonicalization and sign normalization
   - Like-term collection (sum simplification)
   - Bianchi identity reduction
   - Einstein tensor expansion
 
-**Note:** Metric self-trace (`g^{ab}g_{ab} = n`) requires a preceding
-`Contract` call, which performs the contraction and returns the numeric
-scalar. `Simplify` then passes that scalar through `ToCanonical` unchanged.
-Calling `Simplify` alone on an uncontracted metric product does **not**
-evaluate the trace.
+For example, `g^{ab}g_{ab}` is reduced to `n` (the manifold dimension) in
+a single pass without requiring a prior `Contract` call.
 """
 function Simplify(expression::AbstractString)::String
-    # ToCanonical already handles: index canonicalization, like-term collection,
-    # Bianchi identity, and Einstein expansion.
-    ToCanonical(expression)
+    current = strip(expression)
+    max_iters = 20
+    for _ in 1:max_iters
+        contracted = Contract(current)
+        canonical = ToCanonical(contracted)
+        canonical == current && return canonical  # full pass produced no change → converged
+        current = canonical
+    end
+    current
 end
 
 end  # module XTensor

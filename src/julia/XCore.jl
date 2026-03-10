@@ -67,6 +67,7 @@ export xEvaluateAt, XHold
 # 10. Symbol registry and validation
 export ValidateSymbol, FindSymbols
 export register_symbol
+export reset_core!
 export xPermNames, xTensorNames, xCoreNames
 export xTableauNames,
     xCobaNames, InvarNames, HarmonicsNames, xPertNames, SpinorsNames, EMNames
@@ -605,6 +606,28 @@ FindSymbols(s::Symbol) = [s]
 FindSymbols(e::Expr) = unique(vcat(FindSymbols.(e.args)...))
 FindSymbols(v::Union{AbstractVector,Tuple}) = unique(vcat(FindSymbols.(v)...))
 FindSymbols(_) = Symbol[]
+
+"""
+    reset_core!()
+
+Empty the symbol registry and all name lists.
+"""
+function reset_core!()
+    empty!(_symbol_registry)
+    empty!(_upvalue_store)
+    empty!(_xtensions)
+    empty!(xPermNames)
+    empty!(xTensorNames)
+    empty!(xCoreNames)
+    empty!(xTableauNames)
+    empty!(xCobaNames)
+    empty!(InvarNames)
+    empty!(HarmonicsNames)
+    empty!(xPertNames)
+    empty!(SpinorsNames)
+    empty!(EMNames)
+    nothing
+end
 
 # ============================================================
 # 11. Misc

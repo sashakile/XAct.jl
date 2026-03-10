@@ -14,8 +14,6 @@ Contract, SignDetOfMetric, Simplify) are dispatched to the Julia XTensor module.
 from __future__ import annotations
 
 import re
-import threading
-from pathlib import Path
 from typing import Any, Literal as _Literal
 
 from sxact.adapter.base import (
@@ -30,32 +28,8 @@ from sxact.oracle.result import Result
 
 
 # ---------------------------------------------------------------------------
-# XTensor lazy loader
+# Helpers
 # ---------------------------------------------------------------------------
-
-_xtensor_lock = threading.Lock()
-_xtensor_loaded = False
-
-
-def _get_xtensor(jl: Any) -> None:
-    """Load XPerm.jl and XTensor.jl into Julia (idempotent)."""
-    global _xtensor_loaded
-    if _xtensor_loaded:
-        return
-    with _xtensor_lock:
-        if not _xtensor_loaded:
-            # src/sxact/adapter/julia_stub.py → parents[2] = src/ → src/julia/
-            julia_dir = (Path(__file__).parents[2] / "julia").resolve()
-            xtensor_path = julia_dir / "XTensor.jl"
-            if not xtensor_path.exists():
-                raise FileNotFoundError(f"XTensor.jl not found at {xtensor_path}")
-            jl.seval(f'include("{xtensor_path}")')
-            # `using .XTensor` imports all XTensor exports into Main scope
-            jl.seval("using .XTensor")
-            # Bring XPerm WL compat functions into Main scope
-            jl.seval("using .XTensor: XPerm")  # expose XPerm module in Main
-            jl.seval("using .XPerm")  # expose XPerm exports in Main
-            _xtensor_loaded = True
 
 
 def _jl_escape(s: str) -> str:
@@ -133,21 +107,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
     _DEFERRED_ACTIONS: frozenset[str] = frozenset()
 
     # XCore module-level mutable state to reset on teardown
-    _RESET_STMTS = [
-        "empty!(XCore._symbol_registry)",
-        "empty!(XCore._upvalue_store)",
-        "empty!(XCore._xtensions)",
-        "empty!(XCore.xPermNames)",
-        "empty!(XCore.xTensorNames)",
-        "empty!(XCore.xCoreNames)",
-        "empty!(XCore.xTableauNames)",
-        "empty!(XCore.xCobaNames)",
-        "empty!(XCore.InvarNames)",
-        "empty!(XCore.HarmonicsNames)",
-        "empty!(XCore.xPertNames)",
-        "empty!(XCore.SpinorsNames)",
-        "empty!(XCore.EMNames)",
-    ]
+    _RESET_STMTS = ["xAct.reset_state!()"]
 
     def __init__(self) -> None:
         self._jl: Any = None
@@ -187,12 +147,6 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 self._jl.seval(stmt)
             except Exception:
                 pass  # teardown must not raise
-        # Reset XTensor state if loaded
-        if _xtensor_loaded:
-            try:
-                self._jl.seval("XTensor.reset_state!()")
-            except Exception:
-                pass
 
     # ------------------------------------------------------------------
     # Execution
@@ -212,7 +166,6 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             )
 
         self._ensure_ready()
-        _get_xtensor(self._jl)
 
         if action in self._XTENSOR_ACTIONS:
             return self._execute_xtensor(ctx, action, args)
@@ -251,17 +204,6 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         self, ctx: _JuliaContext, action: str, args: dict[str, Any]
     ) -> Result:
         """Dispatch xTensor actions to Julia XTensor module."""
-        try:
-            _get_xtensor(self._jl)
-        except Exception as exc:
-            return Result(
-                status="error",
-                type="",
-                repr="",
-                normalized="",
-                error=f"XTensor load failed: {exc}",
-            )
-
         try:
             if action == "DefManifold":
                 return self._def_manifold(ctx, args)

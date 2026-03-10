@@ -42,17 +42,17 @@ def _init_julia() -> None:
 
     _jl = juliacall.Main
 
-    # XCore.jl lives at src/julia/XCore.jl relative to the repo root.
+    # xAct.jl lives at src/julia/xAct.jl relative to the repo root.
     # From this file: src/sxact/xcore/_runtime.py → go up 3 levels → src/
-    # then into julia/XCore.jl.
-    xcore_path = (Path(__file__).parent.parent.parent / "julia" / "XCore.jl").resolve()
+    # then into julia/xAct.jl.
+    xact_path = (Path(__file__).parent.parent.parent / "julia" / "xAct.jl").resolve()
 
-    if not xcore_path.exists():
+    if not xact_path.exists():
         raise FileNotFoundError(
-            f"XCore.jl not found at {xcore_path}. "
+            f"xAct.jl not found at {xact_path}. "
             "Ensure the sxAct repo structure is intact."
         )
 
-    _jl.seval(f'include("{xcore_path}")')
-    _jl.seval("using .XCore")
-    _xcore = _jl.XCore
+    _jl.seval(f'include("{xact_path}")')
+    _jl.seval("using .xAct")
+    _xcore = _jl.xAct
