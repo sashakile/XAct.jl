@@ -71,12 +71,15 @@ def _parse_symmetry(sym_str: str) -> "_Symmetry | None":
     """Extract symmetry type from xAct symmetry string.
 
     Returns 'Symmetric', 'Antisymmetric', or None.
+    GradedSymmetric maps to 'Antisymmetric' for Tier 3 numeric array generation.
     """
     if not sym_str:
         return None
     if sym_str.startswith("Symmetric"):
         return "Symmetric"
     if sym_str.startswith("Antisymmetric"):
+        return "Antisymmetric"
+    if sym_str.startswith("GradedSymmetric"):
         return "Antisymmetric"
     return None
 

@@ -394,4 +394,29 @@ using .XTensor
             :YTbad, ["-ya", "-yb"], :Ym4; symmetry_str="Young[{2,1}]"
         )
     end
+
+    @testset "GradedSymmetric — FermionicQ and ToCanonical" begin
+        reset_state!()
+        def_manifold!(:Gm4, 4, [:ga, :gb, :gc, :gd])
+
+        # Fermionic rank-2 tensor
+        def_tensor!(:Psi, ["-ga", "-gb"], :Gm4; symmetry_str="GradedSymmetric[{-ga,-gb}]")
+
+        # FermionicQ predicate
+        @test FermionicQ(:Psi) == true
+        @test FermionicQ(:Gm4) == false   # manifold is not a tensor
+        @test FermionicQ(:Unknown) == false
+
+        # Still recognised as a tensor
+        @test TensorQ(:Psi) == true
+
+        # Canonicalization: Psi[-b,-a] = -Psi[-a,-b]
+        @test ToCanonical("Psi[-gb,-ga]") == "-Psi[-ga,-gb]"
+
+        # Sum T[a,b] + T[b,a] = 0
+        @test ToCanonical("Psi[-ga,-gb] + Psi[-gb,-ga]") == "0"
+
+        # Repeated index → 0
+        @test ToCanonical("Psi[-ga,-ga]") == "0"
+    end
 end

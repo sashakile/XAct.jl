@@ -35,7 +35,7 @@ export get_manifold, get_tensor, get_vbundle, get_metric
 export list_manifolds, list_tensors, list_vbundles
 
 # Query predicates (Wolfram-named, used by _wl_to_jl translator)
-export ManifoldQ, TensorQ, VBundleQ, MetricQ, CovDQ, PerturbationQ
+export ManifoldQ, TensorQ, VBundleQ, MetricQ, CovDQ, PerturbationQ, FermionicQ
 export Dimension, IndicesOfVBundle, SlotsOfTensor
 export MemberQ
 
@@ -74,7 +74,7 @@ end
 
 """
 Describes the permutation symmetry of a tensor's slot group.
-type  — one of: :Symmetric, :Antisymmetric, :RiemannSymmetric, :NoSymmetry
+type  — one of: :Symmetric, :Antisymmetric, :GradedSymmetric, :RiemannSymmetric, :YoungSymmetry, :NoSymmetry
 slots — 1-indexed positions (within this tensor's slot list) that the symmetry acts on.
 For :RiemannSymmetric, exactly 4 elements.
 For :NoSymmetry, empty.
@@ -191,6 +191,11 @@ CovDQ(s::Symbol) = haskey(_metrics, s)
 CovDQ(s::AbstractString) = CovDQ(Symbol(s))
 PerturbationQ(s::Symbol) = haskey(_perturbations, s)
 PerturbationQ(s::AbstractString) = PerturbationQ(Symbol(s))
+FermionicQ(s::Symbol) = begin
+    t = get(_tensors, s, nothing)
+    !isnothing(t) && t.symmetry.type == :GradedSymmetric
+end
+FermionicQ(s::AbstractString) = FermionicQ(Symbol(s))
 
 function Dimension(s::Symbol)
     m = get(_manifolds, s, nothing)
@@ -274,7 +279,10 @@ function _parse_symmetry(
         return SymmetrySpec(:YoungSymmetry, all_slots, partition)
     end
 
-    m = match(r"^(Symmetric|Antisymmetric|RiemannSymmetric)\[\{([^}]*)\}\]$", sym_str)
+    m = match(
+        r"^(Symmetric|Antisymmetric|GradedSymmetric|RiemannSymmetric)\[\{([^}]*)\}\]$",
+        sym_str,
+    )
     isnothing(m) && error("Cannot parse symmetry string: $sym_str")
 
     type_str = m.captures[1]

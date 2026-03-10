@@ -987,7 +987,7 @@ end
     canonicalize_slots(indices, sym_type, slots[, partition]) → (Vector{String}, Int)
 
 Apply symmetry canonicalization to `indices` at the given `slots`.
-sym_type: one of :Symmetric, :Antisymmetric, :RiemannSymmetric, :YoungSymmetry, :NoSymmetry
+sym_type: one of :Symmetric, :Antisymmetric, :GradedSymmetric, :RiemannSymmetric, :YoungSymmetry, :NoSymmetry
 For :YoungSymmetry, `partition` must be provided (e.g. [2,1]).
 Returns (new_indices, sign) where sign ∈ {-1, 0, +1}.
 """
@@ -1001,7 +1001,7 @@ function canonicalize_slots(
         return (indices, 1)
     elseif sym_type == :Symmetric
         return _canonicalize_symmetric(indices, slots)
-    elseif sym_type == :Antisymmetric
+    elseif sym_type == :Antisymmetric || sym_type == :GradedSymmetric
         return _canonicalize_antisymmetric(indices, slots)
     elseif sym_type == :RiemannSymmetric
         return _canonicalize_riemann(indices, slots)

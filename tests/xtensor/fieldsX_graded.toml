@@ -1,0 +1,137 @@
+# xtensor/fieldsX_graded.toml
+# Layer 1 regression tests for GradedSymmetric (FieldsX fermionic tensors).
+# Graded-symmetric tensors use antisymmetric permutation-group canonicalization:
+# physically fermionic, so T[a,b] + T[b,a] = 0 under the canonical form.
+
+[meta]
+id              = "xtensor/fields_graded"
+description     = "GradedSymmetric: def_tensor! and ToCanonical for fermionic tensors"
+tags            = ["xtensor", "graded", "fermion", "canonicalization", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ---------------------------------------------------------------------------
+# Setup: 4D manifold, a fermionic spinor-like tensor, and a regular metric.
+# ---------------------------------------------------------------------------
+
+[[setup]]
+action   = "DefManifold"
+store_as = "Fxm"
+[setup.args]
+name      = "Fxm"
+dimension = 4
+indices   = ["fxa", "fxb", "fxc", "fxd"]
+
+[[setup]]
+action   = "DefMetric"
+store_as = "Cng"
+[setup.args]
+signdet = -1
+metric  = "Cng[-fxa,-fxb]"
+covd    = "Fxd"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "Psi"
+[setup.args]
+name     = "Psi"
+indices  = ["-fxa", "-fxb"]
+manifold = "Fxm"
+symmetry = "GradedSymmetric[{-fxa,-fxb}]"
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "fermionic_q_true"
+description = "FermionicQ returns True for a GradedSymmetric tensor"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "FermionicQ[Psi] === True"
+message   = "Psi should be recognized as fermionic by FermionicQ"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "fermionic_q_false_metric"
+description = "FermionicQ returns False for a regular metric tensor"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "FermionicQ[Cng] === False"
+message   = "Cng (metric) should not be fermionic"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "tensor_q_fermionic"
+description = "TensorQ returns True for a GradedSymmetric tensor"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "TensorQ[Psi] === True"
+message   = "Fermionic tensor Psi should still be recognized by TensorQ"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "graded_sym_sum_is_zero"
+description = "GradedSymmetric: Psi[-fxa,-fxb] + Psi[-fxb,-fxa] canonicalizes to 0"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "Psi[-fxa,-fxb] + Psi[-fxb,-fxa]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 0"
+message   = "Sum of fermionic tensor with swapped indices should vanish"
+
+[tests.expected]
+is_zero         = true
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "graded_sym_diff_is_double"
+description = "GradedSymmetric: Psi[-fxa,-fxb] - Psi[-fxb,-fxa] canonicalizes to 2 Psi[-fxa,-fxb]"
+
+[[tests.operations]]
+action   = "ToCanonical"
+store_as = "result"
+[tests.operations.args]
+expression = "Psi[-fxa,-fxb] - Psi[-fxb,-fxa]"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "$result == 2 Psi[-fxa,-fxb]"
+message   = "Difference of fermionic tensor with swapped indices should give 2 Psi[-fxa,-fxb]"
+
+[tests.expected]
+comparison_tier = 1
+
+# ---------------------------------------------------------------------------
+
+# Test 6: repeated index → 0
+[[tests]]
+id          = "graded_sym_repeated_index_zero"
+description = "Psi[-fxa,-fxa] canonicalizes to 0 (repeated Grassmann-odd index)"
+
+[[tests.operations]]
+action = "ToCanonical"
+[tests.operations.args]
+expression = "Psi[-fxa,-fxa]"
+
+[tests.expected]
+expr            = "0"
+comparison_tier = 1
