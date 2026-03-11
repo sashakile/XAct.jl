@@ -1,4 +1,4 @@
-# sxAct — xAct Migration & Implementation
+# xAct.jl — Migration & Implementation
 
 This repository is dedicated to the Julia implementation of the [xAct](http://xact.es/) suite and its Python wrapper. It provides the core tensor algebra engines and validation tooling to ensure mathematical parity with the Wolfram Language "Gold Standard."
 
@@ -12,7 +12,7 @@ This repository is dedicated to the Julia implementation of the [xAct](http://xa
 
 To maintain modularity and focus, this project is part of a three-pillar ecosystem:
 
-1.  sxAct (This Repo): The Julia/Python implementations of xAct.
+1.  xAct.jl (This Repo): The Julia/Python implementations of xAct.
 2.  [Elegua](https://github.com/sashakile/elegua) (External): The Orchestrator and multi-tier test harness.
 3.  [Chacana](https://github.com/sashakile/chacana) (External): The language-agnostic Tensor DSL and specification.
 
@@ -39,9 +39,9 @@ See [SETUP.md](SETUP.md) for first-time setup (Wolfram Engine activation, Docker
 
 The implementation follows a layered approach:
 
-1.  The [oracle](api/oracle.md) module communicates with a running Wolfram Engine.
-2.  The [normalize](api/normalize.md) module canonicalizes xAct expressions.
-3.  The [compare](api/compare.md) module asserts equivalence between implementations.
+1.  The [oracle](docs/src/api/oracle.md) module communicates with a running Wolfram Engine.
+2.  The [normalize](docs/src/api/normalize.md) module canonicalizes xAct expressions.
+3.  The [compare](docs/src/api/compare.md) module asserts equivalence between implementations.
 
 ## License
 
