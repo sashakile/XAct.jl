@@ -126,6 +126,8 @@ class IsolatedContext:
         # additions within this test never propagate to subsequent tests.
         local_bindings: dict[str, str] = dict(self._setup_bindings)
 
+        expects_error = tc.expected is not None and tc.expected.expect_error
+
         last_result: Result | None = None
         try:
             for op in tc.operations:
@@ -134,12 +136,27 @@ class IsolatedContext:
                 if op.store_as and last_result.repr:
                     local_bindings[op.store_as] = last_result.repr
         except Exception as exc:
+            if expects_error:
+                return TestResult(test_id=tc.id, status="pass", message=str(exc))
             return TestResult(test_id=tc.id, status="error", message=str(exc))
 
         if last_result is None:
+            if expects_error:
+                return TestResult(
+                    test_id=tc.id,
+                    status="fail",
+                    message="Expected error but no operations produced a result",
+                )
             return TestResult(test_id=tc.id, status="pass")
 
         if last_result.status == "error":
+            if expects_error:
+                return TestResult(
+                    test_id=tc.id,
+                    status="pass",
+                    actual=last_result.repr,
+                    message=last_result.error,
+                )
             return TestResult(
                 test_id=tc.id,
                 status="error",
@@ -171,6 +188,14 @@ class IsolatedContext:
         exp = tc.expected
         if exp is None:
             return TestResult(test_id=tc.id, status="pass", actual=result.repr)
+
+        if exp.expect_error:
+            return TestResult(
+                test_id=tc.id,
+                status="fail",
+                actual=result.repr,
+                message="Expected error but operation succeeded",
+            )
 
         actual_norm = self._adapter.normalize(result.repr or "")
 

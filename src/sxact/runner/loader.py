@@ -87,6 +87,7 @@ class Expected:
     is_zero: bool | None = None
     properties: ExpectedProperties | None = None
     comparison_tier: int | None = None
+    expect_error: bool | None = None
 
 
 @dataclass
@@ -238,6 +239,7 @@ def _build_expected(exp: dict[str, Any]) -> Expected:
         is_zero=exp.get("is_zero"),
         properties=props,
         comparison_tier=exp.get("comparison_tier"),
+        expect_error=exp.get("expect_error"),
     )
 
 

@@ -480,3 +480,70 @@ class TestExpectedComparison:
         assert result.status == "fail"
         assert result.expected == "3"
         assert result.actual == "2"
+
+
+# ---------------------------------------------------------------------------
+# expect_error handling
+# ---------------------------------------------------------------------------
+
+
+class TestExpectError:
+    def test_pass_when_adapter_returns_error(self):
+        """expect_error=True + adapter error → pass."""
+        exp = Expected(expect_error=True)
+        tc = _make_tc(
+            ops=[Operation(action="Evaluate", args={"expression": "bad"})],
+            expected=exp,
+        )
+        tf = _make_file(tests=[tc])
+        adapter = _make_adapter(_err("syntax error"))
+
+        with IsolatedContext(adapter, tf) as iso:
+            result = iso.run_test(tc)
+
+        assert result.status == "pass"
+
+    def test_pass_when_adapter_raises_exception(self):
+        """expect_error=True + exception → pass."""
+        exp = Expected(expect_error=True)
+        tc = _make_tc(
+            ops=[Operation(action="Evaluate", args={"expression": "boom"})],
+            expected=exp,
+        )
+        tf = _make_file(tests=[tc])
+        adapter = _make_adapter()
+        adapter.execute.side_effect = RuntimeError("connection lost")
+
+        with IsolatedContext(adapter, tf) as iso:
+            result = iso.run_test(tc)
+
+        assert result.status == "pass"
+
+    def test_fail_when_no_error_but_expected(self):
+        """expect_error=True + success → fail."""
+        exp = Expected(expect_error=True)
+        tc = _make_tc(
+            ops=[Operation(action="Evaluate", args={"expression": "1+1"})],
+            expected=exp,
+        )
+        tf = _make_file(tests=[tc])
+        adapter = _make_adapter(_ok("2"))
+
+        with IsolatedContext(adapter, tf) as iso:
+            result = iso.run_test(tc)
+
+        assert result.status == "fail"
+        assert "Expected error" in (result.message or "")
+
+    def test_error_status_without_expect_error(self):
+        """Without expect_error, adapter error → error (unchanged behavior)."""
+        tc = _make_tc(
+            ops=[Operation(action="Evaluate", args={"expression": "bad"})],
+        )
+        tf = _make_file(tests=[tc])
+        adapter = _make_adapter(_err("syntax error"))
+
+        with IsolatedContext(adapter, tf) as iso:
+            result = iso.run_test(tc)
+
+        assert result.status == "error"

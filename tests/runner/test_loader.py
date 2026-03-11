@@ -427,6 +427,66 @@ def test_unknown_top_level_key(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Happy-path: expected with expect_error
+# ---------------------------------------------------------------------------
+
+EXPECT_ERROR_TOML = """\
+    [meta]
+    id          = "xcore/error-test"
+    description = "Test with expect_error"
+
+    [[tests]]
+    id          = "should-error"
+    description = "This test expects an error"
+
+    [[tests.operations]]
+    action = "Evaluate"
+    [tests.operations.args]
+    expression = "bad_expr"
+
+    [tests.expected]
+    expect_error = true
+"""
+
+
+def test_expect_error_loads(tmp_path: Path) -> None:
+    p = write_toml(tmp_path, EXPECT_ERROR_TOML)
+    exp = load_test_file(p).tests[0].expected
+    assert exp is not None
+    assert exp.expect_error is True
+    assert exp.expr is None
+
+
+def test_expect_error_false_loads(tmp_path: Path) -> None:
+    toml = """\
+        [meta]
+        id          = "xcore/no-error"
+        description = "Test without expect_error"
+
+        [[tests]]
+        id          = "should-pass"
+        description = "Normal test"
+
+        [[tests.operations]]
+        action = "Evaluate"
+        [tests.operations.args]
+        expression = "1+1"
+
+        [tests.expected]
+        expr = "2"
+    """
+    p = write_toml(tmp_path, toml)
+    exp = load_test_file(p).tests[0].expected
+    assert exp is not None
+    assert exp.expect_error is None
+
+
+# ---------------------------------------------------------------------------
+# Smoke: load the bundled example file
+# ---------------------------------------------------------------------------
+
+
 def test_load_example_xcore_basic() -> None:
     example = Path(__file__).parent.parent / "examples" / "xcore_basic.toml"
     tf = load_test_file(example)

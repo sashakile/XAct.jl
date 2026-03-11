@@ -180,11 +180,15 @@
       }
     },
     "expected": {
-      "description": "Expected output specification for a test. At least one of expr, normalized, or properties must be present.",
+      "description": "Expected output specification for a test. At least one field must be present.",
       "type": "object",
       "additionalProperties": false,
       "minProperties": 1,
       "properties": {
+        "expect_error": {
+          "description": "When true, the test expects an error. The test passes if the adapter returns an error or raises an exception; it fails if the operation succeeds.",
+          "type": "boolean"
+        },
         "expr": {
           "description": "Expected expression string in implementation-native notation. Compared after normalization (tier 1).",
           "type": "string"

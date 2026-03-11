@@ -172,12 +172,16 @@ def _run_file_snapshot(
             except Exception as exc:
                 error_msg = str(exc)
 
+            expects_error = tc.expected is not None and getattr(
+                tc.expected, "expect_error", False
+            )
+
             if error_msg:
                 results.append(
                     _RunResult(
                         file_id=test_file.meta.id,
                         test_id=tc.id,
-                        status="error",
+                        status="pass" if expects_error else "error",
                         message=error_msg,
                     )
                 )
@@ -188,7 +192,32 @@ def _run_file_snapshot(
                     _RunResult(
                         file_id=test_file.meta.id,
                         test_id=tc.id,
+                        status="fail" if expects_error else "pass",
+                        message="Expected error but no operations produced a result"
+                        if expects_error
+                        else None,
+                    )
+                )
+                continue
+
+            if last_res.status == "error" and expects_error:
+                results.append(
+                    _RunResult(
+                        file_id=test_file.meta.id,
+                        test_id=tc.id,
                         status="pass",
+                        message=last_res.error,
+                    )
+                )
+                continue
+
+            if expects_error:
+                results.append(
+                    _RunResult(
+                        file_id=test_file.meta.id,
+                        test_id=tc.id,
+                        status="fail",
+                        message="Expected error but operation succeeded",
                     )
                 )
                 continue
