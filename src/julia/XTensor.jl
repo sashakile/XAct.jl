@@ -20,23 +20,28 @@ using .XPerm
 
 # Type exports
 export ManifoldObj, VBundleObj, TensorObj, MetricObj, IndexSpec, SymmetrySpec
+export BasisObj, ChartObj
 
 # State management
 export reset_state!
 
 # Global registry collections (mutable; exported for MemberQ use in conditions)
-export Manifolds, Tensors, VBundles, Perturbations
+export Manifolds, Tensors, VBundles, Perturbations, Bases, Charts
 
 # Def functions
 export def_manifold!, def_tensor!, def_metric!, def_perturbation!
+export def_basis!, def_chart!
 
 # Accessor functions
-export get_manifold, get_tensor, get_vbundle, get_metric
-export list_manifolds, list_tensors, list_vbundles
+export get_manifold, get_tensor, get_vbundle, get_metric, get_basis, get_chart
+export list_manifolds, list_tensors, list_vbundles, list_bases, list_charts
 
 # Query predicates (Wolfram-named, used by _wl_to_jl translator)
 export ManifoldQ, TensorQ, VBundleQ, MetricQ, CovDQ, PerturbationQ, FermionicQ
+export BasisQ, ChartQ
 export Dimension, IndicesOfVBundle, SlotsOfTensor
+export VBundleOfBasis, BasesOfVBundle, CNumbersOf, PDOfBasis
+export ManifoldOfChart, ScalarsOfChart
 export MemberQ
 
 # Symbol validation
@@ -123,6 +128,28 @@ struct PerturbationObj
     order::Int          # perturbation order ≥ 1
 end
 
+"""
+A basis of vector fields on a vector bundle (non-coordinate frame).
+Created by `def_basis!` or internally by `def_chart!`.
+"""
+struct BasisObj
+    name::Symbol            # e.g. :tetrad
+    vbundle::Symbol         # e.g. :TangentM
+    cnumbers::Vector{Int}   # integer labels for basis elements, length == dim
+    parallel_deriv::Symbol  # auto-created parallel derivative
+    is_chart::Bool          # true if created by def_chart!
+end
+
+"""
+A coordinate chart on a manifold. Internally creates a BasisObj.
+"""
+struct ChartObj
+    name::Symbol            # e.g. :Schw (also the basis name)
+    manifold::Symbol        # e.g. :M
+    cnumbers::Vector{Int}   # coordinate integer labels
+    scalars::Vector{Symbol} # coordinate scalar fields, e.g. [:t, :r, :theta, :phi]
+end
+
 # ============================================================
 # Global state
 # ============================================================
@@ -132,11 +159,15 @@ const _vbundles = Dict{Symbol,VBundleObj}()
 const _tensors = Dict{Symbol,TensorObj}()
 const _metrics = Dict{Symbol,MetricObj}()
 const _perturbations = Dict{Symbol,PerturbationObj}()
+const _bases = Dict{Symbol,BasisObj}()
+const _charts = Dict{Symbol,ChartObj}()
 
 const Manifolds = Symbol[]   # ordered list
 const Tensors = Symbol[]
 const VBundles = Symbol[]
 const Perturbations = Symbol[]   # perturbation tensor names (ordered)
+const Bases = Symbol[]
+const Charts = Symbol[]
 
 # Contract support: physics rules
 # Tensors whose full trace vanishes (e.g. Weyl tensor)
@@ -196,6 +227,8 @@ function ValidateSymbolInSession(name::Symbol)
         error("ValidateSymbolInSession: \"$sname\" already used as a covariant derivative")
     PerturbationQ(name) &&
         error("ValidateSymbolInSession: \"$sname\" already used as a perturbation")
+    BasisQ(name) && error("ValidateSymbolInSession: \"$sname\" already used as a basis")
+    ChartQ(name) && error("ValidateSymbolInSession: \"$sname\" already used as a chart")
     nothing
 end
 ValidateSymbolInSession(name::AbstractString) = ValidateSymbolInSession(Symbol(name))
@@ -210,10 +243,14 @@ function reset_state!()
     empty!(_tensors);
     empty!(_metrics);
     empty!(_perturbations)
+    empty!(_bases);
+    empty!(_charts)
     empty!(Manifolds);
     empty!(Tensors);
     empty!(VBundles);
     empty!(Perturbations)
+    empty!(Bases);
+    empty!(Charts)
     empty!(_traceless_tensors);
     empty!(_trace_scalars)
     empty!(_einstein_expansion)
@@ -227,14 +264,20 @@ get_manifold(name::Symbol) = get(_manifolds, name, nothing)
 get_tensor(name::Symbol) = get(_tensors, name, nothing)
 get_vbundle(name::Symbol) = get(_vbundles, name, nothing)
 get_metric(name::Symbol) = get(_metrics, name, nothing)
+get_basis(name::Symbol) = get(_bases, name, nothing)
+get_chart(name::Symbol) = get(_charts, name, nothing)
 list_manifolds() = copy(Manifolds)
 list_tensors() = copy(Tensors)
 list_vbundles() = copy(VBundles)
+list_bases() = copy(Bases)
+list_charts() = copy(Charts)
 
 get_manifold(name::AbstractString) = get_manifold(Symbol(name))
 get_tensor(name::AbstractString) = get_tensor(Symbol(name))
 get_vbundle(name::AbstractString) = get_vbundle(Symbol(name))
 get_metric(name::AbstractString) = get_metric(Symbol(name))
+get_basis(name::AbstractString) = get_basis(Symbol(name))
+get_chart(name::AbstractString) = get_chart(Symbol(name))
 
 # ============================================================
 # Query predicates
@@ -248,7 +291,11 @@ VBundleQ(s::Symbol) = haskey(_vbundles, s)
 VBundleQ(s::AbstractString) = VBundleQ(Symbol(s))
 MetricQ(s::Symbol) = haskey(_metrics, s)
 MetricQ(s::AbstractString) = MetricQ(Symbol(s))
-CovDQ(s::Symbol) = haskey(_metrics, s)
+BasisQ(s::Symbol) = haskey(_bases, s)
+BasisQ(s::AbstractString) = BasisQ(Symbol(s))
+ChartQ(s::Symbol) = haskey(_charts, s)
+ChartQ(s::AbstractString) = ChartQ(Symbol(s))
+CovDQ(s::Symbol) = haskey(_metrics, s) || any(b -> b.parallel_deriv == s, values(_bases))
 CovDQ(s::AbstractString) = CovDQ(Symbol(s))
 PerturbationQ(s::Symbol) = haskey(_perturbations, s)
 PerturbationQ(s::AbstractString) = PerturbationQ(Symbol(s))
@@ -279,6 +326,46 @@ function SlotsOfTensor(s::Symbol)
 end
 SlotsOfTensor(s::AbstractString) = SlotsOfTensor(Symbol(s))
 
+function VBundleOfBasis(s::Symbol)
+    b = get(_bases, s, nothing)
+    isnothing(b) && error("VBundleOfBasis: basis $s not defined")
+    b.vbundle
+end
+VBundleOfBasis(s::AbstractString) = VBundleOfBasis(Symbol(s))
+
+function BasesOfVBundle(vb::Symbol)
+    [b.name for b in values(_bases) if b.vbundle == vb]
+end
+BasesOfVBundle(vb::AbstractString) = BasesOfVBundle(Symbol(vb))
+
+function CNumbersOf(s::Symbol)
+    b = get(_bases, s, nothing)
+    isnothing(b) && error("CNumbersOf: basis $s not defined")
+    copy(b.cnumbers)
+end
+CNumbersOf(s::AbstractString) = CNumbersOf(Symbol(s))
+
+function PDOfBasis(s::Symbol)
+    b = get(_bases, s, nothing)
+    isnothing(b) && error("PDOfBasis: basis $s not defined")
+    b.parallel_deriv
+end
+PDOfBasis(s::AbstractString) = PDOfBasis(Symbol(s))
+
+function ManifoldOfChart(s::Symbol)
+    c = get(_charts, s, nothing)
+    isnothing(c) && error("ManifoldOfChart: chart $s not defined")
+    c.manifold
+end
+ManifoldOfChart(s::AbstractString) = ManifoldOfChart(Symbol(s))
+
+function ScalarsOfChart(s::Symbol)
+    c = get(_charts, s, nothing)
+    isnothing(c) && error("ScalarsOfChart: chart $s not defined")
+    copy(c.scalars)
+end
+ScalarsOfChart(s::AbstractString) = ScalarsOfChart(Symbol(s))
+
 function MemberQ(collection::Symbol, s::Symbol)
     if collection == :Manifolds
         s in Manifolds
@@ -288,6 +375,10 @@ function MemberQ(collection::Symbol, s::Symbol)
         s in VBundles
     elseif collection == :Perturbations
         s in Perturbations
+    elseif collection == :Bases
+        s in Bases
+    elseif collection == :Charts
+        s in Charts
     else
         false
     end
@@ -586,6 +677,128 @@ function def_metric!(
     signdet::Int, metric_expr::AbstractString, covd_name::AbstractString
 )::MetricObj
     def_metric!(signdet, metric_expr, Symbol(covd_name))
+end
+
+# ============================================================
+# Basis and Chart definitions
+# ============================================================
+
+"""
+    def_basis!(name, vbundle, cnumbers) → BasisObj
+
+Define a basis of vector fields on a vector bundle.
+`cnumbers` are integer labels for the basis elements (length must equal dim of vbundle).
+Auto-creates a parallel derivative symbol `PD<name>`.
+"""
+function def_basis!(
+    name::Symbol, vbundle::Symbol, cnumbers::Vector{Int}; _skip_validation::Bool=false
+)::BasisObj
+    if !_skip_validation
+        _validate_symbol_hook[](name)
+        ValidateSymbolInSession(name)
+    end
+
+    # Validate vbundle exists
+    vb = get(_vbundles, vbundle, nothing)
+    isnothing(vb) && error("def_basis!: vector bundle $vbundle not defined")
+
+    # Validate cnumbers length matches dimension
+    manifold = _manifolds[vb.manifold]
+    dim = manifold.dimension
+    length(cnumbers) == dim || error(
+        "def_basis!: cnumbers length $(length(cnumbers)) != dimension $dim of $vbundle"
+    )
+
+    # Validate cnumbers are distinct integers
+    length(unique(cnumbers)) == length(cnumbers) ||
+        error("def_basis!: cnumbers must be distinct")
+
+    # Auto-create parallel derivative name
+    pd_name = Symbol("PD" * string(name))
+
+    b = BasisObj(name, vbundle, sort(cnumbers), pd_name, false)
+    _bases[name] = b
+    push!(Bases, name)
+
+    _register_symbol_hook[](name, "XTensor")
+    _register_symbol_hook[](pd_name, "XTensor")
+
+    b
+end
+
+function def_basis!(
+    name::AbstractString, vbundle::AbstractString, cnumbers::Vector{Int}
+)::BasisObj
+    def_basis!(Symbol(name), Symbol(vbundle), cnumbers)
+end
+
+function def_basis!(
+    name::AbstractString, vbundle::AbstractString, cnumbers::Vector
+)::BasisObj
+    def_basis!(Symbol(name), Symbol(vbundle), Int[Int(c) for c in cnumbers])
+end
+
+"""
+    def_chart!(name, manifold, cnumbers, scalars) → ChartObj
+
+Define a coordinate chart on a manifold. Internally creates a BasisObj (coordinate basis)
+and registers the coordinate scalar fields as tensors.
+`scalars` are the coordinate field names, e.g. [:t, :r, :theta, :phi].
+"""
+function def_chart!(
+    name::Symbol, manifold::Symbol, cnumbers::Vector{Int}, scalars::Vector{Symbol}
+)::ChartObj
+    _validate_symbol_hook[](name)
+    ValidateSymbolInSession(name)
+
+    # Validate manifold exists
+    m = get(_manifolds, manifold, nothing)
+    isnothing(m) && error("def_chart!: manifold $manifold not defined")
+
+    dim = m.dimension
+    length(cnumbers) == dim ||
+        error("def_chart!: cnumbers length $(length(cnumbers)) != dimension $dim")
+    length(scalars) == dim ||
+        error("def_chart!: scalars length $(length(scalars)) != dimension $dim")
+    length(unique(cnumbers)) == length(cnumbers) ||
+        error("def_chart!: cnumbers must be distinct")
+
+    # Create the coordinate basis on the tangent bundle
+    tb_name = Symbol("Tangent" * string(manifold))
+    def_basis!(name, tb_name, cnumbers; _skip_validation=true)
+    # Mark it as a chart basis
+    _bases[name] = BasisObj(
+        name, tb_name, sort(cnumbers), _bases[name].parallel_deriv, true
+    )
+
+    # Register coordinate scalars as rank-0 tensors on this manifold
+    for sc in scalars
+        if !TensorQ(sc)
+            t = TensorObj(sc, IndexSpec[], manifold, SymmetrySpec(:NoSymmetry, Int[]))
+            _tensors[sc] = t
+            push!(Tensors, sc)
+            _register_symbol_hook[](sc, "XTensor")
+        end
+    end
+
+    chart = ChartObj(name, manifold, sort(cnumbers), scalars)
+    _charts[name] = chart
+    push!(Charts, name)
+
+    _register_symbol_hook[](name, "XTensor")
+
+    chart
+end
+
+function def_chart!(
+    name::AbstractString, manifold::AbstractString, cnumbers::Vector, scalars::Vector
+)::ChartObj
+    def_chart!(
+        Symbol(name),
+        Symbol(manifold),
+        Int[Int(c) for c in cnumbers],
+        Symbol[Symbol(s) for s in scalars],
+    )
 end
 
 """

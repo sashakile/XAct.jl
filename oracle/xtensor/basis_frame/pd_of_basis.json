@@ -1,0 +1,11 @@
+{
+  "test_id": "pd_of_basis",
+  "oracle_version": "julia-axiom",
+  "mathematica_version": "N/A",
+  "timestamp": "2026-03-11T13:28:20.300391+00:00",
+  "commands": "[julia-adapter]",
+  "raw_output": "PDtetrad",
+  "normalized_output": "PDtetrad",
+  "properties": {},
+  "hash": "sha256:7fabfc0fc7d8"
+}

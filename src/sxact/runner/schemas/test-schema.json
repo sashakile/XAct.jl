@@ -87,6 +87,8 @@
         "DefManifold",
         "DefMetric",
         "DefTensor",
+        "DefBasis",
+        "DefChart",
         "Evaluate",
         "ToCanonical",
         "Simplify",
@@ -110,6 +112,8 @@
         { "$ref": "#/$defs/args/DefManifold" },
         { "$ref": "#/$defs/args/DefMetric" },
         { "$ref": "#/$defs/args/DefTensor" },
+        { "$ref": "#/$defs/args/DefBasis" },
+        { "$ref": "#/$defs/args/DefChart" },
         { "$ref": "#/$defs/args/Evaluate" },
         { "$ref": "#/$defs/args/ToCanonical" },
         { "$ref": "#/$defs/args/Simplify" },
@@ -350,6 +354,56 @@
           "weight": {
             "description": "Tensor weight for density tensors",
             "type": ["integer", "number"]
+          }
+        }
+      },
+      "DefBasis": {
+        "description": "Arguments for DefBasis action",
+        "type": "object",
+        "required": ["name", "vbundle", "cnumbers"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "Basis symbol name",
+            "type": "string"
+          },
+          "vbundle": {
+            "description": "Vector bundle this basis acts on, e.g. 'TangentM'",
+            "type": "string"
+          },
+          "cnumbers": {
+            "description": "Integer labels for basis elements, length must equal dimension",
+            "type": "array",
+            "items": { "type": "integer" },
+            "minItems": 1
+          }
+        }
+      },
+      "DefChart": {
+        "description": "Arguments for DefChart action",
+        "type": "object",
+        "required": ["name", "manifold", "cnumbers", "scalars"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "Chart symbol name (also becomes the coordinate basis name)",
+            "type": "string"
+          },
+          "manifold": {
+            "description": "Manifold this chart covers",
+            "type": "string"
+          },
+          "cnumbers": {
+            "description": "Integer labels for coordinates, length must equal dimension",
+            "type": "array",
+            "items": { "type": "integer" },
+            "minItems": 1
+          },
+          "scalars": {
+            "description": "Coordinate scalar field names, e.g. ['t', 'r', 'theta', 'phi']",
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
           }
         }
       },

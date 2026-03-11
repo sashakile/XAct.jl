@@ -243,6 +243,8 @@ class TestAdapter(abc.ABC, Generic[ContextT]):
                 "DefManifold",
                 "DefMetric",
                 "DefTensor",
+                "DefBasis",
+                "DefChart",
                 "Evaluate",
                 "ToCanonical",
                 "Simplify",

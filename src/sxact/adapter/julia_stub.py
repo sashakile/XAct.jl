@@ -93,6 +93,8 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             "DefManifold",
             "DefMetric",
             "DefTensor",
+            "DefBasis",
+            "DefChart",
             "ToCanonical",
             "Contract",
             "CommuteCovDs",
@@ -217,6 +219,10 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 return self._def_tensor(ctx, args)
             if action == "DefMetric":
                 return self._def_metric(ctx, args)
+            if action == "DefBasis":
+                return self._def_basis(args)
+            if action == "DefChart":
+                return self._def_chart(args)
             if action == "ToCanonical":
                 return self._to_canonical(args)
             if action == "Contract":
@@ -354,6 +360,28 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             )
         repr_str = metric_raw
         return Result(status="ok", type="Handle", repr=repr_str, normalized=repr_str)
+
+    def _def_basis(self, args: dict[str, Any]) -> Result:
+        name = str(args["name"])
+        vbundle = str(args["vbundle"])
+        cnumbers = list(args["cnumbers"])
+        cn_jl = "[" + ", ".join(str(c) for c in cnumbers) + "]"
+        self._jl.seval(f"XTensor.def_basis!(:{name}, :{vbundle}, {cn_jl})")
+        self._jl.seval(f"Main.eval(:(global {name} = :{name}))")
+        return Result(status="ok", type="Handle", repr=name, normalized=name)
+
+    def _def_chart(self, args: dict[str, Any]) -> Result:
+        name = str(args["name"])
+        manifold = str(args["manifold"])
+        cnumbers = list(args["cnumbers"])
+        scalars = list(args["scalars"])
+        cn_jl = "[" + ", ".join(str(c) for c in cnumbers) + "]"
+        sc_jl = "[" + ", ".join(f":{s}" for s in scalars) + "]"
+        self._jl.seval(f"XTensor.def_chart!(:{name}, :{manifold}, {cn_jl}, {sc_jl})")
+        self._jl.seval(f"Main.eval(:(global {name} = :{name}))")
+        for sc in scalars:
+            self._jl.seval(f"Main.eval(:(global {sc} = :{sc}))")
+        return Result(status="ok", type="Handle", repr=name, normalized=name)
 
     def _to_canonical(self, args: dict[str, Any]) -> Result:
         expr = _jl_escape(str(args["expression"]))

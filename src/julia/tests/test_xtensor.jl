@@ -748,4 +748,181 @@ using .XTensor
         set_symbol_hooks!((_) -> nothing, (_, _) -> nothing)
         reset_state!()
     end
+
+    # ==========================================================
+    # Basis and Frame support
+    # ==========================================================
+
+    @testset "DefBasis" begin
+        reset_state!()
+        def_manifold!(:Bm4, 4, [:bma, :bmb, :bmc, :bmd])
+
+        # Basic basis definition on tangent bundle
+        b = def_basis!(:tetrad, :TangentBm4, [1, 2, 3, 4])
+        @test b.name == :tetrad
+        @test b.vbundle == :TangentBm4
+        @test b.cnumbers == [1, 2, 3, 4]
+        @test b.is_chart == false
+
+        # Predicates
+        @test BasisQ(:tetrad)
+        @test !BasisQ(:nonexistent)
+
+        # Accessors
+        @test VBundleOfBasis(:tetrad) == :TangentBm4
+        @test CNumbersOf(:tetrad) == [1, 2, 3, 4]
+        @test PDOfBasis(:tetrad) == :PDtetrad
+
+        # BasesOfVBundle
+        bases = BasesOfVBundle(:TangentBm4)
+        @test :tetrad in bases
+
+        # Parallel derivative recognized as CovD
+        @test CovDQ(:PDtetrad)
+
+        # MemberQ
+        @test MemberQ(:Bases, :tetrad)
+        @test !MemberQ(:Bases, :nonexistent)
+
+        # Appears in list
+        @test :tetrad in list_bases()
+
+        # Unsorted cnumbers get sorted
+        b2 = def_basis!(:frame2, :TangentBm4, [4, 2, 1, 3])
+        @test CNumbersOf(:frame2) == [1, 2, 3, 4]
+
+        # Both bases on same vbundle
+        bases2 = BasesOfVBundle(:TangentBm4)
+        @test length(bases2) == 2
+        @test :tetrad in bases2
+        @test :frame2 in bases2
+    end
+
+    @testset "DefBasis validation" begin
+        reset_state!()
+        def_manifold!(:Bv3, 3, [:bva, :bvb, :bvc])
+
+        # Wrong number of cnumbers
+        @test_throws Exception def_basis!(:bad1, :TangentBv3, [1, 2])
+
+        # Non-existent vbundle
+        @test_throws Exception def_basis!(:bad2, :NoSuchBundle, [1, 2, 3])
+
+        # Duplicate cnumbers
+        @test_throws Exception def_basis!(:bad3, :TangentBv3, [1, 1, 2])
+
+        # Duplicate name
+        def_basis!(:good, :TangentBv3, [1, 2, 3])
+        @test_throws Exception def_basis!(:good, :TangentBv3, [1, 2, 3])
+
+        # Name collision with existing manifold
+        @test_throws Exception def_basis!(:Bv3, :TangentBv3, [1, 2, 3])
+    end
+
+    @testset "DefChart" begin
+        reset_state!()
+        def_manifold!(:Cm4, 4, [:cma, :cmb, :cmc, :cmd])
+
+        c = def_chart!(:Schw, :Cm4, [1, 2, 3, 4], [:t, :r, :theta, :phi])
+        @test c.name == :Schw
+        @test c.manifold == :Cm4
+        @test c.scalars == [:t, :r, :theta, :phi]
+
+        # Chart predicates
+        @test ChartQ(:Schw)
+        @test !ChartQ(:nonexistent)
+        @test MemberQ(:Charts, :Schw)
+
+        # Chart also creates a basis
+        @test BasisQ(:Schw)
+        b = get_basis(:Schw)
+        @test b.is_chart == true
+        @test b.vbundle == :TangentCm4
+
+        # Accessors
+        @test ManifoldOfChart(:Schw) == :Cm4
+        @test ScalarsOfChart(:Schw) == [:t, :r, :theta, :phi]
+        @test CNumbersOf(:Schw) == [1, 2, 3, 4]
+
+        # Coordinate scalars registered as tensors
+        @test TensorQ(:t)
+        @test TensorQ(:r)
+        @test TensorQ(:theta)
+        @test TensorQ(:phi)
+
+        # Parallel derivative recognized
+        @test CovDQ(PDOfBasis(:Schw))
+
+        # Appears in list
+        @test :Schw in list_charts()
+    end
+
+    @testset "DefChart validation" begin
+        reset_state!()
+        def_manifold!(:Cv3, 3, [:cva, :cvb, :cvc])
+
+        # Wrong number of cnumbers
+        @test_throws Exception def_chart!(:bad1, :Cv3, [1, 2], [:x, :y, :z])
+
+        # Wrong number of scalars
+        @test_throws Exception def_chart!(:bad2, :Cv3, [1, 2, 3], [:x, :y])
+
+        # Non-existent manifold
+        @test_throws Exception def_chart!(:bad3, :NoManifold, [1, 2, 3], [:x, :y, :z])
+
+        # Duplicate chart name
+        def_chart!(:Cart, :Cv3, [1, 2, 3], [:x, :y, :z])
+        @test_throws Exception def_chart!(:Cart, :Cv3, [1, 2, 3], [:u, :v, :w])
+    end
+
+    @testset "Basis/Chart reset" begin
+        reset_state!()
+        def_manifold!(:Rm4, 4, [:rma, :rmb, :rmc, :rmd])
+        def_basis!(:eb, :TangentRm4, [1, 2, 3, 4])
+        def_chart!(:Sph, :Rm4, [1, 2, 3, 4], [:t, :r, :th, :ph])
+
+        @test BasisQ(:eb)
+        @test ChartQ(:Sph)
+
+        reset_state!()
+
+        @test !BasisQ(:eb)
+        @test !ChartQ(:Sph)
+        @test isempty(list_bases())
+        @test isempty(list_charts())
+    end
+
+    @testset "ValidateSymbolInSession: basis/chart collision" begin
+        reset_state!()
+        def_manifold!(:Sm4, 4, [:sma, :smb, :smc, :smd])
+        def_basis!(:myframe, :TangentSm4, [1, 2, 3, 4])
+
+        # Cannot reuse basis name as a tensor
+        @test_throws Exception def_tensor!(:myframe, ["-sma"], :Sm4)
+
+        # Cannot reuse basis name as a manifold
+        @test_throws Exception def_manifold!(:myframe, 3, [:x, :y, :z])
+
+        # Chart name collision
+        def_chart!(:Polar, :Sm4, [1, 2, 3, 4], [:ct, :cr, :cth, :cph])
+        @test_throws Exception def_tensor!(:Polar, ["-sma"], :Sm4)
+    end
+
+    @testset "String overloads for basis/chart" begin
+        reset_state!()
+        def_manifold!(:Om3, 3, [:oma, :omb, :omc])
+
+        b = def_basis!("frame", "TangentOm3", [1, 2, 3])
+        @test BasisQ(:frame)
+        @test VBundleOfBasis("frame") == :TangentOm3
+        @test CNumbersOf("frame") == [1, 2, 3]
+        @test PDOfBasis("frame") == :PDframe
+
+        c = def_chart!("Cart", "Om3", [1, 2, 3], ["x", "y", "z"])
+        @test ChartQ(:Cart)
+        @test ManifoldOfChart("Cart") == :Om3
+        @test ScalarsOfChart("Cart") == [:x, :y, :z]
+
+        @test BasesOfVBundle("TangentOm3") == BasesOfVBundle(:TangentOm3)
+    end
 end

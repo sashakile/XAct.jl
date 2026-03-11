@@ -1,0 +1,225 @@
+# tests/xtensor/basis_frame.toml
+# Tests for DefBasis and DefChart (Basis/Frame support)
+
+[meta]
+id              = "xtensor/basis_frame"
+description     = "Basis and Frame definitions (xCoba foundation)"
+tags            = ["xtensor", "basis", "frame", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ============================================================
+# Setup: 4D manifold with metric
+# ============================================================
+
+[[setup]]
+action   = "DefManifold"
+store_as = "Bfm"
+[setup.args]
+name      = "Bfm"
+dimension = 4
+indices   = ["bfa", "bfb", "bfc", "bfd"]
+
+[[setup]]
+action   = "DefMetric"
+store_as = "Bfg"
+[setup.args]
+signdet = -1
+metric  = "Bfg[-bfa,-bfb]"
+covd    = "Bfd"
+
+# ============================================================
+# Test: DefBasis creates a basis on the tangent bundle
+# ============================================================
+
+[[tests]]
+id          = "def_basis_tangent"
+description = "DefBasis on tangent bundle registers the basis"
+
+[[tests.operations]]
+action   = "DefBasis"
+store_as = "tetrad"
+[tests.operations.args]
+name     = "tetrad"
+vbundle  = "TangentBfm"
+cnumbers = [1, 2, 3, 4]
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "BasisQ(tetrad)"
+message   = "tetrad should be a basis"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "basis_not_chart"
+description = "A plain basis is not a chart"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "!ChartQ(tetrad)"
+message   = "tetrad is not a chart"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "vbundle_of_basis"
+description = "VBundleOfBasis returns the vector bundle"
+
+[[tests.operations]]
+action = "Evaluate"
+[tests.operations.args]
+expression = "VBundleOfBasis(tetrad)"
+
+[tests.expected]
+expr = "TangentBfm"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "cnumbers_of_basis"
+description = "CNumbersOf returns the integer labels"
+
+[[tests.operations]]
+action = "Evaluate"
+[tests.operations.args]
+expression = "CNumbersOf(tetrad)"
+
+[tests.expected]
+expr = "[1, 2, 3, 4]"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "pd_of_basis"
+description = "PDOfBasis returns the parallel derivative name"
+
+[[tests.operations]]
+action = "Evaluate"
+[tests.operations.args]
+expression = "PDOfBasis(tetrad)"
+
+[tests.expected]
+expr = "PDtetrad"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "basis_pd_is_covd"
+description = "Parallel derivative of basis is recognized as CovD"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "CovDQ(PDOfBasis(tetrad))"
+message   = "parallel derivative should be a CovD"
+
+# ============================================================
+# Test: DefChart creates a coordinate chart + basis
+# ============================================================
+
+[[tests]]
+id          = "def_chart_basic"
+description = "DefChart registers a chart on manifold"
+
+[[tests.operations]]
+action   = "DefChart"
+store_as = "Schw"
+[tests.operations.args]
+name     = "Schw"
+manifold = "Bfm"
+cnumbers = [1, 2, 3, 4]
+scalars  = ["ct", "cr", "ctheta", "cphi"]
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "ChartQ(Schw)"
+message   = "Schw should be a chart"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "chart_is_basis"
+description = "A chart also creates a basis"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "BasisQ(Schw)"
+message   = "Schw should also be a basis"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "chart_manifold"
+description = "ManifoldOfChart returns the manifold"
+
+[[tests.operations]]
+action = "Evaluate"
+[tests.operations.args]
+expression = "ManifoldOfChart(Schw)"
+
+[tests.expected]
+expr = "Bfm"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "chart_scalar_tensors"
+description = "Coordinate scalars registered as tensors"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "TensorQ(ct)"
+message   = "ct should be a tensor"
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "chart_scalar_tensors_all"
+description = "All coordinate scalars are tensors"
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "TensorQ(cr) && TensorQ(ctheta) && TensorQ(cphi)"
+message   = "all scalars should be tensors"
+
+# ============================================================
+# Test: Error paths
+# ============================================================
+
+[[tests]]
+id          = "basis_wrong_dim"
+description = "DefBasis with wrong number of cnumbers throws"
+
+[[tests.operations]]
+action = "DefBasis"
+[tests.operations.args]
+name     = "badbasis"
+vbundle  = "TangentBfm"
+cnumbers = [1, 2]
+
+[tests.expected]
+expect_error = true
+
+# ---------------------------------------------------------------------------
+
+[[tests]]
+id          = "chart_wrong_scalars"
+description = "DefChart with wrong number of scalars throws"
+
+[[tests.operations]]
+action = "DefChart"
+[tests.operations.args]
+name     = "badchart"
+manifold = "Bfm"
+cnumbers = [1, 2, 3, 4]
+scalars  = ["x", "y"]
+
+[tests.expected]
+expect_error = true
