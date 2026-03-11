@@ -23,6 +23,8 @@ makedocs(;
         canonical="https://sashakile.github.io/sxAct/",
         edit_link="main",
         assets=String[],
+        size_threshold=300 * 1024, # Increase to 300KiB for large API page
+        inventory_version="0.2.0",
     ),
     modules=[xAct, xAct.XCore, xAct.XPerm, xAct.XTensor],
     pages=[
