@@ -915,9 +915,10 @@ function _canonicalize_riemann(
         end
     end
 
+    vals = something(best_vals)
     new_indices = copy(indices)
     for (m, s) in enumerate([i, j, k, l])
-        new_indices[s] = best_vals[m]
+        new_indices[s] = vals[m]
     end
     (new_indices, best_sign)
 end
@@ -976,9 +977,10 @@ function _canonicalize_young(
         end
     end
 
+    vals = something(best_vals)
     new_indices = copy(indices)
     for (i, s) in enumerate(slots)
-        new_indices[s] = best_vals[i]
+        new_indices[s] = vals[i]
     end
     (new_indices, best_sign)
 end

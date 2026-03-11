@@ -1,0 +1,11 @@
+{
+  "test_id": "schreierorbit_04",
+  "oracle_version": "xAct 1.2.0",
+  "mathematica_version": "14.3",
+  "timestamp": "2026-03-11T20:46:26Z",
+  "commands": "a = Cycles[{1, 4, 5, 11, 6, 10, 3, 2}, {7, 8}];\nb = Cycles[{1, 4, 5, 11, 6, 10, 3, 2}, {8, 9}];\nc = Cycles[{1, 4, 2, 3}, {5, 11, 10, 6}];\nSchreierOrbit[1, GenSet[a, b, c], 11]\nxAct`xPerm`Schreier[(1, 4, 5, 2, 11, 3, 6, 10), (0, xAct`xPerm`Cycles[(1, 4, 2, 3), (5, 11, 10, 6)], xAct`xPerm`Cycles[(1, 4, 2, 3), (5, 11, 10, 6)], xAct`xPerm`Cycles[(1, 4, 5, 11, 6, 10, 3, 2), (7, 8)], xAct`xPerm`Cycles[(1, 4, 5, 11, 6, 10, 3, 2), (7, 8)], xAct`xPerm`Cycles[(1, 4, 5, 11, 6, 10, 3, 2), (7, 8)], 0, 0, 0, xAct`xPerm`Cycles[(1, 4, 2, 3), (5, 11, 10, 6)], xAct`xPerm`Cycles[(1, 4, 5, 11, 6, 10, 3, 2), (7, 8)]), (0, 4, 2, 1, 4, 11, 0, 0, 0, 11, 5)] === Schreier[{1, 4, 5, 2, 11, 3, 6, 10}, {0, \"c\", \"c\", \"a\", \"a\", \"a\", 0, 0, 0, \"c\", \"a\"}, {0, 4, 2, 1, 4, 11, 0, 0, 0, 11, 5}]",
+  "raw_output": "xAct`xPerm`Schreier[(1, 4, 5, 2, 11, 3, 6, 10), (0, xAct`xPerm`Cycles[(1, 4, 2, 3), (5, 11, 10, 6)], xAct`xPerm`Cycles[(1, 4, 2, 3), (5, 11, 10, 6)], xAct`xPerm`Cycles[(1, 4, 5, 11, 6, 10, 3, 2), (7, 8)], xAct`xPerm`Cycles[(1, 4, 5, 11, 6, 10, 3, 2), (7, 8)], xAct`xPerm`Cycles[(1, 4, 5, 11, 6, 10, 3, 2), (7, 8)], 0, 0, 0, xAct`xPerm`Cycles[(1, 4, 2, 3), (5, 11, 10, 6)], xAct`xPerm`Cycles[(1, 4, 5, 11, 6, 10, 3, 2), (7, 8)]), (0, 4, 2, 1, 4, 11, 0, 0, 0, 11, 5)]",
+  "normalized_output": "xAct`xPerm`Schreier[(1, 4, 5, 2, 11, 3, 6, 10), (0, xAct`xPerm`Cycles[(1, 4, 2, 3), (5, 11, 10, 6)], xAct`xPerm`Cycles[(1, 4, 2, 3), (5, 11, 10, 6)], xAct`xPerm`Cycles[(1, 4, 5, 11, 6, 10, 3, 2), (7, 8)], xAct`xPerm`Cycles[(1, 4, 5, 11, 6, 10, 3, 2), (7, 8)], xAct`xPerm`Cycles[(1, 4, 5, 11, 6, 10, 3, 2), (7, 8)], 0, 0, 0, xAct`xPerm`Cycles[(1, 4, 2, 3), (5, 11, 10, 6)], xAct`xPerm`Cycles[(1, 4, 5, 11, 6, 10, 3, 2), (7, 8)]), (0, 4, 2, 1, 4, 11, 0, 0, 0, 11, 5)]",
+  "properties": {},
+  "hash": "sha256:78c019cd4941"
+}

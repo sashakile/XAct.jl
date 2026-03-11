@@ -1,0 +1,11 @@
+{
+  "test_id": "permmemberq_02",
+  "oracle_version": "xAct 1.2.0",
+  "mathematica_version": "14.3",
+  "timestamp": "2026-03-11T20:46:28Z",
+  "commands": "a = Cycles[{1, 2, 3, 4}];\nb = Cycles[{2, 4}];\nSGS = StrongGenSet[{1, 2}, GenSet[a, b]];\nPermMemberQ[Permute[a, b], SGS]\nHold[Throw[None]] === True",
+  "raw_output": "Hold[Throw[None]]",
+  "normalized_output": "Hold[Throw[Non$1]]",
+  "properties": {},
+  "hash": "sha256:3506db803630"
+}

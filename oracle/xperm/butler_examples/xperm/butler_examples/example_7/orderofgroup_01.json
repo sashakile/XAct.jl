@@ -1,0 +1,11 @@
+{
+  "test_id": "orderofgroup_01",
+  "oracle_version": "xAct 1.2.0",
+  "mathematica_version": "14.3",
+  "timestamp": "2026-03-11T20:46:29Z",
+  "commands": "a = Cycles[{1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10}, {11, 12}, {13, 14}, {15, 16}];\nb = Cycles[{1, 2, 5, 3}, {4, 7}, {6, 9}, {8, 11}, {10, 13, 16, 15}, {12, 14}];\ns1 = a;\ns2 = Cycles[{3, 14, 10, 6}, {4, 5, 9, 13}, {7, 11}, {8, 12}];\ns3 = Cycles[{2, 6, 10, 14, 11, 7, 3}, {4, 8, 12, 13, 15, 9, 5}];\ns4 = Cycles[{4, 12}, {6, 11}, {7, 14}, {8, 9}];\ns5 = Cycles[{4, 8}, {6, 7}, {9, 12}, {11, 14}];\ng1 = TranslatePerm[ Perm[{1, 10, 3, 8, 15, 6, 7, 4, 9, 2, 14, 12, 13, 11, 5, 16}], Cycles];\ng2 = TranslatePerm[ Perm[{1, 2, 11, 5, 12, 3, 14, 9, 13, 7, 6, 4, 8, 10, 15, 16}], Cycles];\ng3 = TranslatePerm[ Perm[{1, 2, 6, 5, 4, 3, 7, 8, 13, 14, 11, 12, 9, 10, 15, 16}], Cycles];\ng4 = TranslatePerm[ Perm[{1, 2, 10, 12, 13, 11, 6, 4, 8, 3, 14, 9, 5, 7, 15, 16}], Cycles];\nB = {1, 2, 3, 4};\nS = GenSet[s1, s2, s3, s4, s5];\nSGS = StrongGenSet[B, S];\nOrderOfGroup[SGS]\n2688 === 2688",
+  "raw_output": "True",
+  "normalized_output": "True",
+  "properties": {},
+  "hash": "sha256:7a834da09e03"
+}

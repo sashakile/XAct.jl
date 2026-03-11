@@ -1,0 +1,11 @@
+{
+  "test_id": "orbits_01",
+  "oracle_version": "xAct 1.2.0",
+  "mathematica_version": "14.3",
+  "timestamp": "2026-03-11T20:46:28Z",
+  "commands": "a = Cycles[{1, 2}, {5, 6}];\nb = Cycles[{1, 3}, {2, 4}];\nSGS = StrongGenSet[{1, 3}, GenSet[Cycles[{1, 2}, {5, 6}], Cycles[{1, 3}, {2, 4}], Cycles[{3, 4}, {5, 6}]]];\nOrbits[GenSet[a, b]]\n((1, 2, 3, 4), (5, 6)) === {{1, 2, 3, 4}, {5, 6}}",
+  "raw_output": "((1, 2, 3, 4), (5, 6))",
+  "normalized_output": "((1, 2, 3, 4), (5, 6))",
+  "properties": {},
+  "hash": "sha256:47989082a705"
+}

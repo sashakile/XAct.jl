@@ -1,0 +1,5 @@
+# sxAct oracle normalization settings
+[normalization]
+dummy_index_prefix = "$"
+sort_commutative = true
+strip_whitespace = true

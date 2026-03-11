@@ -1,0 +1,11 @@
+{
+  "test_id": "dimino_01",
+  "oracle_version": "xAct 1.2.0",
+  "mathematica_version": "14.3",
+  "timestamp": "2026-03-11T20:46:27Z",
+  "commands": "a = Cycles[{1, 2, 3, 4}, {5, 6}];\nb = Cycles[{2, 4}, {5, 6}];\nDimino[GenSet[a, b]]\nxAct`xPerm`Group[xAct`xPerm`Cycles[], xAct`xPerm`Cycles[PackedArray([2, 3, 4, 1], dtype=int8), PackedArray([6, 5], dtype=int8)], << 4 >>, xAct`xPerm`Cycles[PackedArray([3, 1], dtype=int8), PackedArray([6, 5], dtype=int8)], xAct`xPerm`Cycles[PackedArray([2, 1], dtype=int8), PackedArray([4, 3], dtype=int8)]] === Group[\"ID\", \"a\", Cycles[{1, 3}, {2, 4}], Cycles[{1, 4, 3, 2}, {5, 6}], \"b\", Cycles[{1, 4}, {2, 3}], Cycles[{1, 3}, {5, 6}], Cycles[{1, 2}, {3, 4}]]",
+  "raw_output": "xAct`xPerm`Group[xAct`xPerm`Cycles[], xAct`xPerm`Cycles[PackedArray([2, 3, 4, 1], dtype=int8), PackedArray([6, 5], dtype=int8)], << 4 >>, xAct`xPerm`Cycles[PackedArray([3, 1], dtype=int8), PackedArray([6, 5], dtype=int8)], xAct`xPerm`Cycles[PackedArray([2, 1], dtype=int8), PackedArray([4, 3], dtype=int8)]]",
+  "normalized_output": "xAct`xPerm`Group[xAct`xPerm`Cycles[], xAct`xPerm`Cycles[PackedArray([2, 3, 4, 1], dtype=int8), PackedArray([6, 5], dtype=int8)], << 4 >>, xAct`xPerm`Cycles[PackedArray([3, 1], dtype=int8), PackedArray([6, 5], dtype=int8)], xAct`xPerm`Cycles[PackedArray([2, 1], dtype=int8), PackedArray([4, 3], dtype=int8)]]",
+  "properties": {},
+  "hash": "sha256:3768f6b7233e"
+}

@@ -1,0 +1,11 @@
+{
+  "test_id": "eval_02",
+  "oracle_version": "xAct 1.2.0",
+  "mathematica_version": "14.3",
+  "timestamp": "2026-03-11T20:46:28Z",
+  "commands": "a = Cycles[{1, 2, 4, 5, 7, 3, 6}];\nb = Cycles[{2, 4}, {3, 5}];\ns1 = a;\ns2 = b;\ns3 = Cycles[{4, 5}, {6, 7}];\ns4 = Cycles[{4, 6}, {5, 7}];\nB = {1, 2, 4};\nS = GenSet[s1, s2, s3, s4];\nSGS = StrongGenSet[B, S];\ng1 = Perm[{1, 7, 6, 5, 4, 2, 3}];\ng2 = Perm[{1, 2, 3, 7, 6, 5, 4}];\nOrderOfGroup /@ chain\nSxAct22b166c361174ef3a2b8dc6827acdafc`chain === {168, 24, 4, 1}",
+  "raw_output": "SxAct22b166c361174ef3a2b8dc6827acdafc`chain",
+  "normalized_output": "SxAct22b166c361174ef3a2b8dc6827acdafc`chain",
+  "properties": {},
+  "hash": "sha256:c572bcbc08f2"
+}

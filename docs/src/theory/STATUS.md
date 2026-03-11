@@ -17,7 +17,7 @@ Generated: 2026-03-11
 | Niehoff shortcut: `Antisymmetric` | yes | DONE | O(k log k) |
 | `RiemannSymmetric` group (8 elements) | yes | DONE | |
 | `NoSymmetry` group | yes | DONE | |
-| Butler examples (permutation group tests) | yes | BROKEN | Snapshot hash failures — need `xact-test snapshot` regen |
+| Butler examples (permutation group tests) | yes | DONE | 92/92 Butler-Portugal tests passing |
 
 ---
 

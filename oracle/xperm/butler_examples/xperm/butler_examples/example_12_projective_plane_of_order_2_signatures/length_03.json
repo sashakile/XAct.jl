@@ -1,0 +1,11 @@
+{
+  "test_id": "length_03",
+  "oracle_version": "xAct 1.2.0",
+  "mathematica_version": "14.3",
+  "timestamp": "2026-03-11T20:46:28Z",
+  "commands": "a = Cycles[{1, 2, 4, 5, 7, 3, 6}, {8, 9}];\nb = Cycles[{2, 4}, {3, 5}, {8, 9}];\ns1 = a;\ns2 = b;\ns3 = Cycles[{4, 5}, {6, 7}, {8, 9}];\ns4 = Cycles[{4, 6}, {5, 7}, {8, 9}];\ns5 = Cycles[{4, 7}, {5, 6}, {8, 9}];\ns6 = Cycles[{8, 9}];\nB = {1, 2, 4};\nS = GenSet[s1, s2, s3, s4];\nBB = {1, 2, 4, 8};\nSS = GenSet[s1, s2, s3, s4, s5, s6];\nLength[Dimino[S]]\n336 === 336",
+  "raw_output": "True",
+  "normalized_output": "True",
+  "properties": {},
+  "hash": "sha256:7a834da09e03"
+}

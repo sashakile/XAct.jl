@@ -1,0 +1,11 @@
+{
+  "test_id": "orderofgroup_09",
+  "oracle_version": "xAct 1.2.0",
+  "mathematica_version": "14.3",
+  "timestamp": "2026-03-11T20:46:28Z",
+  "commands": "a = Cycles[{1, 2, 3, 4}];\nb = Cycles[{2, 4}];\nSGS = StrongGenSet[{1, 2}, GenSet[a, b]];\nOrderOfGroup[SGS]\n8 === 8",
+  "raw_output": "True",
+  "normalized_output": "True",
+  "properties": {},
+  "hash": "sha256:7a834da09e03"
+}

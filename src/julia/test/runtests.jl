@@ -1,7 +1,6 @@
 using Test
 using Aqua
 using JET
-using JuliaFormatter
 using xAct
 
 # Helper: reset shared state between tests that modify the registry.
@@ -739,13 +738,20 @@ end
 end
 
 @testset "JET static analysis" begin
-    # report_package checks for type errors and undefined names
-    # JET.test_package(xAct)
-    @test_skip "JET failing on this environment"
+    JET.test_package(xAct; target_modules=(xAct,))
 end
 
 @testset "JuliaFormatter" begin
-    src_dir = joinpath(@__DIR__, "..")
-    # @test JuliaFormatter.format(src_dir; overwrite=false) == true
-    @test_skip "JuliaFormatter failing on this environment"
+    # Format check runs via the dedicated tooling environment to avoid
+    # JuliaSyntax version conflicts between JuliaFormatter and JET.
+    tooling_proj = joinpath(@__DIR__, "..", "tooling")
+    src_dir = joinpath(@__DIR__, "..", "src")
+    cmd = ```
+    $(Base.julia_cmd()) --project=$(tooling_proj) -e "
+        using JuliaFormatter
+        ok = format(ARGS; overwrite=false)
+        exit(ok ? 0 : 1)
+    " -- $(src_dir)
+    ```
+    @test success(cmd)
 end

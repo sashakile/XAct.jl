@@ -1,0 +1,1 @@
+xAct`xPerm`Schreier[(4, 5, 2, 6, 7, 3, 1), (xAct`xPerm`Cycles[(1, 2, 4, 5, 7, 3, 6)], xAct`xPerm`Cycles[(2, 4), (3, 5)], xAct`xPerm`Cycles[(2, 4), (3, 5)], 0, xAct`xPerm`Cycles[(1, 2, 4, 5, 7, 3, 6)], xAct`xPerm`Cycles[(4, 6), (5, 7)], xAct`xPerm`Cycles[(1, 2, 4, 5, 7, 3, 6)]), (6, 4, 5, 0, 4, 4, 5)]

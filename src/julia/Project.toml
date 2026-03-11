@@ -6,14 +6,12 @@ authors = ["sxAct contributors"]
 [deps]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
-JuliaFormatter = "98e50ef6-434e-11e9-1051-2b60c6c9e899"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 
 [compat]
 Aqua = "0.8"
-JET = "0.10"
-JuliaFormatter = "2"
+JET = "0.11"
 LinearAlgebra = "1.12"
 Reexport = "1.2"
 julia = "1.12"
@@ -21,8 +19,7 @@ julia = "1.12"
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
-JuliaFormatter = "98e50ef6-434e-11e9-1051-2b60c6c9e899"
 Test = "8dfed614-e22c-358a-b9bc-a3bc1af8b41a"
 
 [targets]
-test = ["Aqua", "JET", "JuliaFormatter", "Test"]
+test = ["Aqua", "JET", "Test"]

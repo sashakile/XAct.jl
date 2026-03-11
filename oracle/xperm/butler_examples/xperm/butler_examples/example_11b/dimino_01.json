@@ -1,0 +1,11 @@
+{
+  "test_id": "dimino_01",
+  "oracle_version": "xAct 1.2.0",
+  "mathematica_version": "14.3",
+  "timestamp": "2026-03-11T20:46:27Z",
+  "commands": "a = Cycles[{1, 2, 3}];\nDimino[GenSet[a]]\nxAct`xPerm`Group[xAct`xPerm`Cycles[], xAct`xPerm`Cycles[PackedArray([2, 3, 1], dtype=int8)], xAct`xPerm`Cycles[PackedArray([3, 2, 1], dtype=int8)]] === Group[\"ID\", Cycles[{1, 2, 3}], Cycles[{1, 3, 2}]]",
+  "raw_output": "xAct`xPerm`Group[xAct`xPerm`Cycles[], xAct`xPerm`Cycles[PackedArray([2, 3, 1], dtype=int8)], xAct`xPerm`Cycles[PackedArray([3, 2, 1], dtype=int8)]]",
+  "normalized_output": "xAct`xPerm`Group[xAct`xPerm`Cycles[], xAct`xPerm`Cycles[PackedArray([2, 3, 1], dtype=int8)], xAct`xPerm`Cycles[PackedArray([3, 2, 1], dtype=int8)]]",
+  "properties": {},
+  "hash": "sha256:c47cac1daded"
+}

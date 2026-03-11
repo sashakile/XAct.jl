@@ -460,7 +460,9 @@ function _parse_symmetry(
     # Young[{k1,k2,...}] — applies to all tensor slots in order
     m_young = match(r"^Young\[\{([^}]*)\}\]$", sym_str)
     if !isnothing(m_young)
-        partition = [parse(Int, strip(s)) for s in split(m_young.captures[1], ",")]
+        partition = [
+            parse(Int, strip(s)) for s in split(something(m_young.captures[1]), ",")
+        ]
         all_slots = collect(1:length(slot_specs))
         sum(partition) == length(all_slots) || error(
             "Young partition sum $(sum(partition)) ≠ tensor arity $(length(all_slots))"
@@ -474,8 +476,8 @@ function _parse_symmetry(
     )
     isnothing(m) && error("Cannot parse symmetry string: $sym_str")
 
-    type_str = m.captures[1]
-    labels_str = m.captures[2]
+    type_str = something(m.captures[1])
+    labels_str = something(m.captures[2])
 
     sym_type = Symbol(type_str)
 
@@ -1041,8 +1043,8 @@ function _push_chunk!(terms::Vector{TermAST}, chunk::AbstractString, sign::Int)
     # Case 2: Integer * (sub-expression): N * (A + B)
     m = match(r"^(-?\d+)\s*\*\s*\((.+)\)$"s, s)
     if !isnothing(m)
-        n_coeff = parse(Int, m.captures[1])
-        inner = strip(m.captures[2])
+        n_coeff = parse(Int, something(m.captures[1]))
+        inner = strip(something(m.captures[2]))
         sub_terms = TermAST[]
         _parse_sum!(sub_terms, inner)
         for t in sub_terms
@@ -1063,8 +1065,8 @@ function _parse_term(chunk::AbstractString, outer_sign::Int)::TermAST
     # Match leading rational (N/M) — must try before integer to avoid partial match
     m_rat = match(r"^\((-?\d+)/(\d+)\)\*?\s*", s)
     if !isnothing(m_rat)
-        num = parse(Int, m_rat.captures[1])
-        den = parse(Int, m_rat.captures[2])
+        num = parse(Int, something(m_rat.captures[1]))
+        den = parse(Int, something(m_rat.captures[2]))
         coeff = coeff * (num // den)
         s = strip(s[(length(m_rat.match) + 1):end])
     else
@@ -1072,7 +1074,7 @@ function _parse_term(chunk::AbstractString, outer_sign::Int)::TermAST
         # Handles "7*T", "7 *T", "7* T", "7 * T"
         m_int = match(r"^(-?\d+)\s*\*?\s*", s)
         if !isnothing(m_int)
-            coeff = coeff * (parse(Int, m_int.captures[1]) // 1)
+            coeff = coeff * (parse(Int, something(m_int.captures[1])) // 1)
             s = strip(s[(length(m_int.match) + 1):end])
         end
     end
@@ -1373,7 +1375,7 @@ function CommuteCovDs(
     covd_str = string(covd_name)
 
     # Escape special regex chars in idx1, idx2 (e.g. the leading '-')
-    re_esc(s) = replace(s, r"([-\[\].\^$*+?{}|()])" => s"\\\1")
+    re_esc(s)::String = replace(s, r"([-\[\].\^$*+?{}|()])" => s"\\\1")
 
     # Pattern: covd[idx1][covd[idx2][TENSOR_NAME[SLOTS]]]
     pat = Regex(
@@ -2831,15 +2833,15 @@ function _extract_leading_coeff(body::AbstractString)
     # Try rational: "(N/D) rest"
     m = match(r"^\((-?\d+)/(\d+)\)\s*(.*)"s, s)
     if m !== nothing
-        num = parse(Int, m.captures[1])
-        den = parse(Int, m.captures[2])
-        return (num // den, String(strip(m.captures[3])))
+        num = parse(Int, something(m.captures[1]))
+        den = parse(Int, something(m.captures[2]))
+        return (num // den, String(strip(something(m.captures[3]))))
     end
     # Try integer followed by space: "N rest"
     m2 = match(r"^(-?\d+)\s+(.*)"s, s)
     if m2 !== nothing
-        num = parse(Int, m2.captures[1])
-        return (num // 1, String(strip(m2.captures[2])))
+        num = parse(Int, something(m2.captures[1]))
+        return (num // 1, String(strip(something(m2.captures[2]))))
     end
     return (1 // 1, s)
 end
@@ -2857,7 +2859,7 @@ end
 Format (coeff, body) as a signed term string suitable for joining.
 """
 function _term_string(c::Rational{Int}, body::AbstractString)::String
-    body_s = String(body)
+    body_s = String(body)::String
     if c == 1 // 1
         return body_s
     elseif c == -1 // 1

@@ -1,0 +1,11 @@
+{
+  "test_id": "permdeg_01",
+  "oracle_version": "xAct 1.2.0",
+  "mathematica_version": "14.3",
+  "timestamp": "2026-03-11T20:46:29Z",
+  "commands": "a = Cycles[{1, 8, 9}, {2, 11, 15}, {3, 10, 12}, {4, 14, 19}, {5, 16, 17}, {6, 21, 20}, {7, 13, 18}];\nb = Cycles[{9, 18, 20}, {12, 19, 17}];\nc = Cycles[{10, 21, 11}, {13, 16, 14}];\ns1 = a;\ns2 = b;\ns3 = c;\ns4 = Cycles[{8, 13, 21}, {10, 14, 16}];\ns5 = Cycles[{2, 6, 3}, {4, 5, 7}];\ns6 = Cycles[{12, 20, 15}, {17, 19, 18}];\ng1 = Cycles[{8, 16, 11}, {13, 14, 21}];\ng2 = Cycles[{2, 3, 6}, {4, 7, 5}];\ng3 = Cycles[{1, 7, 6}, {3, 4, 5}];\nB = {1, 9, 8, 10, 2, 12};\nS = GenSet[s1, s2, s3, s4, s5, s6];\nSGS = StrongGenSet[B, S];\nPermDeg[S]\n21 === 21",
+  "raw_output": "True",
+  "normalized_output": "True",
+  "properties": {},
+  "hash": "sha256:7a834da09e03"
+}

@@ -1,0 +1,1 @@
+(xAct`xPerm`Cycles[], xAct`xPerm`Cycles[PackedArray([4, 7], dtype=int8), PackedArray([5, 6], dtype=int8)], xAct`xPerm`Cycles[PackedArray([2, 5, 3, 4], dtype=int8), PackedArray([6, 7], dtype=int8)], xAct`xPerm`Cycles[PackedArray([1, 4, 7, 6, 2, 5, 3], dtype=int8)])

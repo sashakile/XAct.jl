@@ -1,0 +1,11 @@
+{
+  "test_id": "permmemberq_24",
+  "oracle_version": "xAct 1.2.0",
+  "mathematica_version": "14.3",
+  "timestamp": "2026-03-11T20:46:28Z",
+  "commands": "a = Cycles[{1, 2, 4, 5, 7, 3, 6}];\nb = Cycles[{2, 4}, {3, 5}];\ns1 = a;\ns2 = b;\ns3 = Cycles[{4, 5}, {6, 7}];\ns4 = Cycles[{4, 6}, {5, 7}];\nB = {1, 2, 4};\nS = GenSet[s1, s2, s3, s4];\nSGS = StrongGenSet[B, S];\ng1 = Perm[{1, 7, 6, 5, 4, 2, 3}];\ng2 = Perm[{1, 2, 3, 7, 6, 5, 4}];\nPermMemberQ[TranslatePerm[Perm[{7, 1, 2, 3, 4, 5, 6}], Cycles], newSGS]\nFalse === False",
+  "raw_output": "True",
+  "normalized_output": "True",
+  "properties": {},
+  "hash": "sha256:7a834da09e03"
+}

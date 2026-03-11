@@ -1,0 +1,11 @@
+{
+  "test_id": "orbits_01",
+  "oracle_version": "xAct 1.2.0",
+  "mathematica_version": "14.3",
+  "timestamp": "2026-03-11T20:46:28Z",
+  "commands": "a = Cycles[{1, 2}, {6, 7}];\nb = Cycles[{1, 2, 3, 4, 5}, {6, 7}];\nOrbits[GenSet[a, b]]\n((1, 2, 3, 4, 5), (6, 7)) === {{1, 2, 3, 4, 5}, {6, 7}}",
+  "raw_output": "((1, 2, 3, 4, 5), (6, 7))",
+  "normalized_output": "((1, 2, 3, 4, 5), (6, 7))",
+  "properties": {},
+  "hash": "sha256:566ac1d968e7"
+}
