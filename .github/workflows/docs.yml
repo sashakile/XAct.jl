@@ -4,8 +4,9 @@ on:
   push:
     branches: [main]
     paths:
-      - "docs/site/**"
-      - "mkdocs.yml"
+      - "docs/**"
+      - "src/julia/**"
+      - "justfile"
 
 permissions:
   contents: read
@@ -21,18 +22,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: julia-actions/setup-julia@v2
         with:
-          python-version: "3.12"
-      - name: Install uv
-        run: pip install uv
-      - name: Install docs dependencies
-        run: uv sync --extra docs
-      - name: Build docs
-        run: uv run mkdocs build --site-dir _site
+          version: "1.10"
+      - name: Cache Julia packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.julia/packages
+            ~/.julia/compiled
+          key: julia-docs-${{ hashFiles('docs/Project.toml', 'src/julia/Project.toml') }}
+          restore-keys: julia-docs-
+      - name: Build documentation
+        run: |
+          julia --project=docs/ -e 'using Pkg; Pkg.develop(path="src/julia"); Pkg.instantiate()'
+          julia --project=docs/ docs/make.jl
+        env:
+          CI: "true"
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: docs/build
 
   deploy:
     needs: build

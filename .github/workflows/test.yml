@@ -22,6 +22,27 @@ jobs:
       - name: Run pytest
         run: uv run pytest tests/ -q --ignore=tests/integration --ignore=tests/properties --ignore=tests/xperm --ignore=tests/xtensor
 
+  julia-unit:
+    name: Julia Unit Tests (XCore + Quality)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "1.10"
+      - name: Cache Julia packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.julia/packages
+            ~/.julia/compiled
+          key: julia-1.10-${{ hashFiles('src/julia/Project.toml') }}
+          restore-keys: julia-1.10-
+      - name: Instantiate Julia project
+        run: julia --project=src/julia -e 'using Pkg; Pkg.instantiate()'
+      - name: Run unit tests
+        run: julia --project=src/julia src/julia/test/runtests.jl
+
   julia-xperm:
     name: Julia XPerm unit tests
     runs-on: ubuntu-latest
@@ -120,14 +141,6 @@ jobs:
       - name: Instantiate Julia project
         run: julia --project=src/julia -e 'using Pkg; Pkg.instantiate()'
       - name: Check benchmark regressions
-        # Uses a CI-specific baseline (benchmarks/ci_baseline.json) recorded on
-        # GitHub Actions hardware (ubuntu-latest, Julia 1.10).  The dev baseline
-        # (benchmarks/baseline.json) is kept for local use only; comparing against
-        # it from CI produces false positives because CI runners are ~2-3x slower.
-        #
-        # To update the CI baseline after intentional perf changes, trigger the
-        # "Record CI benchmark baseline" workflow manually from the Actions tab.
-        # If ci_baseline.json is absent the check warns but does not fail.
         run: |
           for dir in tests/xcore tests/xperm tests/xtensor; do
             uv run xact-test benchmark "$dir" \
