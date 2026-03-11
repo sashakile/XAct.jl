@@ -14,23 +14,21 @@ The migration project is organized into three pillars:
 
 The project structure supports both native Julia usage and a robust verification pipeline:
 
-### 1. The Julia Core (xAct.jl)
+### Computational Layers (Julia Core)
 
-Located in `src/julia`, this is the primary library. It follows the original xAct design:
-- `XCore`: Symbol registry and validation.
-- `XPerm`: Group theory and Butler-Portugal canonicalization.
-- `XTensor`: Manifolds, tensors, metrics, and curvature operators.
+The native library follows the original xAct design, split into four interoperable modules:
 
-### 2. The Verification Oracle (Wolfram)
+- **XCore.jl**: The foundational symbol registry, expression validator, and session state manager.
+- **XPerm.jl**: The group theory engine, implementing the Butler-Portugal algorithm for tensor index canonicalization.
+- **XTensor.jl**: The tensor algebra layer, providing manifolds, bundles, metrics, and curvature operators.
+- **xCoba.jl**: (Experimental) Support for coordinate bases and component calculations.
 
-A Dockerized Wolfram Engine running the original xAct code. It acts as the "Ground Truth" for proving implementation correctness.
+### Verification Layer (Wolfram Oracle)
 
-### 3. The sxact-py Wrapper
+To ensure mathematical correctness, `xAct.jl` is continuously verified against the original Wolfram implementation:
+- **The Oracle**: A Dockerized Wolfram Engine running xAct v1.2.0+.
+- **Parity Engine**: A specialized test runner that compares Julia and Wolfram results using symbolic and numeric modes.
 
-A thin Python layer (using `juliacall`) that provides an idiomatic interface for Python researchers and integrates with the verification suite.
+### Python Interoperability (sxact-py)
 
-### 4. Normalization & Comparison
-
-Specialized modules in Python that canonicalize results and perform multi-tier equivalence checks:
-- **Normalize**: Lexicographic term sorting and dummy index canonicalization.
-- **Compare**: Symbolic (Difference=0) and Numeric (Random Sampling) verification modes.
+A thin Python wrapper (using `PythonCall.jl`) provides an idiomatic interface for researchers in the scientific Python ecosystem and powers the verification suite.

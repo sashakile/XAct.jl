@@ -72,5 +72,23 @@ Ensure you are using the correct environment. If you installed it globally, `usi
 ### Python: "No valid license found"
 This happens if the Wolfram Engine in Docker is not activated. Re-run Step 2 (Activation).
 
-### Oracle: "Connection refused"
-Ensure the Docker container is running: `docker compose ps`. If it is unhealthy, check the logs: `docker compose logs oracle`.
+## 5. Troubleshooting
+
+### "No valid license found" (Wolfram Engine)
+The Docker container needs a one-time activation. Ensure you have run:
+```bash
+docker compose run --rm wolfram wolframscript -activate
+```
+Follow the prompts to enter your Wolfram ID and password.
+
+### Docker: "Permission denied" or "Cannot connect"
+Ensure your user is in the `docker` group or prefix commands with `sudo`. If the oracle fails to start, check the logs:
+```bash
+docker compose logs oracle
+```
+
+### Julia: "Package not found" during git installation
+If you are adding the package via URL, ensure the `subdir="src/julia"` argument is present:
+```julia
+Pkg.add(url="https://github.com/sashakile/sxAct.git", subdir="src/julia")
+```

@@ -1,6 +1,6 @@
-# Getting Started
+# Verification Framework Guide
 
-This guide walks through the core sxAct workflow: querying xAct via the oracle,
+This guide walks through the core `sxact` verification workflow: querying xAct via the oracle,
 normalizing results, and comparing implementations.
 
 ## Prerequisites

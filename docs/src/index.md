@@ -1,5 +1,14 @@
 # xAct.jl
 
+!!! info "Project Profile for AI Agents (LLM TL;DR)"
+    - **Name**: xAct.jl (Repository: `sxAct`)
+    - **Primary Language**: Julia (Computational Core)
+    - **Secondary Language**: Python (Verification Wrapper)
+    - **Function**: Symbolic tensor algebra and curvature calculus for General Relativity.
+    - **Ecosystem**: Julia port of the Wolfram `xAct` suite.
+    - **Verification**: 100% parity verified against Wolfram Engine via Docker Oracle.
+    - **License**: GNU General Public License v3.0 (GPL-3.0)
+
 Julia and Python implementations of xAct — a powerful tensor algebra library for general relativity.
 
 ## Project Overview
