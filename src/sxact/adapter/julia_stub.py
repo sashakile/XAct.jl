@@ -37,6 +37,53 @@ def _jl_escape(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
+def _nested_list_to_julia(data: object) -> str:
+    """Convert a nested Python list to a Julia array literal.
+
+    - Scalar → ``fill(value)`` (0-dim array)
+    - 1D list → ``Any[1, 2, 3]``
+    - 2D list of lists → ``Any[1 2 3; 4 5 6]`` (matrix literal)
+    - 3D+ → ``reshape(Any[...], dims...)`` (flattened + reshape)
+    """
+    if not isinstance(data, list):
+        return f"fill({data})"
+    if not data:
+        return "Any[]"
+    # Check nesting depth
+    if not isinstance(data[0], list):
+        # 1D: vector literal
+        return "Any[" + ", ".join(str(x) for x in data) + "]"
+    if not isinstance(data[0][0], list):
+        # 2D: matrix literal  Any[row1; row2; ...]
+        rows = []
+        for row in data:
+            rows.append(" ".join(str(x) for x in row))
+        return "Any[" + "; ".join(rows) + "]"
+
+    # 3D+: flatten to 1D, then reshape with Julia column-major order
+    def _flatten(lst: object) -> list[object]:
+        if not isinstance(lst, list):
+            return [lst]
+        result: list[object] = []
+        for item in lst:
+            result.extend(_flatten(item))
+        return result
+
+    def _shape(lst: object) -> list[int]:
+        dims: list[int] = []
+        cur: object = lst
+        while isinstance(cur, list):
+            dims.append(len(cur))
+            cur = cur[0]
+        return dims
+
+    flat = _flatten(data)
+    dims = _shape(data)
+    flat_jl = "Any[" + ", ".join(str(x) for x in flat) + "]"
+    dims_jl = ", ".join(str(d) for d in reversed(dims))
+    return f"permutedims(reshape({flat_jl}, {dims_jl}), {len(dims)}:-1:1)"
+
+
 _Symmetry = _Literal["Symmetric", "Antisymmetric"]
 
 
@@ -112,6 +159,10 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             "ChangeBasis",
             "GetJacobian",
             "BasisChangeQ",
+            "SetComponents",
+            "GetComponents",
+            "ComponentValue",
+            "CTensorQ",
         }
     )
 
@@ -261,6 +312,14 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 return self._get_jacobian(args)
             if action == "BasisChangeQ":
                 return self._basis_change_q(args)
+            if action == "SetComponents":
+                return self._set_components(args)
+            if action == "GetComponents":
+                return self._get_components(args)
+            if action == "ComponentValue":
+                return self._component_value(args)
+            if action == "CTensorQ":
+                return self._ctensor_q(args)
         except Exception as exc:
             return Result(
                 status="error", type="", repr="", normalized="", error=str(exc)
@@ -574,6 +633,50 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         from_basis = str(args["from_basis"])
         to_basis = str(args["to_basis"])
         result = self._jl.seval(f"XTensor.BasisChangeQ(:{from_basis}, :{to_basis})")
+        raw = "True" if result is True or str(result).lower() == "true" else "False"
+        return Result(status="ok", type="Bool", repr=raw, normalized=raw)
+
+    def _set_components(self, args: dict[str, Any]) -> Result:
+        tensor = str(args["tensor"])
+        array = args["array"]  # nested list
+        bases = [str(b) for b in args["bases"]]
+        weight = int(args.get("weight", 0))
+        # Build Julia array literal
+        arr_jl = _nested_list_to_julia(array)
+        bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
+        self._jl.seval(
+            f"XTensor.set_components!(:{tensor}, {arr_jl}, {bases_jl}; weight={weight})"
+        )
+        repr_str = f"CTensor({tensor}, {bases})"
+        return Result(status="ok", type="Handle", repr=repr_str, normalized=repr_str)
+
+    def _get_components(self, args: dict[str, Any]) -> Result:
+        tensor = str(args["tensor"])
+        bases = [str(b) for b in args["bases"]]
+        bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
+        result = self._jl.seval(
+            f"string(XTensor.get_components(:{tensor}, {bases_jl}).array)"
+        )
+        raw = str(result)
+        return Result(status="ok", type="Expr", repr=raw, normalized=raw)
+
+    def _component_value(self, args: dict[str, Any]) -> Result:
+        tensor = str(args["tensor"])
+        indices = [int(i) for i in args["indices"]]
+        bases = [str(b) for b in args["bases"]]
+        idx_jl = "[" + ", ".join(str(i) for i in indices) + "]"
+        bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
+        result = self._jl.seval(
+            f"XTensor.component_value(:{tensor}, {idx_jl}, {bases_jl})"
+        )
+        raw = str(result)
+        return Result(status="ok", type="Scalar", repr=raw, normalized=raw)
+
+    def _ctensor_q(self, args: dict[str, Any]) -> Result:
+        tensor = str(args["tensor"])
+        bases = [str(b) for b in args["bases"]]
+        bases_args = ", ".join(f":{b}" for b in bases)
+        result = self._jl.seval(f"XTensor.CTensorQ(:{tensor}, {bases_args})")
         raw = "True" if result is True or str(result).lower() == "true" else "False"
         return Result(status="ok", type="Bool", repr=raw, normalized=raw)
 

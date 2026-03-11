@@ -1,0 +1,194 @@
+# tests/xtensor/ctensor.toml
+# Tests for CTensor component tensor system (SetComponents, GetComponents, etc.)
+
+[meta]
+id              = "xtensor/ctensor"
+description     = "Component tensor (CTensor) support: SetComponents, GetComponents, ComponentValue, CTensorQ"
+tags            = ["xtensor", "xcoba", "ctensor", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ============================================================
+# Setup: 4D manifold with metric, two charts
+# ============================================================
+
+[[setup]]
+action   = "DefManifold"
+store_as = "Ctm"
+[setup.args]
+name      = "Ctm"
+dimension = 4
+indices   = ["cta", "ctb", "ctc", "ctd"]
+
+[[setup]]
+action   = "DefMetric"
+store_as = "Ctg"
+[setup.args]
+signdet = -1
+metric  = "Ctg[-cta,-ctb]"
+covd    = "Ctd"
+
+[[setup]]
+action   = "DefChart"
+store_as = "C1"
+[setup.args]
+name     = "C1"
+manifold = "Ctm"
+cnumbers = [1, 2, 3, 4]
+scalars  = ["ct1x", "ct1y", "ct1z", "ct1w"]
+
+[[setup]]
+action   = "DefChart"
+store_as = "C2"
+[setup.args]
+name     = "C2"
+manifold = "Ctm"
+cnumbers = [1, 2, 3, 4]
+scalars  = ["ct2x", "ct2y", "ct2z", "ct2w"]
+
+# ============================================================
+# Test: SetComponents for metric tensor (Minkowski)
+# ============================================================
+
+[[tests]]
+id          = "set_components_metric"
+description = "SetComponents stores Minkowski metric in C1 basis"
+
+[[tests.operations]]
+action   = "SetComponents"
+store_as = "ct"
+[tests.operations.args]
+tensor = "Ctg"
+array  = [[-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+bases  = ["C1", "C1"]
+
+[[tests.operations]]
+action = "Assert"
+[tests.operations.args]
+condition = "true"
+message   = "SetComponents should succeed"
+
+# ============================================================
+# Test: CTensorQ returns True for stored components
+# ============================================================
+
+[[tests]]
+id          = "ctensor_q_true"
+description = "CTensorQ returns True for stored (Ctg, C1, C1)"
+dependencies = ["set_components_metric"]
+
+[[tests.operations]]
+action = "CTensorQ"
+[tests.operations.args]
+tensor = "Ctg"
+bases  = ["C1", "C1"]
+
+[tests.expected]
+expr = "True"
+
+# ============================================================
+# Test: CTensorQ returns False for unstored bases
+# ============================================================
+
+[[tests]]
+id          = "ctensor_q_false"
+description = "CTensorQ returns False for unstored (Ctg, C2, C2)"
+dependencies = ["set_components_metric"]
+
+[[tests.operations]]
+action = "CTensorQ"
+[tests.operations.args]
+tensor = "Ctg"
+bases  = ["C2", "C2"]
+
+[tests.expected]
+expr = "False"
+
+# ============================================================
+# Test: GetComponents retrieves stored array
+# ============================================================
+
+[[tests]]
+id          = "get_components"
+description = "GetComponents retrieves the stored Minkowski metric array"
+dependencies = ["set_components_metric"]
+
+[[tests.operations]]
+action = "GetComponents"
+[tests.operations.args]
+tensor = "Ctg"
+bases  = ["C1", "C1"]
+
+# ============================================================
+# Test: ComponentValue for specific index
+# ============================================================
+
+[[tests]]
+id          = "component_value_11"
+description = "ComponentValue returns g_{11} = -1 (timelike)"
+dependencies = ["set_components_metric"]
+
+[[tests.operations]]
+action = "ComponentValue"
+[tests.operations.args]
+tensor  = "Ctg"
+indices = [1, 1]
+bases   = ["C1", "C1"]
+
+[tests.expected]
+expr = "-1"
+
+# ============================================================
+# Test: ComponentValue for spatial component
+# ============================================================
+
+[[tests]]
+id          = "component_value_22"
+description = "ComponentValue returns g_{22} = 1 (spacelike)"
+dependencies = ["set_components_metric"]
+
+[[tests.operations]]
+action = "ComponentValue"
+[tests.operations.args]
+tensor  = "Ctg"
+indices = [2, 2]
+bases   = ["C1", "C1"]
+
+[tests.expected]
+expr = "1"
+
+# ============================================================
+# Test: Error — wrong dimensions
+# ============================================================
+
+[[tests]]
+id          = "error_wrong_dim"
+description = "SetComponents with wrong dimension array throws"
+
+[[tests.operations]]
+action = "SetComponents"
+[tests.operations.args]
+tensor = "Ctg"
+array  = [[1, 0], [0, 1]]
+bases  = ["C1", "C1"]
+
+[tests.expected]
+expect_error = true
+
+# ============================================================
+# Test: Error — non-existent basis
+# ============================================================
+
+[[tests]]
+id          = "error_nonexistent_basis"
+description = "SetComponents with non-existent basis throws"
+
+[[tests.operations]]
+action = "SetComponents"
+[tests.operations.args]
+tensor = "Ctg"
+array  = [[-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+bases  = ["NoSuchBasis", "C1"]
+
+[tests.expected]
+expect_error = true

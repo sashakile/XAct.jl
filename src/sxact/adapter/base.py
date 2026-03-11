@@ -264,6 +264,10 @@ class TestAdapter(abc.ABC, Generic[ContextT]):
                 "ChangeBasis",
                 "GetJacobian",
                 "BasisChangeQ",
+                "SetComponents",
+                "GetComponents",
+                "ComponentValue",
+                "CTensorQ",
             }
         )
 

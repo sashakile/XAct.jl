@@ -70,6 +70,11 @@ export BasisChangeObj
 export set_basis_change!, change_basis, Jacobian
 export BasisChangeQ, BasisChangeMatrix, InverseBasisChangeMatrix
 
+# xCoba component tensors (CTensor)
+export CTensorObj
+export set_components!, get_components, ComponentArray
+export CTensorQ, component_value, ctensor_contract
+
 # ============================================================
 # Types
 # ============================================================
@@ -168,6 +173,16 @@ struct BasisChangeObj
     jacobian::Any           # determinant of matrix (cached)
 end
 
+"""
+A component tensor: stores explicit numerical values of a tensor in a given basis.
+"""
+struct CTensorObj
+    tensor::Symbol          # which abstract tensor this represents (e.g. :g)
+    array::Array            # N-dimensional array of component values
+    bases::Vector{Symbol}   # basis for each slot (length == ndims(array))
+    weight::Int             # density weight (usually 0)
+end
+
 # ============================================================
 # Global state
 # ============================================================
@@ -180,6 +195,7 @@ const _perturbations = Dict{Symbol,PerturbationObj}()
 const _bases = Dict{Symbol,BasisObj}()
 const _charts = Dict{Symbol,ChartObj}()
 const _basis_changes = Dict{Tuple{Symbol,Symbol},BasisChangeObj}()
+const _ctensors = Dict{Tuple{Symbol,Vararg{Symbol}},CTensorObj}()
 
 const Manifolds = Symbol[]   # ordered list
 const Tensors = Symbol[]
@@ -265,6 +281,7 @@ function reset_state!()
     empty!(_bases);
     empty!(_charts)
     empty!(_basis_changes)
+    empty!(_ctensors)
     empty!(Manifolds);
     empty!(Tensors);
     empty!(VBundles);
@@ -3340,6 +3357,233 @@ function _contract_slot(M::AbstractMatrix, A::AbstractArray, slot::Int)
     Br = M * Ar
     Bp = reshape(Br, size(Ap))
     permutedims(Bp, iperm)
+end
+
+# ============================================================
+# xCoba: Component tensors (CTensor)
+# ============================================================
+
+"""
+    set_components!(tensor, array, bases; weight=0) → CTensorObj
+
+Store component values for a tensor in the given bases.
+
+Validates:
+
+  - Tensor exists (via TensorQ or MetricQ)
+  - Each basis exists (via BasisQ)
+  - Array rank matches number of bases
+  - Each array dimension matches the basis dimension (length of CNumbersOf)
+"""
+function set_components!(
+    tensor::Symbol, array::AbstractArray, bases::Vector{Symbol}; weight::Int=0
+)::CTensorObj
+    # Validate tensor exists
+    TensorQ(tensor) || error("set_components!: tensor $tensor not defined")
+
+    # Validate each basis exists
+    for b in bases
+        BasisQ(b) || error("set_components!: basis $b not defined")
+    end
+
+    # Validate array rank matches number of bases
+    # Special case: rank-0 (scalar) tensor with 0 bases and a 0-dim array
+    if isempty(bases)
+        ndims(array) == 0 || error(
+            "set_components!: expected rank-0 array for 0 bases, got rank-$(ndims(array))",
+        )
+    else
+        ndims(array) == length(bases) || error(
+            "set_components!: array rank $(ndims(array)) does not match number of bases $(length(bases))",
+        )
+    end
+
+    # Validate each array dimension matches the basis dimension
+    for (i, b) in enumerate(bases)
+        dim = length(CNumbersOf(b))
+        if size(array, i) != dim
+            error(
+                "set_components!: array dimension $i is $(size(array, i)), expected $dim (basis $b)",
+            )
+        end
+    end
+
+    key = (tensor, bases...)
+    ct = CTensorObj(tensor, Array(array), collect(bases), weight)
+    _ctensors[key] = ct
+    ct
+end
+
+function set_components!(
+    tensor::AbstractString, array::AbstractArray, bases::Vector; weight::Int=0
+)::CTensorObj
+    set_components!(Symbol(tensor), array, Symbol[Symbol(b) for b in bases]; weight=weight)
+end
+
+"""
+    get_components(tensor, bases) → CTensorObj
+
+Retrieve stored component values for a tensor in the given bases.
+If not directly stored, attempts to transform from a stored basis configuration
+using registered basis changes.
+"""
+function get_components(tensor::Symbol, bases::Vector{Symbol})::CTensorObj
+    key = (tensor, bases...)
+    haskey(_ctensors, key) && return _ctensors[key]
+
+    # Try to find stored components in a different basis configuration and transform
+    for (stored_key, ct) in _ctensors
+        stored_key[1] == tensor || continue
+        stored_bases = Symbol[stored_key[i] for i in 2:length(stored_key)]
+        length(stored_bases) == length(bases) || continue
+
+        # Check if we can transform each slot
+        can_transform = true
+        for (i, (from_b, to_b)) in enumerate(zip(stored_bases, bases))
+            if from_b != to_b && !BasisChangeQ(from_b, to_b)
+                can_transform = false
+                break
+            end
+        end
+        can_transform || continue
+
+        # Transform slot by slot
+        result_array = ct.array
+        current_bases = copy(stored_bases)
+        for (i, (from_b, to_b)) in enumerate(zip(stored_bases, bases))
+            if from_b != to_b
+                result_array = change_basis(result_array, current_bases, i, from_b, to_b)
+                current_bases[i] = to_b
+            end
+        end
+        return CTensorObj(tensor, Array(result_array), collect(bases), ct.weight)
+    end
+
+    error(
+        "get_components: no components stored for $tensor in bases $(bases), and no transform path available",
+    )
+end
+
+function get_components(tensor::AbstractString, bases::Vector)::CTensorObj
+    get_components(Symbol(tensor), Symbol[Symbol(b) for b in bases])
+end
+
+"""
+    ComponentArray(tensor, bases) → Array
+
+Return just the array of component values for a tensor in the given bases.
+"""
+function ComponentArray(tensor::Symbol, bases::Vector{Symbol})::Array
+    get_components(tensor, bases).array
+end
+
+function ComponentArray(tensor::AbstractString, bases::Vector)::Array
+    ComponentArray(Symbol(tensor), Symbol[Symbol(b) for b in bases])
+end
+
+"""
+    CTensorQ(tensor, bases...) → Bool
+
+Return true if component values are stored for the given tensor and bases.
+"""
+function CTensorQ(tensor::Symbol, bases::Symbol...)::Bool
+    haskey(_ctensors, (tensor, bases...))
+end
+
+function CTensorQ(tensor::AbstractString, bases::AbstractString...)::Bool
+    CTensorQ(Symbol(tensor), (Symbol(b) for b in bases)...)
+end
+
+"""
+    component_value(tensor, indices, bases) → Any
+
+Return a single component value from a stored CTensor.
+`indices` are 1-based integer indices into the array.
+"""
+function component_value(tensor::Symbol, indices::Vector{Int}, bases::Vector{Symbol})::Any
+    ct = get_components(tensor, bases)
+    arr = ct.array
+    for (i, idx) in enumerate(indices)
+        if idx < 1 || idx > size(arr, i)
+            error(
+                "component_value: index $idx out of range [1, $(size(arr, i))] for dimension $i",
+            )
+        end
+    end
+    arr[indices...]
+end
+
+function component_value(tensor::AbstractString, indices::Vector, bases::Vector)::Any
+    component_value(
+        Symbol(tensor), Int[Int(i) for i in indices], Symbol[Symbol(b) for b in bases]
+    )
+end
+
+"""
+    ctensor_contract(tensor, bases, slot1, slot2) → CTensorObj
+
+Contract (trace) two indices of a CTensor.
+Both slots must be in the same basis. The result has rank reduced by 2.
+For rank-2, this is the matrix trace.
+"""
+function ctensor_contract(
+    tensor::Symbol, bases::Vector{Symbol}, slot1::Int, slot2::Int
+)::CTensorObj
+    ct = get_components(tensor, bases)
+    arr = ct.array
+    nd = ndims(arr)
+    (1 <= slot1 <= nd) || error("ctensor_contract: slot1=$slot1 out of range [1, $nd]")
+    (1 <= slot2 <= nd) || error("ctensor_contract: slot2=$slot2 out of range [1, $nd]")
+    slot1 != slot2 || error("ctensor_contract: slot1 and slot2 must be different")
+    bases[slot1] == bases[slot2] || error(
+        "ctensor_contract: slots $slot1 and $slot2 have different bases ($(bases[slot1]) vs $(bases[slot2]))",
+    )
+
+    s1, s2 = minmax(slot1, slot2)  # s1 < s2
+
+    if nd == 2
+        # Simple matrix trace
+        result_val = sum(arr[i, i] for i in 1:size(arr, 1))
+        result_array = fill(result_val)  # 0-dim array
+        remaining_bases = Symbol[]
+    else
+        # General contraction: sum over matching indices
+        remaining_dims = [i for i in 1:nd if i != s1 && i != s2]
+        remaining_sizes = [size(arr, d) for d in remaining_dims]
+        remaining_bases = [bases[d] for d in remaining_dims]
+        trace_dim = size(arr, s1)  # == size(arr, s2)
+
+        T = eltype(arr) === Any ? Float64 : eltype(arr)
+        result_array = zeros(T, remaining_sizes...)
+        for idx in CartesianIndices(Tuple(remaining_sizes))
+            val = zero(T)
+            for k in 1:trace_dim
+                # Build full index tuple
+                full_idx = Vector{Int}(undef, nd)
+                rem_pos = 1
+                for d in 1:nd
+                    if d == s1
+                        full_idx[d] = k
+                    elseif d == s2
+                        full_idx[d] = k
+                    else
+                        full_idx[d] = idx[rem_pos]
+                        rem_pos += 1
+                    end
+                end
+                val += arr[full_idx...]
+            end
+            result_array[idx] = val
+        end
+    end
+
+    CTensorObj(tensor, result_array, remaining_bases, ct.weight)
+end
+
+function ctensor_contract(
+    tensor::AbstractString, bases::Vector, slot1::Int, slot2::Int
+)::CTensorObj
+    ctensor_contract(Symbol(tensor), Symbol[Symbol(b) for b in bases], slot1, slot2)
 end
 
 end  # module XTensor

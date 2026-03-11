@@ -1108,4 +1108,257 @@ using .XTensor
         @test BasisChangeQ("E1", "E2")
         @test Jacobian("E1", "E2") ≈ 1.0
     end
+
+    # ============================================================
+    # CTensor (Component Tensor) tests
+    # ============================================================
+
+    @testset "set_components! rank-2 (matrix)" begin
+        reset_state!()
+        def_manifold!(:Cm4, 4, [:cma, :cmb, :cmc, :cmd])
+        def_metric!(-1, "Cmg[-cma,-cmb]", :Cmd)
+        def_chart!(:CC1, :Cm4, [1, 2, 3, 4], [:cx1, :cx2, :cx3, :cx4])
+
+        # Minkowski metric components
+        eta = Any[-1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 1]
+        ct = set_components!(:Cmg, eta, [:CC1, :CC1])
+        @test ct.tensor == :Cmg
+        @test ct.array == eta
+        @test ct.bases == [:CC1, :CC1]
+        @test ct.weight == 0
+    end
+
+    @testset "set_components! rank-1 (vector)" begin
+        reset_state!()
+        def_manifold!(:Cv2, 2, [:cva, :cvb])
+        def_chart!(:Cb1, :Cv2, [1, 2], [:cv1x, :cv1y])
+        def_tensor!(:Cvv, ["cva"], :Cv2)
+
+        v = Any[3, 7]
+        ct = set_components!(:Cvv, v, [:Cb1])
+        @test ct.tensor == :Cvv
+        @test ct.array == v
+        @test ct.bases == [:Cb1]
+    end
+
+    @testset "set_components! rank-0 (scalar)" begin
+        reset_state!()
+        def_manifold!(:Cs2, 2, [:csa, :csb])
+        def_chart!(:Csb, :Cs2, [1, 2], [:csx, :csy])
+        def_tensor!(:Csc, String[], :Cs2)  # scalar tensor
+
+        ct = set_components!(:Csc, fill(42), Symbol[])
+        @test ct.tensor == :Csc
+        @test ct.array[] == 42
+        @test ct.bases == Symbol[]
+    end
+
+    @testset "get_components retrieval" begin
+        reset_state!()
+        def_manifold!(:Cg2, 2, [:cga, :cgb])
+        def_chart!(:Cgb, :Cg2, [1, 2], [:cgx, :cgy])
+        def_tensor!(:Cgt, ["-cga", "-cgb"], :Cg2; symmetry_str="Symmetric[{-cga,-cgb}]")
+
+        arr = Any[1 2; 2 3]
+        set_components!(:Cgt, arr, [:Cgb, :Cgb])
+
+        ct = get_components(:Cgt, [:Cgb, :Cgb])
+        @test ct.array == arr
+        @test ct.bases == [:Cgb, :Cgb]
+    end
+
+    @testset "CTensorQ predicate" begin
+        reset_state!()
+        def_manifold!(:Cq2, 2, [:cqa, :cqb])
+        def_chart!(:Cqb, :Cq2, [1, 2], [:cqx, :cqy])
+        def_tensor!(:Cqt, ["-cqa", "-cqb"], :Cq2)
+
+        @test !CTensorQ(:Cqt, :Cqb, :Cqb)
+
+        set_components!(:Cqt, Any[1 0; 0 1], [:Cqb, :Cqb])
+
+        @test CTensorQ(:Cqt, :Cqb, :Cqb)
+        @test !CTensorQ(:Cqt, :Cqb)  # wrong number of bases
+    end
+
+    @testset "component_value" begin
+        reset_state!()
+        def_manifold!(:Ci3, 3, [:cia, :cib, :cic])
+        def_chart!(:Cib, :Ci3, [1, 2, 3], [:cix, :ciy, :ciz])
+        def_tensor!(:Cit, ["-cia", "-cib"], :Ci3)
+
+        arr = Any[1 2 3; 4 5 6; 7 8 9]
+        set_components!(:Cit, arr, [:Cib, :Cib])
+
+        @test component_value(:Cit, [1, 1], [:Cib, :Cib]) == 1
+        @test component_value(:Cit, [2, 3], [:Cib, :Cib]) == 6
+        @test component_value(:Cit, [3, 3], [:Cib, :Cib]) == 9
+    end
+
+    @testset "component_value out of range" begin
+        reset_state!()
+        def_manifold!(:Cr2, 2, [:cra, :crb])
+        def_chart!(:Crb, :Cr2, [1, 2], [:crx, :cry])
+        def_tensor!(:Crt, ["-cra", "-crb"], :Cr2)
+
+        set_components!(:Crt, Any[1 2; 3 4], [:Crb, :Crb])
+        @test_throws Exception component_value(:Crt, [3, 1], [:Crb, :Crb])
+    end
+
+    @testset "ComponentArray" begin
+        reset_state!()
+        def_manifold!(:Ca2, 2, [:caa, :cab])
+        def_chart!(:Cab, :Ca2, [1, 2], [:cax, :cay])
+        def_tensor!(:Cat, ["-caa"], :Ca2)
+
+        set_components!(:Cat, Any[10, 20], [:Cab])
+        @test ComponentArray(:Cat, [:Cab]) == Any[10, 20]
+    end
+
+    @testset "get_components with basis change (auto-transform)" begin
+        reset_state!()
+        def_manifold!(:Cx2, 2, [:cxa, :cxb])
+        def_chart!(:Cx1, :Cx2, [1, 2], [:cx1x, :cx1y])
+        def_chart!(:Cx2c, :Cx2, [1, 2], [:cx2x, :cx2y])
+        def_tensor!(:Cxv, ["cxa"], :Cx2)
+
+        # Store components in Cx1 basis
+        set_components!(:Cxv, Any[1.0, 0.0], [:Cx1])
+
+        # Register basis change
+        M = Any[0 1; 1 0]  # swap axes
+        set_basis_change!(:Cx1, :Cx2c, M)
+
+        # Get components in Cx2c basis — should auto-transform
+        ct = get_components(:Cxv, [:Cx2c])
+        @test ct.array ≈ [0.0, 1.0]
+        @test ct.bases == [:Cx2c]
+    end
+
+    @testset "get_components rank-2 auto-transform" begin
+        reset_state!()
+        def_manifold!(:Cy2, 2, [:cya, :cyb])
+        def_chart!(:Cy1, :Cy2, [1, 2], [:cy1x, :cy1y])
+        def_chart!(:Cy2c, :Cy2, [1, 2], [:cy2x, :cy2y])
+        def_metric!(-1, "Cyg[-cya,-cyb]", :Cyd)
+
+        # Minkowski 2D: diag(-1, 1)
+        eta = Any[-1.0 0.0; 0.0 1.0]
+        set_components!(:Cyg, eta, [:Cy1, :Cy1])
+
+        # Rotation by pi/4
+        c = cos(pi / 4)
+        s = sin(pi / 4)
+        R = Any[c -s; s c]
+        set_basis_change!(:Cy1, :Cy2c, R)
+
+        # Get metric in new basis: g' = R * g * R'
+        ct = get_components(:Cyg, [:Cy2c, :Cy2c])
+        expected = Float64.(R) * Float64.(eta) * Float64.(R)'
+        @test ct.array ≈ expected
+    end
+
+    @testset "ctensor_contract rank-2 (trace)" begin
+        reset_state!()
+        def_manifold!(:Ct3, 3, [:cta, :ctb, :ctc])
+        def_chart!(:Ctb, :Ct3, [1, 2, 3], [:ctx, :cty, :ctz])
+        def_tensor!(:Ctt, ["-cta", "-ctb"], :Ct3)
+
+        arr = Any[1 0 0; 0 2 0; 0 0 3]
+        set_components!(:Ctt, arr, [:Ctb, :Ctb])
+
+        ct_result = ctensor_contract(:Ctt, [:Ctb, :Ctb], 1, 2)
+        @test ct_result.array[] == 6  # trace = 1 + 2 + 3
+        @test ct_result.bases == Symbol[]
+    end
+
+    @testset "set_components! validation errors" begin
+        reset_state!()
+        def_manifold!(:Ce2, 2, [:cea, :ceb])
+        def_chart!(:Ceb, :Ce2, [1, 2], [:cex, :cey])
+        def_tensor!(:Cet, ["-cea", "-ceb"], :Ce2)
+
+        # Wrong rank: provide rank-1 array for rank-2 tensor
+        @test_throws Exception set_components!(:Cet, Any[1, 2], [:Ceb, :Ceb])
+
+        # Wrong dimension: provide 3x3 for a 2D basis
+        @test_throws Exception set_components!(:Cet, Any[1 0 0; 0 1 0; 0 0 1], [:Ceb, :Ceb])
+
+        # Non-existent tensor
+        @test_throws Exception set_components!(:NoSuchTensor, Any[1 0; 0 1], [:Ceb, :Ceb])
+
+        # Non-existent basis
+        @test_throws Exception set_components!(:Cet, Any[1 0; 0 1], [:NoSuchBasis, :Ceb])
+    end
+
+    @testset "get_components no path error" begin
+        reset_state!()
+        def_manifold!(:Cn2, 2, [:cna, :cnb])
+        def_chart!(:Cnb1, :Cn2, [1, 2], [:cn1x, :cn1y])
+        def_chart!(:Cnb2, :Cn2, [1, 2], [:cn2x, :cn2y])
+        def_tensor!(:Cnt, ["-cna", "-cnb"], :Cn2)
+
+        # No components stored and no basis change
+        @test_throws Exception get_components(:Cnt, [:Cnb1, :Cnb1])
+    end
+
+    @testset "reset_state! clears ctensors" begin
+        reset_state!()
+        def_manifold!(:Cr2b, 2, [:crba, :crbb])
+        def_chart!(:Crbb, :Cr2b, [1, 2], [:crbx, :crby])
+        def_tensor!(:Crbt, ["-crba", "-crbb"], :Cr2b)
+
+        set_components!(:Crbt, Any[1 0; 0 1], [:Crbb, :Crbb])
+        @test CTensorQ(:Crbt, :Crbb, :Crbb)
+
+        reset_state!()
+        @test !CTensorQ(:Crbt, :Crbb, :Crbb)
+    end
+
+    @testset "set_components! with weight" begin
+        reset_state!()
+        def_manifold!(:Cw2, 2, [:cwa, :cwb])
+        def_chart!(:Cwb, :Cw2, [1, 2], [:cwx, :cwy])
+        def_tensor!(:Cwt, ["-cwa", "-cwb"], :Cw2)
+
+        ct = set_components!(:Cwt, Any[1 0; 0 1], [:Cwb, :Cwb]; weight=2)
+        @test ct.weight == 2
+    end
+
+    @testset "CTensorQ string overloads" begin
+        reset_state!()
+        def_manifold!(:Cs2b, 2, [:csba, :csbb])
+        def_chart!(:Csbb, :Cs2b, [1, 2], [:csbx, :csby])
+        def_tensor!(:Csbt, ["-csba", "-csbb"], :Cs2b)
+
+        set_components!(:Csbt, Any[1 0; 0 1], [:Csbb, :Csbb])
+        @test CTensorQ("Csbt", "Csbb", "Csbb")
+    end
+
+    @testset "ctensor_contract validation errors" begin
+        reset_state!()
+        def_manifold!(:Cv3, 3, [:cva3a, :cva3b, :cva3c])
+        def_chart!(:Cvb3, :Cv3, [1, 2, 3], [:cv3x, :cv3y, :cv3z])
+        def_tensor!(:Cvt3, ["-cva3a", "-cva3b"], :Cv3)
+
+        set_components!(:Cvt3, Any[1 0 0; 0 2 0; 0 0 3], [:Cvb3, :Cvb3])
+
+        # Same slot
+        @test_throws Exception ctensor_contract(:Cvt3, [:Cvb3, :Cvb3], 1, 1)
+        # Out of range
+        @test_throws Exception ctensor_contract(:Cvt3, [:Cvb3, :Cvb3], 1, 3)
+    end
+
+    @testset "get_components / component_value string overloads" begin
+        reset_state!()
+        def_manifold!(:Cso2, 2, [:csoa, :csob])
+        def_chart!(:Csob, :Cso2, [1, 2], [:csox, :csoy])
+        def_tensor!(:Csot, ["-csoa", "-csob"], :Cso2)
+
+        set_components!(:Csot, Any[5 6; 7 8], [:Csob, :Csob])
+        ct = get_components("Csot", ["Csob", "Csob"])
+        @test ct.array == Any[5 6; 7 8]
+
+        @test component_value("Csot", [1, 2], ["Csob", "Csob"]) == 6
+    end
 end

@@ -107,6 +107,10 @@
         "ChangeBasis",
         "GetJacobian",
         "BasisChangeQ",
+        "SetComponents",
+        "GetComponents",
+        "ComponentValue",
+        "CTensorQ",
         "Assert"
       ]
     },
@@ -136,6 +140,10 @@
         { "$ref": "#/$defs/args/ChangeBasis" },
         { "$ref": "#/$defs/args/GetJacobian" },
         { "$ref": "#/$defs/args/BasisChangeQ" },
+        { "$ref": "#/$defs/args/SetComponents" },
+        { "$ref": "#/$defs/args/GetComponents" },
+        { "$ref": "#/$defs/args/ComponentValue" },
+        { "$ref": "#/$defs/args/CTensorQ" },
         { "$ref": "#/$defs/args/Assert" }
       ]
     },
@@ -684,6 +692,102 @@
           "to_basis": {
             "description": "Target basis name",
             "type": "string"
+          }
+        }
+      },
+      "SetComponents": {
+        "description": "Arguments for SetComponents action. Stores component values for a tensor in the given bases.",
+        "type": "object",
+        "required": ["tensor", "array", "bases"],
+        "additionalProperties": false,
+        "properties": {
+          "tensor": {
+            "description": "Name of the abstract tensor to set components for",
+            "type": "string"
+          },
+          "array": {
+            "description": "Component values as a nested list (1D for vectors, 2D for matrices, etc.)",
+            "oneOf": [
+              { "type": "number" },
+              {
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    { "type": "number" },
+                    { "type": "array", "items": { "type": "number" } }
+                  ]
+                }
+              }
+            ]
+          },
+          "bases": {
+            "description": "Basis for each slot (length must match array rank)",
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "weight": {
+            "description": "Density weight (default 0)",
+            "type": "integer",
+            "default": 0
+          }
+        }
+      },
+      "GetComponents": {
+        "description": "Arguments for GetComponents action. Retrieves component values for a tensor in the given bases.",
+        "type": "object",
+        "required": ["tensor", "bases"],
+        "additionalProperties": false,
+        "properties": {
+          "tensor": {
+            "description": "Name of the tensor to get components for",
+            "type": "string"
+          },
+          "bases": {
+            "description": "Basis for each slot",
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          }
+        }
+      },
+      "ComponentValue": {
+        "description": "Arguments for ComponentValue action. Returns a single component value.",
+        "type": "object",
+        "required": ["tensor", "indices", "bases"],
+        "additionalProperties": false,
+        "properties": {
+          "tensor": {
+            "description": "Name of the tensor",
+            "type": "string"
+          },
+          "indices": {
+            "description": "1-based integer indices into the component array",
+            "type": "array",
+            "items": { "type": "integer", "minimum": 1 },
+            "minItems": 1
+          },
+          "bases": {
+            "description": "Basis for each slot",
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          }
+        }
+      },
+      "CTensorQ": {
+        "description": "Arguments for CTensorQ action. Returns True/False whether component values are stored for the given tensor and bases.",
+        "type": "object",
+        "required": ["tensor", "bases"],
+        "additionalProperties": false,
+        "properties": {
+          "tensor": {
+            "description": "Name of the tensor to query",
+            "type": "string"
+          },
+          "bases": {
+            "description": "Basis for each slot to check",
+            "type": "array",
+            "items": { "type": "string" }
           }
         }
       },

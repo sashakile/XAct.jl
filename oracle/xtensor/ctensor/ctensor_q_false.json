@@ -1,0 +1,11 @@
+{
+  "test_id": "ctensor_q_false",
+  "oracle_version": "julia-axiom",
+  "mathematica_version": "N/A",
+  "timestamp": "2026-03-11T18:00:00.000000+00:00",
+  "commands": "[julia-adapter]",
+  "raw_output": "False",
+  "normalized_output": "False",
+  "properties": {},
+  "hash": "sha256:82d00aac8815"
+}
