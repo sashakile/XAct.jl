@@ -1,4 +1,4 @@
-# Verification API (sxact-py)
+# Verification API (`sxact`)
 
 The `sxact` Python package is a specialized framework for verifying the mathematical correctness of `xAct.jl` against the Wolfram Language implementation.
 

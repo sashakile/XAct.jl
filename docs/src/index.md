@@ -3,10 +3,10 @@
 !!! info "Project Profile for AI Agents (LLM TL;DR)"
     - **Name**: xAct.jl (Repository: `sxAct`)
     - **Primary Language**: Julia (Computational Core)
-    - **Secondary Language**: Python (Verification Wrapper)
+    - **Python Distribution**: `xact-py` (Core: `xact`, Testing: `sxact`)
     - **Function**: Symbolic tensor algebra and curvature calculus for General Relativity.
     - **Ecosystem**: Julia port of the Wolfram `xAct` suite.
-    - **Verification**: 100% parity verified against Wolfram Engine via Docker Oracle.
+    - **Verification**: 100% parity verified against Wolfram Engine via `sxact` framework.
     - **License**: GNU General Public License v3.0 (GPL-3.0)
 
 Julia and Python implementations of xAct — a powerful tensor algebra library for general relativity.
@@ -28,7 +28,8 @@ The `xAct.jl` project (hosted in the `sxAct` repository) provides the native, hi
 
 ### Implementation & Verification
 - **xAct.jl** (Core): The high-performance computational engine written in native Julia.
-- **sxact-py** (Verification): A Python wrapper used for automated parity testing against the Wolfram Engine.
+- **xact-py** (Wrapper): An idiomatic Python interface (`import xact`) to the Julia core.
+- **sxact** (Verification): A robust Python framework for automated parity testing against the Wolfram Engine.
 
 ### Three Pillars of the Migration
 To maintain focus and scalability, the migration effort is divided into three distinct, interoperable projects:

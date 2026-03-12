@@ -6,8 +6,8 @@ This repository (sxAct) is the Implementation Layer for the Julia ports of xAct 
 
 - IN-SCOPE:
     - Julia implementation of XCore, XPerm, XTensor, xCoba, xPert, xTras, etc.
-    - Python wrapper (xact-py) development.
-    - Local OracleClient, Normalize, and Compare tools.
+    - Python wrapper (`xact`, distributed as `xact-py`) development.
+    - Validation framework (`sxact`) including OracleClient, Normalize, and Compare tools.
 - OUT-OF-SCOPE (External Repositories):
     - Elegua Orchestrator: Logic for the multi-tier task runner and cross-repo coordination occurs in the elegua repository.
     - Chacana DSL: Grammar, PEG parsing, and language specifications occur in the chacana repository.

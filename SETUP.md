@@ -11,8 +11,8 @@ This repository contains tools for experimenting with the xAct library (Wolfram 
 
 ### 2. Python Environment
 - **Python**: 3.10.19 (managed by uv)
-- **Wolfram Client**: v1.4.0 installed
-- **Virtual env**: `.venv/` (created by uv)
+- **Packages**: `xact-py` (wrapper), `sxact` (framework)
+- **Virtual env**: `.venv/` (created by uv workspace)
 
 ### 3. Julia
 - **Version**: 1.12.3

@@ -23,15 +23,17 @@ julia --project=. test/runtests.jl
 
 ---
 
-## 2. Python & Verification Development (sxact-py)
+## 2. Python & Verification Development (`xact-py`)
 
-The Python source is in `src/sxact/`.
+The Python source is located in the `packages/` directory:
+- `packages/xact-py`: The computational wrapper.
+- `packages/sxact`: The validation framework.
 
 ### Setup
 **Prerequisites:** Docker, Python ≥ 3.10, [uv](https://docs.astral.sh/uv/)
 
 ```bash
-# Install all dependencies including dev extras
+# Install all dependencies for the workspace
 uv sync --extra dev
 
 # Start the oracle server (needed for integration tests)
@@ -43,7 +45,7 @@ See [SETUP.md](SETUP.md) for first-time Wolfram Engine activation.
 ### Running Python Tests
 ```bash
 # Unit tests only (fast, no Docker required)
-uv run pytest tests/oracle tests/normalize tests/compare
+uv run pytest tests/unit
 
 # Integration tests (oracle must be running)
 uv run pytest tests/integration/
@@ -52,7 +54,7 @@ uv run pytest tests/integration/
 uv run pytest
 
 # Type checking
-uv run mypy src/
+uv run mypy packages/xact-py/src packages/sxact/src
 ```
 
 Test markers:
@@ -79,7 +81,8 @@ just serve-docs
 | Path | Purpose |
 |------|---------|
 | `src/julia/` | Native Julia implementation of xAct engines. |
-| `src/sxact/` | Python wrapper and verification logic. |
+| `packages/xact-py/` | Python computational wrapper (`import xact`). |
+| `packages/sxact/` | Python validation logic (`import sxact`). |
 | `tests/` | Multi-tier test suite (Julia, Python, Oracle). |
 | `docs/` | Documentation (Julia-centric, built with Documenter.jl). |
 

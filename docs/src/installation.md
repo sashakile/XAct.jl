@@ -22,9 +22,26 @@ Wait for the installation to finish, then you can start using it:
 using xAct
 ```
 
+## 2. Python Wrapper (xact-py)
+
+The Python wrapper provides an idiomatic interface to the Julia core and is required for the verification framework.
+
+### Prerequisites
+- [Julia 1.12+](https://julialang.org/downloads/)
+- Python 3.10+
+
+### Installation
+You can install the wrapper via pip:
+
+```bash
+pip install xact-py
+```
+
+*Note: The wrapper will automatically manage its Julia dependencies using `juliapkg`.*
+
 ---
 
-## 2. Developer/Verification Install
+## 3. Developer/Verification Install
 
 The full suite includes a Python wrapper and a Dockerized Wolfram Oracle for proving implementation parity.
 

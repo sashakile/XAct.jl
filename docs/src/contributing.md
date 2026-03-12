@@ -1,6 +1,6 @@
 # Contributing
 
-We welcome contributions to `xAct.jl` (the Julia core) and the `sxact-py` verification framework.
+We welcome contributions to `xAct.jl` (the Julia core) and the `xact-py` verification framework.
 
 ## Getting Started
 

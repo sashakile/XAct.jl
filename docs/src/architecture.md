@@ -29,6 +29,9 @@ To ensure mathematical correctness, `xAct.jl` is continuously verified against t
 - **The Oracle**: A Dockerized Wolfram Engine running xAct v1.2.0+.
 - **Parity Engine**: A specialized test runner that compares Julia and Wolfram results using symbolic and numeric modes.
 
-### Python Interoperability (sxact-py)
+### Python Interoperability (`xact-py`)
 
-A thin Python wrapper (using `PythonCall.jl`) provides an idiomatic interface for researchers in the scientific Python ecosystem and powers the verification suite.
+The project provides a comprehensive Python ecosystem split into two components:
+
+- **Wrapper (`xact`)**: An idiomatic Python interface to the Julia core modules. It allows researchers to use `xAct.jl` seamlessly within the scientific Python ecosystem (NumPy, SymPy, etc.).
+- **Validation Framework (`sxact`)**: The specialized engine that powers the parity verification suite, managing the communication between the Julia core and the Wolfram Oracle.
