@@ -29,14 +29,12 @@ makedocs(;
     modules=[xAct, xAct.XCore, xAct.XPerm, xAct.XTensor],
     pages=[
         "Home" => "index.md",
-        "Getting Started" => "getting-started.md",
+        "Status" => "theory/STATUS.md",
         "Installation" => "installation.md",
-        "Tutorials" => [
-            "Basics" => "examples/basics.md",
-            "Differential Geometry Primer" => "differential-geometry-primer.md",
-        ],
-        "Theory" => [
-            "Feature Status" => "theory/STATUS.md",
+        "Getting Started" => "getting-started.md",
+        "Tutorials" => ["Basics" => "examples/basics.md"],
+        "Theory" => ["Differential Geometry Primer" => "differential-geometry-primer.md"],
+        "Advanced" => [
             "Oracle Quirks" => "theory/oracle-quirks.md",
             "Tensor DSL Integration" => "theory/tensordsl-integration.md",
         ],
