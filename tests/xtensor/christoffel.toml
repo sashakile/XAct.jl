@@ -1,0 +1,166 @@
+# tests/xtensor/christoffel.toml
+# Tests for Christoffel symbol computation from metric components
+
+[meta]
+id              = "xtensor/christoffel"
+description     = "Christoffel symbols (second kind) from metric CTensor components"
+tags            = ["xtensor", "xcoba", "christoffel", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ============================================================
+# Setup: 4D manifold with metric, chart, and Minkowski components
+# ============================================================
+
+[[setup]]
+action   = "DefManifold"
+store_as = "Chm"
+[setup.args]
+name      = "Chm"
+dimension = 4
+indices   = ["cha", "chb", "chc", "chd"]
+
+[[setup]]
+action   = "DefMetric"
+store_as = "Chg"
+[setup.args]
+signdet = -1
+metric  = "Chg[-cha,-chb]"
+covd    = "Chd"
+
+[[setup]]
+action   = "DefChart"
+store_as = "ChC"
+[setup.args]
+name     = "ChC"
+manifold = "Chm"
+cnumbers = [1, 2, 3, 4]
+scalars  = ["cht", "chx", "chy", "chz"]
+
+[[setup]]
+action   = "SetComponents"
+store_as = "eta"
+[setup.args]
+tensor = "Chg"
+array  = [[-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+bases  = ["ChC", "ChC"]
+
+# ============================================================
+# Test: Christoffel of Minkowski metric = all zeros
+# ============================================================
+
+[[tests]]
+id          = "christoffel_minkowski"
+description = "Christoffel of constant Minkowski metric is all zeros"
+
+[[tests.operations]]
+action = "Christoffel"
+[tests.operations.args]
+metric = "Chg"
+basis  = "ChC"
+
+[[tests.operations]]
+action = "ComponentValue"
+[tests.operations.args]
+tensor  = "ChristoffelChd"
+indices = [1, 1, 1]
+bases   = ["ChC", "ChC", "ChC"]
+
+[tests.expected]
+expr = "0.0"
+
+# ============================================================
+# Test: CTensorQ true for Christoffel after computation
+# ============================================================
+
+[[tests]]
+id          = "christoffel_stored"
+description = "Christoffel components are stored as CTensor after computation"
+dependencies = ["christoffel_minkowski"]
+
+[[tests.operations]]
+action = "CTensorQ"
+[tests.operations.args]
+tensor = "ChristoffelChd"
+bases  = ["ChC", "ChC", "ChC"]
+
+[tests.expected]
+expr = "True"
+
+# ============================================================
+# Test: Christoffel with non-trivial metric derivatives
+# ============================================================
+
+[[tests]]
+id          = "christoffel_nontrivial"
+description = "Christoffel from diagonal metric with known derivatives"
+
+[[tests.operations]]
+action = "SetComponents"
+[tests.operations.args]
+tensor = "Chg"
+array  = [[-2, 0, 0, 0], [0, 2, 0, 0], [0, 0, 4, 0], [0, 0, 0, 4]]
+bases  = ["ChC", "ChC"]
+
+[[tests.operations]]
+action = "Christoffel"
+[tests.operations.args]
+metric = "Chg"
+basis  = "ChC"
+# dg[c, a, b] = ∂_c g_{ab}
+# Only ∂_1 g_{22} = 1.0 (derivative of g_{22} w.r.t. coord 1)
+metric_derivs = [
+    [[0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+    [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+    [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+    [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+]
+
+# Γ^2_{12} = Γ^2_{21} = (1/2) g^{22} ∂_1 g_{22} = (1/2)(1/2)(1) = 0.25
+# Γ^1_{22} = -(1/2) g^{11} ∂_1 g_{22} = -(1/2)(-1/2)(1) = 0.25
+
+[[tests.operations]]
+action = "ComponentValue"
+[tests.operations.args]
+tensor  = "ChristoffelChd"
+indices = [2, 1, 2]
+bases   = ["ChC", "ChC", "ChC"]
+
+[tests.expected]
+expr = "0.25"
+
+# ============================================================
+# Test: Symmetry of Christoffel in lower indices
+# ============================================================
+
+[[tests]]
+id          = "christoffel_symmetry"
+description = "Christoffel is symmetric in last two indices: Γ^a_{bc} = Γ^a_{cb}"
+dependencies = ["christoffel_nontrivial"]
+
+[[tests.operations]]
+action = "ComponentValue"
+[tests.operations.args]
+tensor  = "ChristoffelChd"
+indices = [2, 2, 1]
+bases   = ["ChC", "ChC", "ChC"]
+
+[tests.expected]
+expr = "0.25"
+
+# ============================================================
+# Test: Error — Christoffel for non-existent metric
+# ============================================================
+
+[[tests]]
+id          = "christoffel_error_no_metric"
+description = "Christoffel computation errors for non-existent metric"
+
+[[tests.operations]]
+action = "Christoffel"
+[tests.operations.args]
+metric = "NoSuchMetric"
+basis  = "ChC"
+
+[tests.expected]
+expect_error = true

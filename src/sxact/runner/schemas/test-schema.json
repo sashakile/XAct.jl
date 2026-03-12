@@ -114,6 +114,7 @@
         "ToBasis",
         "FromBasis",
         "TraceBasisDummy",
+        "Christoffel",
         "Assert"
       ]
     },
@@ -150,6 +151,7 @@
         { "$ref": "#/$defs/args/ToBasis" },
         { "$ref": "#/$defs/args/FromBasis" },
         { "$ref": "#/$defs/args/TraceBasisDummy" },
+        { "$ref": "#/$defs/args/Christoffel" },
         { "$ref": "#/$defs/args/Assert" }
       ]
     },
@@ -844,6 +846,26 @@
             "description": "Basis for each slot",
             "type": "array",
             "items": { "type": "string" }
+          }
+        }
+      },
+      "Christoffel": {
+        "description": "Arguments for Christoffel action. Computes second kind Christoffel symbols from metric components.",
+        "type": "object",
+        "required": ["metric", "basis"],
+        "additionalProperties": false,
+        "properties": {
+          "metric": {
+            "description": "Name of the metric tensor (must have stored CTensor components)",
+            "type": "string"
+          },
+          "basis": {
+            "description": "Coordinate basis in which to compute",
+            "type": "string"
+          },
+          "metric_derivs": {
+            "description": "Rank-3 array of metric derivatives: dg[c,a,b] = partial_c g_{ab}. Omit for constant metric.",
+            "type": "array"
           }
         }
       },

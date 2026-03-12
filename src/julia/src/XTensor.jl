@@ -75,6 +75,9 @@ export CTensorObj
 export set_components!, get_components, ComponentArray
 export CTensorQ, component_value, ctensor_contract
 
+# xCoba Christoffel symbols
+export christoffel!
+
 # xCoba ToBasis / FromBasis / TraceBasisDummy
 export ToBasis, FromBasis, TraceBasisDummy
 
@@ -894,6 +897,19 @@ function _auto_create_curvature!(manifold::Symbol, covd::Symbol)
         slots2 = String[i1, i2]
         sym2 = "Symmetric[{$i1,$i2}]"
         def_tensor!(einstein_name, slots2, manifold; symmetry_str=sym2)
+    end
+
+    # Christoffel (second kind): Γ^a_{bc}, symmetric in last two covariant slots
+    # Use 3 distinct labels to avoid symmetry slot lookup ambiguity
+    if n >= 3
+        i3 = "-" * string(idxs[3])
+        christoffel_name = Symbol("Christoffel" * covd_str)
+        if !haskey(_tensors, christoffel_name)
+            # Slot 1 = contravariant (up), Slots 2,3 = covariant (down)
+            slots3 = String[string(idxs[1]), i2, i3]
+            sym3 = "Symmetric[{$i2,$i3}]"
+            def_tensor!(christoffel_name, slots3, manifold; symmetry_str=sym3)
+        end
     end
 
     # Need at least 4 indices for Riemann
@@ -3589,6 +3605,81 @@ function ctensor_contract(
     tensor::AbstractString, bases::Vector, slot1::Int, slot2::Int
 )::CTensorObj
     ctensor_contract(Symbol(tensor), Symbol[Symbol(b) for b in bases], slot1, slot2)
+end
+
+# ============================================================
+# xCoba: Christoffel symbols from metric components
+# ============================================================
+
+"""
+    christoffel!(metric, basis; metric_derivs=nothing) → CTensorObj
+
+Compute and store Christoffel symbols (second kind) from metric CTensor components.
+
+The Christoffel symbol is:
+
+    Γ^a_{bc} = (1/2) g^{ad} (∂_b g_{dc} + ∂_c g_{bd} - ∂_d g_{bc})
+
+Arguments:
+
+  - `metric`: the metric tensor symbol (must have stored components in `basis`)
+  - `basis`: the coordinate basis (chart) in which to compute
+  - `metric_derivs`: optional rank-3 array where `dg[c,a,b] = ∂_c g_{ab}`.
+    If omitted, assumes constant metric (all derivatives zero → all Christoffels zero).
+
+Returns the CTensorObj stored under the auto-created Christoffel tensor name.
+"""
+function christoffel!(
+    metric::Symbol, basis::Symbol; metric_derivs::Union{Nothing,AbstractArray}=nothing
+)::CTensorObj
+    # Find the covariant derivative associated with this metric
+    covd = nothing
+    for (cd, mobj) in _metrics
+        if mobj.name == metric
+            covd = cd
+            break
+        end
+    end
+    isnothing(covd) && error("christoffel!: no metric named $metric found")
+
+    christoffel_name = Symbol("Christoffel" * string(covd))
+    TensorQ(christoffel_name) ||
+        error("christoffel!: Christoffel tensor $christoffel_name not registered")
+
+    # Get metric components g_{ab}
+    g_ct = get_components(metric, [basis, basis])
+    g_arr = g_ct.array
+    dim = size(g_arr, 1)
+
+    # Compute inverse metric g^{ab}
+    g_inv = inv(convert(Matrix{Float64}, g_arr))
+
+    # Metric derivatives: dg[c, a, b] = ∂_c g_{ab}
+    if metric_derivs === nothing
+        dg = zeros(Float64, dim, dim, dim)
+    else
+        dg = metric_derivs
+        size(dg) == (dim, dim, dim) ||
+            error("christoffel!: metric_derivs must be ($dim,$dim,$dim), got $(size(dg))")
+    end
+
+    # Γ^a_{bc} = (1/2) Σ_d g^{ad} (∂_b g_{dc} + ∂_c g_{bd} - ∂_d g_{bc})
+    gamma = zeros(Float64, dim, dim, dim)
+    for a in 1:dim, b in 1:dim, c in 1:dim
+        val = 0.0
+        for d in 1:dim
+            val += g_inv[a, d] * (dg[b, d, c] + dg[c, b, d] - dg[d, b, c])
+        end
+        gamma[a, b, c] = 0.5 * val
+    end
+
+    set_components!(christoffel_name, gamma, [basis, basis, basis])
+end
+
+function christoffel!(
+    metric::AbstractString, basis::AbstractString; metric_derivs=nothing
+)::CTensorObj
+    christoffel!(Symbol(metric), Symbol(basis); metric_derivs=metric_derivs)
 end
 
 # ============================================================

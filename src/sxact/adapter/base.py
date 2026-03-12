@@ -271,6 +271,7 @@ class TestAdapter(abc.ABC, Generic[ContextT]):
                 "ToBasis",
                 "FromBasis",
                 "TraceBasisDummy",
+                "Christoffel",
             }
         )
 

@@ -166,6 +166,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             "ToBasis",
             "FromBasis",
             "TraceBasisDummy",
+            "Christoffel",
         }
     )
 
@@ -329,6 +330,8 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 return self._from_basis(args)
             if action == "TraceBasisDummy":
                 return self._trace_basis_dummy(args)
+            if action == "Christoffel":
+                return self._christoffel(args)
         except Exception as exc:
             return Result(
                 status="error", type="", repr="", normalized="", error=str(exc)
@@ -711,6 +714,38 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
         result = self._jl.seval(
             f"string(XTensor.TraceBasisDummy(:{tensor}, {bases_jl}).array)"
+        )
+        raw = str(result)
+        return Result(status="ok", type="Expr", repr=raw, normalized=raw)
+
+    def _christoffel(self, args: dict[str, Any]) -> Result:
+        metric = str(args["metric"])
+        basis = str(args["basis"])
+        metric_derivs = args.get("metric_derivs")
+        if metric_derivs is not None:
+            dg_jl = _nested_list_to_julia(metric_derivs)
+            self._jl.seval(
+                f"XTensor.christoffel!(:{metric}, :{basis}; metric_derivs={dg_jl})"
+            )
+        else:
+            self._jl.seval(f"XTensor.christoffel!(:{metric}, :{basis})")
+        # Find Christoffel tensor name and return its components
+        christoffel_name = self._jl.seval(
+            f"""begin
+                local _cd = nothing
+                for (cd, m) in XTensor._metrics
+                    if m.name == :{metric}
+                        _cd = cd
+                        break
+                    end
+                end
+                string(Symbol("Christoffel" * string(_cd)))
+            end"""
+        )
+        cname = str(christoffel_name)
+        bases_jl = f"Symbol[:{basis}, :{basis}, :{basis}]"
+        result = self._jl.seval(
+            f"string(XTensor.get_components(:{cname}, {bases_jl}).array)"
         )
         raw = str(result)
         return Result(status="ok", type="Expr", repr=raw, normalized=raw)
