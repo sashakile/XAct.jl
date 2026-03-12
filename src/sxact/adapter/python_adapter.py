@@ -82,7 +82,7 @@ class PythonAdapter(TestAdapter[_PythonContext]):
 
     def __init__(self) -> None:
         self._jl: Any = None
-        self._xcore_version: str = "unknown"
+        self._xact_version: str = "unknown"
         self._julia_version: str = "unknown"
 
     def _ensure_ready(self) -> None:
@@ -95,12 +95,12 @@ class PythonAdapter(TestAdapter[_PythonContext]):
             get_xcore()
             raw_jl = self._jl.seval("string(VERSION)")
             self._julia_version = str(raw_jl).strip()
-            # Try to get XCore package version
+            # Try to get xAct package version
             try:
-                raw_xc = self._jl.seval("string(pkgversion(XCore))")
-                self._xcore_version = str(raw_xc).strip()
+                raw_xa = self._jl.seval("string(pkgversion(xAct))")
+                self._xact_version = str(raw_xa).strip()
             except Exception:
-                self._xcore_version = "dev"
+                self._xact_version = "dev"
         except Exception as exc:
             raise AdapterError(
                 f"sxact.xcore (Julia runtime) initialisation failed: {exc}"
@@ -240,7 +240,7 @@ class PythonAdapter(TestAdapter[_PythonContext]):
                 pass
         return VersionInfo(
             cas_name="Python",
-            cas_version=self._xcore_version,
-            adapter_version="0.1.0",
+            cas_version=self._xact_version,
+            adapter_version=f"0.1.0 (xAct {self._xact_version})",
             extra={"julia_version": self._julia_version},
         )

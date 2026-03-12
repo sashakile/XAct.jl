@@ -178,17 +178,25 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
 
     def __init__(self) -> None:
         self._jl: Any = None
+        self._xact_version: str = "unknown"
         self._julia_version: str = "unknown"
 
     def _ensure_ready(self) -> None:
         if self._jl is not None:
             return
         try:
-            from sxact.xcore._runtime import get_julia
+            from sxact.xcore._runtime import get_julia, get_xcore
 
             self._jl = get_julia()
+            get_xcore()
             raw = self._jl.seval("string(VERSION)")
             self._julia_version = str(raw).strip()
+            # Try to get xAct package version
+            try:
+                raw_xa = self._jl.seval("string(pkgversion(xAct))")
+                self._xact_version = str(raw_xa).strip()
+            except Exception:
+                self._xact_version = "dev"
         except Exception as exc:
             raise AdapterError(f"Julia/XCore initialisation failed: {exc}") from exc
 
@@ -878,7 +886,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         return VersionInfo(
             cas_name="Julia",
             cas_version=self._julia_version,
-            adapter_version="0.1.0",
+            adapter_version=f"0.1.0 (xAct {self._xact_version})",
         )
 
     def get_tensor_context(self, ctx: _JuliaContext, rng: "Any | None" = None) -> "Any":

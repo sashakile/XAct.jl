@@ -1,6 +1,6 @@
 """Julia runtime singleton for sxact.xcore.
 
-Initialises the Julia runtime and loads XCore exactly once per process.
+Initialises the Julia runtime and loads xAct exactly once per process.
 Thread-safe: concurrent first-calls block until initialisation completes.
 """
 
@@ -22,7 +22,7 @@ def get_julia() -> Any:
 
 
 def get_xcore() -> Any:
-    """Return the Julia XCore module object, initialising Julia if needed."""
+    """Return the Julia xAct module object, initialising Julia if needed."""
     _ensure_initialized()
     return _xcore
 
@@ -42,20 +42,25 @@ def _init_julia() -> None:
 
     _jl = juliacall.Main
 
-    # xAct.jl lives at src/julia/src/xAct.jl relative to the repo root.
-    # From this file: src/sxact/xcore/_runtime.py → go up 3 levels → src/
-    # then into julia/src/xAct.jl.
-    julia_dir = (Path(__file__).parent.parent.parent / "julia").resolve()
-    xact_path = julia_dir / "src" / "xAct.jl"
-
-    if not xact_path.exists():
-        raise FileNotFoundError(
-            f"xAct.jl not found at {xact_path}. "
-            "Ensure the sxAct repo structure is intact."
-        )
-
-    # Activate the Julia project so Reexport and other deps are available.
-    _jl.seval(f'import Pkg; Pkg.activate("{julia_dir}"; io=devnull)')
-    _jl.seval(f'include("{xact_path}")')
-    _jl.seval("using .xAct")
-    _xcore = _jl.xAct
+    # Attempt to load xAct. If juliapkg.json worked, it should be available.
+    try:
+        _jl.seval("using xAct")
+        _xcore = _jl.xAct
+    except Exception:
+        # Fallback for development if juliapkg hasn't resolved it yet,
+        # or if we're running from source without a formal install.
+        julia_dir = (Path(__file__).parent.parent.parent / "julia").resolve()
+        if (julia_dir / "Project.toml").exists():
+            _jl.seval(f'import Pkg; Pkg.activate("{julia_dir}"; io=devnull)')
+            xact_main = julia_dir / "src" / "xAct.jl"
+            if xact_main.exists():
+                _jl.seval(f'include("{xact_main}")')
+                _jl.seval("using .xAct")
+                _xcore = _jl.xAct
+            else:
+                raise ImportError(f"xAct.jl not found at {xact_main}")
+        else:
+            raise ImportError(
+                "xAct Julia package not found. Ensure juliapkg.json is respected "
+                "or src/julia is present."
+            )
