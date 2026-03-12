@@ -1,0 +1,11 @@
+{
+  "test_id": "frombasis_metric",
+  "oracle_version": "julia-axiom",
+  "mathematica_version": "N/A",
+  "timestamp": "2026-03-12T19:08:32.100578+00:00",
+  "commands": "[julia-adapter]",
+  "raw_output": "Tbg[-tba,-tbb]",
+  "normalized_output": "Tbg[-tba,-tbb]",
+  "properties": {},
+  "hash": "sha256:174ad705b430"
+}

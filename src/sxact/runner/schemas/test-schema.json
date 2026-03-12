@@ -111,6 +111,9 @@
         "GetComponents",
         "ComponentValue",
         "CTensorQ",
+        "ToBasis",
+        "FromBasis",
+        "TraceBasisDummy",
         "Assert"
       ]
     },
@@ -144,6 +147,9 @@
         { "$ref": "#/$defs/args/GetComponents" },
         { "$ref": "#/$defs/args/ComponentValue" },
         { "$ref": "#/$defs/args/CTensorQ" },
+        { "$ref": "#/$defs/args/ToBasis" },
+        { "$ref": "#/$defs/args/FromBasis" },
+        { "$ref": "#/$defs/args/TraceBasisDummy" },
         { "$ref": "#/$defs/args/Assert" }
       ]
     },
@@ -786,6 +792,56 @@
           },
           "bases": {
             "description": "Basis for each slot to check",
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "ToBasis": {
+        "description": "Arguments for ToBasis action. Converts an abstract-index tensor expression to component form in the given basis.",
+        "type": "object",
+        "required": ["expression", "basis"],
+        "additionalProperties": false,
+        "properties": {
+          "expression": {
+            "description": "Tensor expression with abstract indices (e.g. 'T[-a,-b]', 'g[-a,-b] v[a]')",
+            "type": "string"
+          },
+          "basis": {
+            "description": "Name of the basis to expand into",
+            "type": "string"
+          }
+        }
+      },
+      "FromBasis": {
+        "description": "Arguments for FromBasis action. Returns the abstract-index expression for a tensor with stored components.",
+        "type": "object",
+        "required": ["tensor", "bases"],
+        "additionalProperties": false,
+        "properties": {
+          "tensor": {
+            "description": "Name of the tensor",
+            "type": "string"
+          },
+          "bases": {
+            "description": "Basis for each slot",
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "TraceBasisDummy": {
+        "description": "Arguments for TraceBasisDummy action. Contracts all pairs of same-basis opposite-variance indices.",
+        "type": "object",
+        "required": ["tensor", "bases"],
+        "additionalProperties": false,
+        "properties": {
+          "tensor": {
+            "description": "Name of the tensor to trace",
+            "type": "string"
+          },
+          "bases": {
+            "description": "Basis for each slot",
             "type": "array",
             "items": { "type": "string" }
           }

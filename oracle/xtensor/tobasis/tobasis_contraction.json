@@ -1,0 +1,11 @@
+{
+  "test_id": "tobasis_contraction",
+  "oracle_version": "julia-axiom",
+  "mathematica_version": "N/A",
+  "timestamp": "2026-03-12T19:08:31.764447+00:00",
+  "commands": "[julia-adapter]",
+  "raw_output": "[10.0, 20.0, 30.0]",
+  "normalized_output": "[10.0, 20.0, 30.0]",
+  "properties": {},
+  "hash": "sha256:0f9ef0bfb1b3"
+}

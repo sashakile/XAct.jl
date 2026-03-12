@@ -163,6 +163,9 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             "GetComponents",
             "ComponentValue",
             "CTensorQ",
+            "ToBasis",
+            "FromBasis",
+            "TraceBasisDummy",
         }
     )
 
@@ -320,6 +323,12 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 return self._component_value(args)
             if action == "CTensorQ":
                 return self._ctensor_q(args)
+            if action == "ToBasis":
+                return self._to_basis(args)
+            if action == "FromBasis":
+                return self._from_basis(args)
+            if action == "TraceBasisDummy":
+                return self._trace_basis_dummy(args)
         except Exception as exc:
             return Result(
                 status="error", type="", repr="", normalized="", error=str(exc)
@@ -679,6 +688,32 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         result = self._jl.seval(f"XTensor.CTensorQ(:{tensor}, {bases_args})")
         raw = "True" if result is True or str(result).lower() == "true" else "False"
         return Result(status="ok", type="Bool", repr=raw, normalized=raw)
+
+    def _to_basis(self, args: dict[str, Any]) -> Result:
+        expr = str(args["expression"])
+        basis = str(args["basis"])
+        jl_expr = _jl_escape(expr)
+        result = self._jl.seval(f'string(XTensor.ToBasis("{jl_expr}", :{basis}).array)')
+        raw = str(result)
+        return Result(status="ok", type="Expr", repr=raw, normalized=raw)
+
+    def _from_basis(self, args: dict[str, Any]) -> Result:
+        tensor = str(args["tensor"])
+        bases = [str(b) for b in args["bases"]]
+        bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
+        result = self._jl.seval(f"XTensor.FromBasis(:{tensor}, {bases_jl})")
+        raw = str(result)
+        return Result(status="ok", type="Expr", repr=raw, normalized=raw)
+
+    def _trace_basis_dummy(self, args: dict[str, Any]) -> Result:
+        tensor = str(args["tensor"])
+        bases = [str(b) for b in args["bases"]]
+        bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
+        result = self._jl.seval(
+            f"string(XTensor.TraceBasisDummy(:{tensor}, {bases_jl}).array)"
+        )
+        raw = str(result)
+        return Result(status="ok", type="Expr", repr=raw, normalized=raw)
 
     def _execute_expr(self, wolfram_expr: str) -> Result:
         julia_expr = _wl_to_jl(wolfram_expr)

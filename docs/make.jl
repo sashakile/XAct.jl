@@ -43,6 +43,7 @@ makedocs(;
         "Architecture" => "architecture.md",
         "Reference" => [
             "Julia API" => "api.md",
+            "Python API" => "api-python.md",
             "Verification API" => "api-verification.md",
             "Verification Tools" => "verification-tools.md",
         ],

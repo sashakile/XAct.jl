@@ -268,6 +268,9 @@ class TestAdapter(abc.ABC, Generic[ContextT]):
                 "GetComponents",
                 "ComponentValue",
                 "CTensorQ",
+                "ToBasis",
+                "FromBasis",
+                "TraceBasisDummy",
             }
         )
 

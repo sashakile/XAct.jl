@@ -75,6 +75,9 @@ export CTensorObj
 export set_components!, get_components, ComponentArray
 export CTensorQ, component_value, ctensor_contract
 
+# xCoba ToBasis / FromBasis / TraceBasisDummy
+export ToBasis, FromBasis, TraceBasisDummy
+
 # ============================================================
 # Types
 # ============================================================
@@ -3586,6 +3589,357 @@ function ctensor_contract(
     tensor::AbstractString, bases::Vector, slot1::Int, slot2::Int
 )::CTensorObj
     ctensor_contract(Symbol(tensor), Symbol[Symbol(b) for b in bases], slot1, slot2)
+end
+
+# ============================================================
+# xCoba: ToBasis / FromBasis / TraceBasisDummy
+# ============================================================
+
+"""
+    _index_label(idx_str) → Symbol
+
+Extract the bare label from an index string (strip leading '-').
+"""
+function _index_label(idx_str::AbstractString)::Symbol
+    s = strip(idx_str)
+    startswith(s, "-") ? Symbol(s[2:end]) : Symbol(s)
+end
+
+"""
+    _contract_array_axes(arr, ax1, ax2) → Array
+
+Contract (trace over) two axes of an N-dimensional array.
+"""
+function _contract_array_axes(arr::AbstractArray, ax1::Int, ax2::Int)
+    nd = ndims(arr)
+    s1, s2 = minmax(ax1, ax2)
+    dim = size(arr, s1)
+
+    remaining_dims = [i for i in 1:nd if i != s1 && i != s2]
+
+    if isempty(remaining_dims)
+        # Scalar result
+        total = zero(Float64)
+        for k in 1:dim
+            total += Float64(arr[ntuple(d -> k, nd)...])
+        end
+        return fill(total)
+    end
+
+    remaining_sizes = [size(arr, d) for d in remaining_dims]
+    result = zeros(Float64, remaining_sizes...)
+
+    for idx in CartesianIndices(Tuple(remaining_sizes))
+        val = 0.0
+        for k in 1:dim
+            full_idx = Vector{Int}(undef, nd)
+            rem_pos = 1
+            for d in 1:nd
+                if d == s1 || d == s2
+                    full_idx[d] = k
+                else
+                    full_idx[d] = idx[rem_pos]
+                    rem_pos += 1
+                end
+            end
+            val += Float64(arr[full_idx...])
+        end
+        result[idx] = val
+    end
+    result
+end
+
+"""
+    _tobasis_term(term, basis, dim) → (Array, Vector{Symbol})
+
+Evaluate a single parsed term to component form.
+Returns (array, free_index_labels).
+Uses einsum-style evaluation: for each assignment of free index values,
+sums over all dummy index values the product of factor components.
+"""
+function _tobasis_term(term::TermAST, basis::Symbol, dim::Int)
+    factors = term.factors
+
+    if isempty(factors)
+        # Pure scalar coefficient
+        return (fill(Float64(term.coeff)), Symbol[])
+    end
+
+    # Parse index labels per factor and count label occurrences
+    factor_labels = Vector{Vector{Symbol}}()
+    label_count = Dict{Symbol,Int}()
+    for f in factors
+        labels = Symbol[]
+        for idx_str in f.indices
+            lbl = _index_label(idx_str)
+            push!(labels, lbl)
+            label_count[lbl] = get(label_count, lbl, 0) + 1
+        end
+        push!(factor_labels, labels)
+    end
+
+    # Classify labels as free (appears once) or dummy (appears twice)
+    dummy_labels = Symbol[]
+    free_labels = Symbol[]
+    seen = Set{Symbol}()
+    for labels in factor_labels
+        for lbl in labels
+            if lbl ∉ seen
+                if label_count[lbl] == 1
+                    push!(free_labels, lbl)
+                elseif label_count[lbl] == 2
+                    push!(dummy_labels, lbl)
+                else
+                    error("ToBasis: index $lbl appears $(label_count[lbl]) times")
+                end
+                push!(seen, lbl)
+            end
+        end
+    end
+
+    # Get component arrays for each factor
+    factor_arrays = AbstractArray[]
+    for f in factors
+        n_slots = length(f.indices)
+        if n_slots == 0
+            # Scalar tensor — retrieve its value
+            ct = get_components(f.tensor_name, Symbol[])
+            push!(factor_arrays, ct.array)
+        else
+            ct = get_components(f.tensor_name, fill(basis, n_slots))
+            push!(factor_arrays, ct.array)
+        end
+    end
+
+    coeff = Float64(term.coeff)
+    n_free = length(free_labels)
+
+    # Scalar result (no free indices)
+    if n_free == 0
+        total = _einsum_eval(
+            factor_arrays, factor_labels, dummy_labels, Dict{Symbol,Int}(), dim
+        )
+        return (fill(coeff * total), free_labels)
+    end
+
+    # Tensor result
+    result_shape = ntuple(_ -> dim, n_free)
+    result = zeros(Float64, result_shape...)
+
+    for free_idx in CartesianIndices(result_shape)
+        assignment = Dict{Symbol,Int}()
+        for (i, lbl) in enumerate(free_labels)
+            assignment[lbl] = free_idx[i]
+        end
+        val = _einsum_eval(factor_arrays, factor_labels, dummy_labels, assignment, dim)
+        result[free_idx] = coeff * val
+    end
+
+    (result, free_labels)
+end
+
+"""
+    _einsum_eval(factor_arrays, factor_labels, dummy_labels, assignment, dim) → Float64
+
+Recursively sum over dummy indices, then evaluate the product of all factors.
+"""
+function _einsum_eval(
+    factor_arrays::Vector{<:AbstractArray},
+    factor_labels::Vector{Vector{Symbol}},
+    dummy_labels::Vector{Symbol},
+    assignment::Dict{Symbol,Int},
+    dim::Int,
+    dummy_idx::Int=1,
+)::Float64
+    if dummy_idx > length(dummy_labels)
+        # All indices assigned — evaluate the product
+        prod_val = 1.0
+        for (fi, arr) in enumerate(factor_arrays)
+            labels = factor_labels[fi]
+            if isempty(labels)
+                # Scalar tensor
+                prod_val *= Float64(arr[])
+            else
+                indices = Int[assignment[l] for l in labels]
+                prod_val *= Float64(arr[indices...])
+            end
+        end
+        return prod_val
+    end
+
+    # Sum over current dummy label
+    lbl = dummy_labels[dummy_idx]
+    total = 0.0
+    for v in 1:dim
+        assignment[lbl] = v
+        total += _einsum_eval(
+            factor_arrays, factor_labels, dummy_labels, assignment, dim, dummy_idx + 1
+        )
+    end
+    total
+end
+
+"""
+    ToBasis(expr_str, basis) → CTensorObj
+
+Convert an abstract-index tensor expression to component form in the given basis.
+
+Handles single tensors, products, sums, and automatically contracts dummy
+(repeated) indices via einsum.
+
+# Examples
+
+```julia
+ToBasis("g[-a,-b]", :Polar)           # metric components
+ToBasis("g[-a,-b] * v[a]", :Polar)    # contraction g_{ab} v^a
+ToBasis("T[-a,-b] + S[-a,-b]", :Polar) # sum of tensors
+```
+"""
+function ToBasis(expr_str::AbstractString, basis::Symbol)::CTensorObj
+    BasisQ(basis) || error("ToBasis: basis $basis not defined")
+    terms = _parse_expression(expr_str)
+    isempty(terms) && error("ToBasis: cannot convert empty expression")
+
+    dim = length(CNumbersOf(basis))
+
+    # Evaluate each term
+    term_results = [_tobasis_term(t, basis, dim) for t in terms]
+
+    # All terms must have same number of free indices
+    n_free = length(term_results[1][2])
+    for (i, (_, free)) in enumerate(term_results)
+        length(free) == n_free ||
+            error("ToBasis: term $i has $(length(free)) free indices, expected $n_free")
+    end
+
+    # Sum all term arrays
+    result = term_results[1][1]
+    for i in 2:length(term_results)
+        result = result .+ term_results[i][1]
+    end
+
+    bases = fill(basis, n_free)
+
+    # Derive tensor name: use original name for single-factor single-term
+    tname = :_ToBasis
+    if length(terms) == 1 && length(terms[1].factors) == 1
+        tname = terms[1].factors[1].tensor_name
+    end
+
+    CTensorObj(tname, Array(result), collect(bases), 0)
+end
+
+function ToBasis(expr_str::AbstractString, basis::AbstractString)::CTensorObj
+    ToBasis(expr_str, Symbol(basis))
+end
+
+"""
+    FromBasis(tensor, bases) → String
+
+Return the abstract-index expression string for a tensor whose components
+are stored in the given bases. Verifies components exist, then reconstructs
+the symbolic form using the tensor's declared index slots.
+"""
+function FromBasis(tensor::Symbol, bases::Vector{Symbol})::String
+    # Verify components exist (will error if not)
+    get_components(tensor, bases)
+
+    # Reconstruct abstract expression from tensor's declared slots
+    if haskey(_metrics, tensor)
+        m = _metrics[tensor]
+        man = _manifolds[m.manifold]
+        labels = man.index_labels
+        return string(tensor) * "[-" * string(labels[1]) * ",-" * string(labels[2]) * "]"
+    end
+
+    haskey(_tensors, tensor) || error("FromBasis: tensor $tensor not found in registry")
+
+    t_obj = _tensors[tensor]
+    if isempty(t_obj.slots)
+        return string(tensor) * "[]"
+    end
+
+    idx_strs = String[]
+    for slot in t_obj.slots
+        prefix = slot.covariant ? "-" : ""
+        push!(idx_strs, prefix * string(slot.label))
+    end
+    string(tensor) * "[" * join(idx_strs, ",") * "]"
+end
+
+function FromBasis(tensor::AbstractString, bases::Vector)::String
+    FromBasis(Symbol(tensor), Symbol[Symbol(b) for b in bases])
+end
+
+"""
+    TraceBasisDummy(tensor, bases) → CTensorObj
+
+Automatically find and contract all pairs of basis indices where one slot is
+covariant and the other is contravariant (with the same basis), mirroring
+Wolfram's TraceBasisDummy. Returns the contracted CTensorObj.
+
+For a rank-2 mixed tensor like T^a_{b} with both slots in the same basis,
+this computes the trace.
+"""
+function TraceBasisDummy(tensor::Symbol, bases::Vector{Symbol})::CTensorObj
+    ct = get_components(tensor, bases)
+
+    # Get slot variance from tensor definition
+    slots = if haskey(_tensors, tensor)
+        _tensors[tensor].slots
+    elseif haskey(_metrics, tensor)
+        m = _metrics[tensor]
+        man = _manifolds[m.manifold]
+        labels = man.index_labels
+        [IndexSpec(labels[1], true), IndexSpec(labels[2], true)]
+    else
+        error("TraceBasisDummy: tensor $tensor not found in registry")
+    end
+
+    length(slots) == length(bases) || error(
+        "TraceBasisDummy: number of bases ($(length(bases))) ≠ number of slots ($(length(slots)))",
+    )
+
+    # Find pairs of same-basis slots with opposite variance
+    contracted = Set{Int}()
+    pairs = Tuple{Int,Int}[]
+    for i in 1:length(bases)
+        i in contracted && continue
+        for j in (i + 1):length(bases)
+            j in contracted && continue
+            if bases[i] == bases[j] && slots[i].covariant != slots[j].covariant
+                push!(pairs, (i, j))
+                push!(contracted, i)
+                push!(contracted, j)
+                break
+            end
+        end
+    end
+
+    isempty(pairs) && error(
+        "TraceBasisDummy: no dummy basis index pairs found (need same basis, opposite variance)",
+    )
+
+    # Contract pairs iteratively
+    result_array = ct.array
+    result_bases = collect(bases)
+    offset = 0
+    for (orig_i, orig_j) in pairs
+        cur_i = orig_i - offset
+        cur_j = orig_j - offset
+        result_array = _contract_array_axes(result_array, cur_i, cur_j)
+        # Remove the two contracted bases entries
+        s1, s2 = minmax(cur_i, cur_j)
+        deleteat!(result_bases, s2)
+        deleteat!(result_bases, s1)
+        offset += 2
+    end
+
+    CTensorObj(tensor, Array(result_array), result_bases, ct.weight)
+end
+
+function TraceBasisDummy(tensor::AbstractString, bases::Vector)::CTensorObj
+    TraceBasisDummy(Symbol(tensor), Symbol[Symbol(b) for b in bases])
 end
 
 end  # module XTensor

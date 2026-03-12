@@ -1,0 +1,262 @@
+# tests/xtensor/tobasis.toml
+# Tests for ToBasis, FromBasis, TraceBasisDummy
+
+[meta]
+id              = "xtensor/tobasis"
+description     = "ToBasis/FromBasis/TraceBasisDummy: abstract↔component conversions"
+tags            = ["xtensor", "xcoba", "tobasis", "layer:1"]
+layer           = 1
+oracle_is_axiom = true
+
+# ============================================================
+# Setup: 3D manifold with metric and chart, plus tensors
+# ============================================================
+
+[[setup]]
+action   = "DefManifold"
+store_as = "Tbm"
+[setup.args]
+name      = "Tbm"
+dimension = 3
+indices   = ["tba", "tbb", "tbc"]
+
+[[setup]]
+action   = "DefMetric"
+store_as = "Tbg"
+[setup.args]
+signdet = 1
+metric  = "Tbg[-tba,-tbb]"
+covd    = "Tbd"
+
+[[setup]]
+action   = "DefChart"
+store_as = "Tbc"
+[setup.args]
+name     = "Tbc"
+manifold = "Tbm"
+cnumbers = [1, 2, 3]
+scalars  = ["tbx", "tby", "tbz"]
+
+[[setup]]
+action   = "DefTensor"
+store_as = "Tbt"
+[setup.args]
+name     = "Tbt"
+indices  = ["-tba", "-tbb"]
+manifold = "Tbm"
+
+[[setup]]
+action   = "DefTensor"
+store_as = "Tbv"
+[setup.args]
+name     = "Tbv"
+indices  = ["tba"]
+manifold = "Tbm"
+
+# Mixed tensor T^a_b for TraceBasisDummy
+[[setup]]
+action   = "DefTensor"
+store_as = "Tbmix"
+[setup.args]
+name     = "Tbmix"
+indices  = ["tba", "-tbb"]
+manifold = "Tbm"
+
+# Store components for all tensors
+[[setup]]
+action   = "SetComponents"
+store_as = "Tbt_comp"
+[setup.args]
+tensor = "Tbt"
+array  = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+bases  = ["Tbc", "Tbc"]
+
+[[setup]]
+action   = "SetComponents"
+store_as = "Tbg_comp"
+[setup.args]
+tensor = "Tbg"
+array  = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+bases  = ["Tbc", "Tbc"]
+
+[[setup]]
+action   = "SetComponents"
+store_as = "Tbv_comp"
+[setup.args]
+tensor = "Tbv"
+array  = [10, 20, 30]
+bases  = ["Tbc"]
+
+[[setup]]
+action   = "SetComponents"
+store_as = "Tbmix_comp"
+[setup.args]
+tensor = "Tbmix"
+array  = [[1, 0, 0], [0, 2, 0], [0, 0, 3]]
+bases  = ["Tbc", "Tbc"]
+
+# ============================================================
+# Test: ToBasis single rank-2 tensor
+# ============================================================
+
+[[tests]]
+id          = "tobasis_single_tensor"
+description = "ToBasis retrieves component array for a single tensor"
+
+[[tests.operations]]
+action = "ToBasis"
+[tests.operations.args]
+expression = "Tbt[-tba,-tbb]"
+basis      = "Tbc"
+
+# ============================================================
+# Test: ToBasis vector
+# ============================================================
+
+[[tests]]
+id          = "tobasis_vector"
+description = "ToBasis retrieves component vector for rank-1 tensor"
+
+[[tests.operations]]
+action = "ToBasis"
+[tests.operations.args]
+expression = "Tbv[tba]"
+basis      = "Tbc"
+
+# ============================================================
+# Test: ToBasis contraction g_{ab} v^a
+# ============================================================
+
+[[tests]]
+id          = "tobasis_contraction"
+description = "ToBasis contracts g_{ab} v^a with identity metric"
+
+[[tests.operations]]
+action = "ToBasis"
+[tests.operations.args]
+expression = "Tbg[-tba,-tbb] Tbv[tba]"
+basis      = "Tbc"
+
+# ============================================================
+# Test: ToBasis with coefficient
+# ============================================================
+
+[[tests]]
+id          = "tobasis_coefficient"
+description = "ToBasis applies scalar coefficient to components"
+
+[[tests.operations]]
+action = "ToBasis"
+[tests.operations.args]
+expression = "2*Tbt[-tba,-tbb]"
+basis      = "Tbc"
+
+# ============================================================
+# Test: ToBasis sum of tensors
+# ============================================================
+
+[[tests]]
+id          = "tobasis_sum"
+description = "ToBasis sums component arrays of two tensors"
+
+[[tests.operations]]
+action = "ToBasis"
+[tests.operations.args]
+expression = "Tbt[-tba,-tbb] + Tbt[-tba,-tbb]"
+basis      = "Tbc"
+
+# ============================================================
+# Test: ToBasis full trace
+# ============================================================
+
+[[tests]]
+id          = "tobasis_trace"
+description = "ToBasis contracts dummy pair to produce scalar trace"
+
+[[tests.operations]]
+action = "ToBasis"
+[tests.operations.args]
+expression = "Tbmix[tba,-tba]"
+basis      = "Tbc"
+
+# ============================================================
+# Test: FromBasis returns abstract expression
+# ============================================================
+
+[[tests]]
+id          = "frombasis_tensor"
+description = "FromBasis returns abstract-index expression for stored tensor"
+
+[[tests.operations]]
+action = "FromBasis"
+[tests.operations.args]
+tensor = "Tbt"
+bases  = ["Tbc", "Tbc"]
+
+[tests.expected]
+expr = "Tbt[-tba,-tbb]"
+
+# ============================================================
+# Test: FromBasis metric
+# ============================================================
+
+[[tests]]
+id          = "frombasis_metric"
+description = "FromBasis returns abstract form for metric tensor"
+
+[[tests.operations]]
+action = "FromBasis"
+[tests.operations.args]
+tensor = "Tbg"
+bases  = ["Tbc", "Tbc"]
+
+[tests.expected]
+expr = "Tbg[-tba,-tbb]"
+
+# ============================================================
+# Test: TraceBasisDummy contracts mixed tensor
+# ============================================================
+
+[[tests]]
+id          = "tracebasis_rank2"
+description = "TraceBasisDummy contracts mixed rank-2 tensor (trace = 1+2+3 = 6)"
+
+[[tests.operations]]
+action = "TraceBasisDummy"
+[tests.operations.args]
+tensor = "Tbmix"
+bases  = ["Tbc", "Tbc"]
+
+# ============================================================
+# Test: TraceBasisDummy error on all-covariant tensor
+# ============================================================
+
+[[tests]]
+id          = "tracebasis_error_no_pair"
+description = "TraceBasisDummy errors when no opposite-variance pair exists"
+
+[[tests.operations]]
+action = "TraceBasisDummy"
+[tests.operations.args]
+tensor = "Tbt"
+bases  = ["Tbc", "Tbc"]
+
+[tests.expected]
+expect_error = true
+
+# ============================================================
+# Test: ToBasis error — non-existent basis
+# ============================================================
+
+[[tests]]
+id          = "tobasis_error_bad_basis"
+description = "ToBasis errors for non-existent basis"
+
+[[tests.operations]]
+action = "ToBasis"
+[tests.operations.args]
+expression = "Tbt[-tba,-tbb]"
+basis      = "NoSuchBasis"
+
+[tests.expected]
+expect_error = true

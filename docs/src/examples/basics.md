@@ -15,13 +15,8 @@ First, we load the `xAct` module (the Julia port of the xAct suite).
 using xAct
 ````
 
-We also load `PythonCall` to demonstrate the polyglot nature of the project.
-
-````@example basics
-using PythonCall
-````
-
 ## 2. Defining a Manifold
+In General Relativity, our spacetime is represented as a manifold.
 In the original Wolfram xAct, you would use:
 `DefManifold[M, 4, {a, b, c, d, e, f}]`
 
@@ -32,14 +27,15 @@ modifies the global session state.
 M = def_manifold!(:M, 4, [:a, :b, :c, :d, :e, :f])
 ````
 
-Let's check the dimension:
+Let's check the dimension of the manifold:
 
 ````@example basics
 println("Manifold M dimension: ", Dimension(:M))
 ````
 
 ## 3. Defining Tensors
-Now we define a symmetric rank-2 tensor $T_{ab}$.
+Now we define a symmetric rank-2 tensor $T_{ab}$. This could represent
+the energy-momentum tensor $T_{\mu\nu}$.
 In Wolfram: `DefTensor[T[-a, -b], M, Symmetric[{-a, -b}]]`
 
 ````@example basics
@@ -59,28 +55,29 @@ canonical = ToCanonical(expr)
 println("Canonical form of '$expr': ", canonical)
 ````
 
-## 5. The Python Bridge
-`xAct.jl` is designed to be accessible from Python. Using `PythonCall.jl`,
-we can see how a Python user would interact with the same core.
+## 5. Defining a Metric
+The metric tensor $g_{ab}$ is fundamental to defining geometry and curvature.
+In Wolfram: `DefMetric[-1, g[-a, -b], CD]`
 
-```python
-import sxact
-M = sxact.Manifold("M", 4)
-T = sxact.Tensor("T", ["-a", "-b"], M, symmetry="Symmetric")
-print(sxact.to_canonical("T[-b,-a] - T[-a,-b]"))
-```
+````@example basics
+g = def_metric!(-1, "g[-a,-b]", :CD)
+println("Metric g defined with signature -1.")
+````
 
-Note: The high-level Python API shown above is a goal for the next
-development phase. Currently, the Python side is primarily used for
-verification and testing.
+## 6. Migration Rosetta Stone Summary
 
-## 6. Summary Table
-
+| Operation | Wolfram (xAct) | Julia (xAct.jl) |
+| :--- | :--- | :--- |
 | **DefManifold** | `DefManifold[M, 4, {a,b}]` | `def_manifold!(:M, 4, [:a, :b])` |
 | **DefTensor** | `DefTensor[T[-a,-b], M]` | `def_tensor!(:T, ["-a", "-b"], :M)` |
 | **ToCanonical** | `ToCanonical[expr]` | `ToCanonical(expr)` |
+| **DefMetric** | `DefMetric[-1, g[-a,-b], CD]` | `def_metric!(-1, "g[-a,-b]", :CD)` |
+
+## 7. Next Steps
+Now that you've mastered the basics, check out:
+- [Differential Geometry Primer](../differential-geometry-primer.md)
+- [Feature Status](../theory/STATUS.md)
 
 ---
 
 *This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
-

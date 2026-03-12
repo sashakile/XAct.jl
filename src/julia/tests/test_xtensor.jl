@@ -1359,4 +1359,245 @@ using xAct
 
         @test component_value("Csot", [1, 2], ["Csob", "Csob"]) == 6
     end
+
+    # ================================================================
+    # ToBasis / FromBasis / TraceBasisDummy
+    # ================================================================
+
+    @testset "ToBasis single tensor" begin
+        reset_state!()
+        def_manifold!(:Tb3, 3, [:tba, :tbb, :tbc])
+        def_chart!(:Tbc, :Tb3, [1, 2, 3], [:tbx, :tby, :tbz])
+        def_tensor!(:Tbt, ["-tba", "-tbb"], :Tb3)
+
+        arr = Any[1 2 3; 4 5 6; 7 8 9]
+        set_components!(:Tbt, arr, [:Tbc, :Tbc])
+
+        ct = ToBasis("Tbt[-tba,-tbb]", :Tbc)
+        @test ct.tensor == :Tbt
+        @test ct.array == Float64[1 2 3; 4 5 6; 7 8 9]
+        @test ct.bases == [:Tbc, :Tbc]
+    end
+
+    @testset "ToBasis vector" begin
+        reset_state!()
+        def_manifold!(:Tv3, 3, [:tva, :tvb, :tvc])
+        def_chart!(:Tvc, :Tv3, [1, 2, 3], [:tvx, :tvy, :tvz])
+        def_tensor!(:Tvv, ["tva"], :Tv3)
+
+        set_components!(:Tvv, Any[10, 20, 30], [:Tvc])
+
+        ct = ToBasis("Tvv[tva]", :Tvc)
+        @test ct.array == Float64[10, 20, 30]
+        @test ct.bases == [:Tvc]
+    end
+
+    @testset "ToBasis contraction (g * v)" begin
+        reset_state!()
+        def_manifold!(:Tc2, 2, [:tca, :tcb])
+        def_chart!(:Tcc, :Tc2, [1, 2], [:tcx, :tcy])
+        def_metric!(1, "Tcg[-tca,-tcb]", :Tcd)
+        def_tensor!(:Tcv, ["tca"], :Tc2)
+
+        # g = identity, v = [3, 7]
+        set_components!(:Tcg, Any[1 0; 0 1], [:Tcc, :Tcc])
+        set_components!(:Tcv, Any[3, 7], [:Tcc])
+
+        # g_{ab} v^a = sum_a g_{a,b} v^a
+        ct = ToBasis("Tcg[-tca,-tcb] Tcv[tca]", :Tcc)
+        @test ct.array ≈ Float64[3.0, 7.0]
+        @test length(ct.bases) == 1
+    end
+
+    @testset "ToBasis contraction non-identity metric" begin
+        reset_state!()
+        def_manifold!(:Tn2, 2, [:tna, :tnb])
+        def_chart!(:Tnc, :Tn2, [1, 2], [:tnx, :tny])
+        def_metric!(-1, "Tng[-tna,-tnb]", :Tnd)
+        def_tensor!(:Tnv, ["tna"], :Tn2)
+
+        # Minkowski-like: g = diag(-1, 1), v = [2, 5]
+        set_components!(:Tng, Any[-1 0; 0 1], [:Tnc, :Tnc])
+        set_components!(:Tnv, Any[2, 5], [:Tnc])
+
+        # g_{ab} v^a = [-1*2 + 0*5, 0*2 + 1*5] = [-2, 5]
+        ct = ToBasis("Tng[-tna,-tnb] Tnv[tna]", :Tnc)
+        @test ct.array ≈ Float64[-2.0, 5.0]
+    end
+
+    @testset "ToBasis full trace (scalar result)" begin
+        reset_state!()
+        def_manifold!(:Tt3, 3, [:tta, :ttb, :ttc])
+        def_chart!(:Ttc, :Tt3, [1, 2, 3], [:ttx, :tty, :ttz])
+        def_tensor!(:Ttt, ["-tta", "ttb"], :Tt3)
+
+        # Mixed tensor with trace = 1+5+9 = 15
+        set_components!(:Ttt, Any[1 2 3; 4 5 6; 7 8 9], [:Ttc, :Ttc])
+
+        ct = ToBasis("Ttt[-tta,tta]", :Ttc)
+        @test ct.array[] ≈ 15.0
+        @test ct.bases == Symbol[]
+    end
+
+    @testset "ToBasis sum of tensors" begin
+        reset_state!()
+        def_manifold!(:Ts2, 2, [:tsa, :tsb])
+        def_chart!(:Tsc, :Ts2, [1, 2], [:tsx, :tsy])
+        def_tensor!(:TsA, ["-tsa", "-tsb"], :Ts2)
+        def_tensor!(:TsB, ["-tsa", "-tsb"], :Ts2)
+
+        set_components!(:TsA, Any[1 2; 3 4], [:Tsc, :Tsc])
+        set_components!(:TsB, Any[10 20; 30 40], [:Tsc, :Tsc])
+
+        ct = ToBasis("TsA[-tsa,-tsb] + TsB[-tsa,-tsb]", :Tsc)
+        @test ct.array ≈ Float64[11 22; 33 44]
+    end
+
+    @testset "ToBasis with coefficient" begin
+        reset_state!()
+        def_manifold!(:Tk2, 2, [:tka, :tkb])
+        def_chart!(:Tkc, :Tk2, [1, 2], [:tkx, :tky])
+        def_tensor!(:Tkt, ["-tka", "-tkb"], :Tk2)
+
+        set_components!(:Tkt, Any[2 0; 0 3], [:Tkc, :Tkc])
+
+        ct = ToBasis("3*Tkt[-tka,-tkb]", :Tkc)
+        @test ct.array ≈ Float64[6 0; 0 9]
+    end
+
+    @testset "ToBasis difference of tensors" begin
+        reset_state!()
+        def_manifold!(:Td2, 2, [:tda, :tdb])
+        def_chart!(:Tdc, :Td2, [1, 2], [:tdx, :tdy])
+        def_tensor!(:TdA, ["-tda", "-tdb"], :Td2)
+        def_tensor!(:TdB, ["-tda", "-tdb"], :Td2)
+
+        set_components!(:TdA, Any[10 20; 30 40], [:Tdc, :Tdc])
+        set_components!(:TdB, Any[1 2; 3 4], [:Tdc, :Tdc])
+
+        ct = ToBasis("TdA[-tda,-tdb] - TdB[-tda,-tdb]", :Tdc)
+        @test ct.array ≈ Float64[9 18; 27 36]
+    end
+
+    @testset "ToBasis error: non-existent basis" begin
+        reset_state!()
+        def_manifold!(:Te2, 2, [:tea, :teb])
+        def_tensor!(:Tet, ["-tea", "-teb"], :Te2)
+        @test_throws Exception ToBasis("Tet[-tea,-teb]", :NoSuchBasis)
+    end
+
+    @testset "ToBasis string overload" begin
+        reset_state!()
+        def_manifold!(:To2, 2, [:toa, :tob])
+        def_chart!(:Toc, :To2, [1, 2], [:tox, :toy])
+        def_tensor!(:Tot, ["-toa", "-tob"], :To2)
+
+        set_components!(:Tot, Any[1 0; 0 1], [:Toc, :Toc])
+
+        ct = ToBasis("Tot[-toa,-tob]", "Toc")
+        @test ct.array ≈ Float64[1 0; 0 1]
+    end
+
+    @testset "FromBasis tensor" begin
+        reset_state!()
+        def_manifold!(:Fb2, 2, [:fba, :fbb])
+        def_chart!(:Fbc, :Fb2, [1, 2], [:fbx, :fby])
+        def_tensor!(:Fbt, ["-fba", "fbb"], :Fb2)
+
+        set_components!(:Fbt, Any[1 0; 0 1], [:Fbc, :Fbc])
+
+        result = FromBasis(:Fbt, [:Fbc, :Fbc])
+        @test result == "Fbt[-fba,fbb]"
+    end
+
+    @testset "FromBasis metric" begin
+        reset_state!()
+        def_manifold!(:Fm2, 2, [:fma, :fmb])
+        def_chart!(:Fmc, :Fm2, [1, 2], [:fmx, :fmy])
+        def_metric!(1, "Fmg[-fma,-fmb]", :Fmd)
+
+        set_components!(:Fmg, Any[1 0; 0 1], [:Fmc, :Fmc])
+
+        result = FromBasis(:Fmg, [:Fmc, :Fmc])
+        @test result == "Fmg[-fma,-fmb]"
+    end
+
+    @testset "FromBasis string overload" begin
+        reset_state!()
+        def_manifold!(:Fs2, 2, [:fsa, :fsb])
+        def_chart!(:Fsc, :Fs2, [1, 2], [:fsx, :fsy])
+        def_tensor!(:Fst, ["-fsa", "-fsb"], :Fs2)
+
+        set_components!(:Fst, Any[1 0; 0 1], [:Fsc, :Fsc])
+
+        result = FromBasis("Fst", ["Fsc", "Fsc"])
+        @test result == "Fst[-fsa,-fsb]"
+    end
+
+    @testset "FromBasis error: no components" begin
+        reset_state!()
+        def_manifold!(:Fe2, 2, [:fea, :feb])
+        def_chart!(:Fec, :Fe2, [1, 2], [:fex, :fey])
+        def_tensor!(:Fet, ["-fea", "-feb"], :Fe2)
+        @test_throws Exception FromBasis(:Fet, [:Fec, :Fec])
+    end
+
+    @testset "TraceBasisDummy rank-2 mixed" begin
+        reset_state!()
+        def_manifold!(:Tr3, 3, [:tra, :trb, :trc])
+        def_chart!(:Trc, :Tr3, [1, 2, 3], [:trx, :try, :trz])
+        # Mixed tensor: T^a_{b} (first up, second down)
+        def_tensor!(:Trt, ["tra", "-trb"], :Tr3)
+
+        set_components!(:Trt, Any[1 0 0; 0 2 0; 0 0 3], [:Trc, :Trc])
+
+        ct = TraceBasisDummy(:Trt, [:Trc, :Trc])
+        @test ct.array[] ≈ 6.0  # 1 + 2 + 3
+        @test ct.bases == Symbol[]
+    end
+
+    @testset "TraceBasisDummy rank-4 mixed" begin
+        reset_state!()
+        def_manifold!(:Tr4, 2, [:tra4, :trb4, :trc4, :trd4])
+        def_chart!(:Tr4c, :Tr4, [1, 2], [:tr4x, :tr4y])
+        # T^a_{b,c}^d — slots 1 up, 2 down, 3 down, 4 up
+        def_tensor!(:Tr4t, ["tra4", "-trb4", "-trc4", "trd4"], :Tr4)
+
+        # 2x2x2x2 array
+        arr = zeros(Int, 2, 2, 2, 2)
+        # Set some values: trace on slots (1,2) and (3,4) should contract both pairs
+        # For simplicity: identity-like on slots 1-2 and 3-4
+        for i in 1:2, j in 1:2, k in 1:2, l in 1:2
+            arr[i, j, k, l] = (i == j ? 1 : 0) * (k == l ? 1 : 0)
+        end
+        set_components!(:Tr4t, arr, [:Tr4c, :Tr4c, :Tr4c, :Tr4c])
+
+        ct = TraceBasisDummy(:Tr4t, [:Tr4c, :Tr4c, :Tr4c, :Tr4c])
+        # Contracts (1,2) then (3,4) → trace of 2x2 identity twice = 2 * 2 = 4
+        @test ct.array[] ≈ 4.0
+        @test ct.bases == Symbol[]
+    end
+
+    @testset "TraceBasisDummy no dummy pair errors" begin
+        reset_state!()
+        def_manifold!(:Tn3, 2, [:tna3, :tnb3])
+        def_chart!(:Tn3c, :Tn3, [1, 2], [:tn3x, :tn3y])
+        # Both slots covariant — no opposite-variance pair
+        def_tensor!(:Tn3t, ["-tna3", "-tnb3"], :Tn3)
+
+        set_components!(:Tn3t, Any[1 0; 0 1], [:Tn3c, :Tn3c])
+        @test_throws Exception TraceBasisDummy(:Tn3t, [:Tn3c, :Tn3c])
+    end
+
+    @testset "TraceBasisDummy string overload" begin
+        reset_state!()
+        def_manifold!(:Tso2, 2, [:tsoa, :tsob])
+        def_chart!(:Tsoc, :Tso2, [1, 2], [:tsox, :tsoy])
+        def_tensor!(:Tsot, ["tsoa", "-tsob"], :Tso2)
+
+        set_components!(:Tsot, Any[5 0; 0 3], [:Tsoc, :Tsoc])
+
+        ct = TraceBasisDummy("Tsot", ["Tsoc", "Tsoc"])
+        @test ct.array[] ≈ 8.0
+    end
 end
