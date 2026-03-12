@@ -2,7 +2,7 @@
 
 import pytest
 
-from sxact.adapter.julia_stub import JuliaAdapter
+from xact.adapter.julia_stub import JuliaAdapter
 
 
 # Override the fixture so the conformance suite runs against JuliaAdapter

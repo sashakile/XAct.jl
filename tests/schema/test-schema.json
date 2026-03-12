@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://sxact.dev/schemas/test-schema.json",
+  "$id": "https://xact.dev/schemas/test-schema.json",
   "title": "sxAct test file",
   "description": "Schema for TOML-based sxAct test files. Each file runs in a fresh CAS context (per-file isolation). See specs/2026-01-22-design-framework-gaps.md §5.1, §5.4.",
   "type": "object",

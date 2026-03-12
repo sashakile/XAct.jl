@@ -7,7 +7,7 @@ Usage — in the adapter's own test module::
 
     # tests/test_wolfram_adapter.py
     import pytest
-    from sxact.adapter.base import TestAdapter
+    from xact.adapter.base import TestAdapter
 
     @pytest.fixture
     def adapter_factory():
@@ -29,14 +29,14 @@ from __future__ import annotations
 
 import pytest
 
-from sxact.adapter.base import (
+from xact.adapter.base import (
     AdapterError,
     EqualityMode,
     NormalizedExpr,
     TestAdapter,
     VersionInfo,
 )
-from sxact.oracle.result import Result
+from xact.oracle.result import Result
 
 
 # ---------------------------------------------------------------------------

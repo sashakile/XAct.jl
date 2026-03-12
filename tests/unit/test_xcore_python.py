@@ -1,4 +1,4 @@
-"""Tests for the Python sxact.xcore boundary.
+"""Tests for the Python xact.xcore boundary.
 
 Covers:
 1. Pure-Python utility functions (no Julia required).
@@ -76,8 +76,8 @@ def mock_xcore() -> MagicMock:
 def patched(mock_julia: MagicMock, mock_xcore: MagicMock):
     """Patch get_julia/get_xcore for the duration of a test."""
     with (
-        patch("sxact.xcore._runtime.get_julia", return_value=mock_julia),
-        patch("sxact.xcore._runtime.get_xcore", return_value=mock_xcore),
+        patch("xact.xcore._runtime.get_julia", return_value=mock_julia),
+        patch("xact.xcore._runtime.get_xcore", return_value=mock_xcore),
     ):
         yield mock_julia, mock_xcore
 
@@ -91,75 +91,75 @@ class TestPurePythonFunctions:
     """Functions that contain no Julia calls; no mocking required."""
 
     def test_check_options_dict(self) -> None:
-        from sxact.xcore import check_options
+        from xact.xcore import check_options
 
         result = check_options({"a": 1, "b": 2})
         assert ("a", 1) in result
         assert ("b", 2) in result
 
     def test_check_options_tuple_pair(self) -> None:
-        from sxact.xcore import check_options
+        from xact.xcore import check_options
 
         result = check_options(("x", 42))
         assert result == [("x", 42)]
 
     def test_check_options_list_of_pairs(self) -> None:
-        from sxact.xcore import check_options
+        from xact.xcore import check_options
 
         result = check_options([("p", 1), ("q", 2)])
         assert result == [("p", 1), ("q", 2)]
 
     def test_check_options_multiple_args(self) -> None:
-        from sxact.xcore import check_options
+        from xact.xcore import check_options
 
         result = check_options({"a": 1}, ("b", 2))
         assert ("a", 1) in result
         assert ("b", 2) in result
 
     def test_check_options_invalid_scalar_raises(self) -> None:
-        from sxact.xcore import check_options
+        from xact.xcore import check_options
 
         with pytest.raises(ValueError, match="expected dict or"):
             check_options("not-a-valid-option")
 
     def test_check_options_list_with_invalid_item_raises(self) -> None:
-        from sxact.xcore import check_options
+        from xact.xcore import check_options
 
         with pytest.raises(ValueError, match="expected .key, value. pair"):
             check_options(["not-a-pair"])
 
     def test_delete_duplicates_removes_dupes(self) -> None:
-        from sxact.xcore import delete_duplicates
+        from xact.xcore import delete_duplicates
 
         assert delete_duplicates(["a", "b", "a", "c", "b"]) == ["a", "b", "c"]
 
     def test_delete_duplicates_preserves_order(self) -> None:
-        from sxact.xcore import delete_duplicates
+        from xact.xcore import delete_duplicates
 
         assert delete_duplicates(["z", "a", "z", "b"]) == ["z", "a", "b"]
 
     def test_delete_duplicates_empty(self) -> None:
-        from sxact.xcore import delete_duplicates
+        from xact.xcore import delete_duplicates
 
         assert delete_duplicates([]) == []
 
     def test_duplicate_free_q_true(self) -> None:
-        from sxact.xcore import duplicate_free_q
+        from xact.xcore import duplicate_free_q
 
         assert duplicate_free_q(["a", "b", "c"]) is True
 
     def test_duplicate_free_q_false(self) -> None:
-        from sxact.xcore import duplicate_free_q
+        from xact.xcore import duplicate_free_q
 
         assert duplicate_free_q(["a", "b", "a"]) is False
 
     def test_duplicate_free_q_empty(self) -> None:
-        from sxact.xcore import duplicate_free_q
+        from xact.xcore import duplicate_free_q
 
         assert duplicate_free_q([]) is True
 
     def test_push_unevaluated_appends_in_place(self) -> None:
-        from sxact.xcore import push_unevaluated
+        from xact.xcore import push_unevaluated
 
         lst: list[int] = [1, 2]
         result = push_unevaluated(lst, 3)
@@ -167,19 +167,19 @@ class TestPurePythonFunctions:
         assert result is lst  # mutates in place
 
     def test_x_evaluate_at_identity(self) -> None:
-        from sxact.xcore import x_evaluate_at
+        from xact.xcore import x_evaluate_at
 
         expr = object()
         assert x_evaluate_at(expr, [1, 2]) is expr
 
     def test_no_pattern_identity(self) -> None:
-        from sxact.xcore import no_pattern
+        from xact.xcore import no_pattern
 
         expr = object()
         assert no_pattern(expr) is expr
 
     def test_report_set_option_noop(self) -> None:
-        from sxact.xcore import report_set_option
+        from xact.xcore import report_set_option
 
         result = report_set_option("sym", ("key", "val"))
         assert result is None
@@ -196,7 +196,7 @@ class TestTypeConversions:
     def test_symbol_join_passes_args_and_returns_str(self, patched: Any) -> None:
         mock_jl, mock_xc = patched
         mock_xc.SymbolJoin.return_value = "<JuliaSymbol:FooBar>"
-        from sxact.xcore import symbol_join
+        from xact.xcore import symbol_join
 
         result = symbol_join("Foo", "Bar")
         assert isinstance(result, str)
@@ -206,7 +206,7 @@ class TestTypeConversions:
         mock_jl, mock_xc = patched
         mock_jl.Symbol.return_value = "<JuliaSymbol:A†>"
         mock_xc.HasDaggerCharacterQ.return_value = True
-        from sxact.xcore import has_dagger_character_q
+        from xact.xcore import has_dagger_character_q
 
         has_dagger_character_q("A†")
         mock_jl.Symbol.assert_called_once_with("A†")
@@ -216,7 +216,7 @@ class TestTypeConversions:
         mock_jl, mock_xc = patched
         mock_jl.Symbol.return_value = "<JuliaSymbol:A>"
         mock_xc.MakeDaggerSymbol.return_value = "<JuliaSymbol:A†>"
-        from sxact.xcore import make_dagger_symbol
+        from xact.xcore import make_dagger_symbol
 
         result = make_dagger_symbol("A")
         assert isinstance(result, str)
@@ -226,7 +226,7 @@ class TestTypeConversions:
         mock_jl, mock_xc = patched
         mock_jl.Symbol.return_value = "<JuliaSymbol:Foo_Bar>"
         mock_xc.UnlinkSymbol.return_value = ["<JuliaSymbol:Foo>", "<JuliaSymbol:Bar>"]
-        from sxact.xcore import unlink_symbol
+        from xact.xcore import unlink_symbol
 
         result = unlink_symbol("Foo_Bar")
         assert isinstance(result, list)
@@ -236,7 +236,7 @@ class TestTypeConversions:
         mock_jl, mock_xc = patched
         mock_jl.seval.return_value = "<JuliaVector:[Foo,Bar]>"
         mock_xc.LinkSymbols.return_value = "<JuliaSymbol:Foo_Bar>"
-        from sxact.xcore import link_symbols
+        from xact.xcore import link_symbols
 
         result = link_symbols(["Foo", "Bar"])
         assert isinstance(result, str)
@@ -246,7 +246,7 @@ class TestTypeConversions:
     def test_link_symbols_empty_list_calls_empty_vector(self, patched: Any) -> None:
         mock_jl, mock_xc = patched
         mock_jl.seval.return_value = []
-        from sxact.xcore import link_symbols
+        from xact.xcore import link_symbols
 
         link_symbols([])
         mock_jl.seval.assert_any_call("Symbol[]")
@@ -254,7 +254,7 @@ class TestTypeConversions:
     def test_find_symbols_returns_list_of_str(self, patched: Any) -> None:
         _, mock_xc = patched
         mock_xc.FindSymbols.return_value = ["<JuliaSymbol:a>", "<JuliaSymbol:b>"]
-        from sxact.xcore import find_symbols
+        from xact.xcore import find_symbols
 
         result = find_symbols(MagicMock())
         assert isinstance(result, list)
@@ -272,7 +272,7 @@ class TestAPIForwarding:
     def test_just_one_delegates(self, patched: Any) -> None:
         _, mock_xc = patched
         mock_xc.JustOne.return_value = 42
-        from sxact.xcore import just_one
+        from xact.xcore import just_one
 
         lst = [42]
         result = just_one(lst)
@@ -282,7 +282,7 @@ class TestAPIForwarding:
     def test_map_if_plus_delegates(self, patched: Any) -> None:
         _, mock_xc = patched
         mock_xc.MapIfPlus.return_value = [2, 4]
-        from sxact.xcore import map_if_plus
+        from xact.xcore import map_if_plus
 
         def f(x):
             return x * 2
@@ -292,14 +292,14 @@ class TestAPIForwarding:
 
     def test_thread_array_delegates(self, patched: Any) -> None:
         _, mock_xc = patched
-        from sxact.xcore import thread_array
+        from xact.xcore import thread_array
 
         thread_array("head", [1], [2])
         mock_xc.ThreadArray.assert_called_once_with("head", [1], [2])
 
     def test_set_number_of_arguments_delegates(self, patched: Any) -> None:
         _, mock_xc = patched
-        from sxact.xcore import set_number_of_arguments
+        from xact.xcore import set_number_of_arguments
 
         f = MagicMock()
         set_number_of_arguments(f, 3)
@@ -308,7 +308,7 @@ class TestAPIForwarding:
     def test_true_or_false_delegates_and_returns_bool(self, patched: Any) -> None:
         _, mock_xc = patched
         mock_xc.TrueOrFalse.return_value = True
-        from sxact.xcore import true_or_false
+        from xact.xcore import true_or_false
 
         result = true_or_false(True)
         mock_xc.TrueOrFalse.assert_called_once_with(True)
@@ -317,7 +317,7 @@ class TestAPIForwarding:
     def test_validate_symbol_passes_julia_symbol(self, patched: Any) -> None:
         mock_jl, mock_xc = patched
         mock_jl.Symbol.return_value = "<JuliaSymbol:Foo>"
-        from sxact.xcore import validate_symbol
+        from xact.xcore import validate_symbol
 
         validate_symbol("Foo")
         mock_jl.Symbol.assert_called_once_with("Foo")
@@ -325,7 +325,7 @@ class TestAPIForwarding:
 
     def test_register_symbol_passes_str_and_package(self, patched: Any) -> None:
         _, mock_xc = patched
-        from sxact.xcore import register_symbol
+        from xact.xcore import register_symbol
 
         register_symbol("MyTensor", "xTensor")
         mock_xc.register_symbol.assert_called_once_with("MyTensor", "xTensor")
@@ -333,7 +333,7 @@ class TestAPIForwarding:
     def test_x_up_set_converts_both_symbol_args(self, patched: Any) -> None:
         mock_jl, mock_xc = patched
         mock_jl.Symbol.side_effect = lambda s: f"<JuliaSymbol:{s}>"
-        from sxact.xcore import x_up_set
+        from xact.xcore import x_up_set
 
         x_up_set("prop", "tag", 99)
         mock_xc.xUpSet_b.assert_called_once_with(
@@ -344,7 +344,7 @@ class TestAPIForwarding:
         mock_jl, mock_xc = patched
         mock_jl.Symbol.side_effect = lambda s: f"<JuliaSymbol:{s}>"
         mock_xc.xUpAppendTo_b.return_value = [1, 2, 3]
-        from sxact.xcore import x_up_append_to
+        from xact.xcore import x_up_append_to
 
         result = x_up_append_to("prop", "tag", 3)
         assert isinstance(result, list)
@@ -353,7 +353,7 @@ class TestAPIForwarding:
     def test_x_up_delete_cases_to_delegates(self, patched: Any) -> None:
         mock_jl, mock_xc = patched
         mock_jl.Symbol.side_effect = lambda s: f"<JuliaSymbol:{s}>"
-        from sxact.xcore import x_up_delete_cases_to
+        from xact.xcore import x_up_delete_cases_to
 
         def pred(x):
             return x > 5
@@ -366,7 +366,7 @@ class TestAPIForwarding:
     def test_x_tag_set_converts_tag_to_symbol(self, patched: Any) -> None:
         mock_jl, mock_xc = patched
         mock_jl.Symbol.side_effect = lambda s: f"<JuliaSymbol:{s}>"
-        from sxact.xcore import x_tag_set
+        from xact.xcore import x_tag_set
 
         x_tag_set("MyTag", "key", "val")
         mock_xc.xTagSet_b.assert_called_once_with("<JuliaSymbol:MyTag>", "key", "val")
@@ -374,7 +374,7 @@ class TestAPIForwarding:
     def test_x_tension_converts_defcommand_to_symbol(self, patched: Any) -> None:
         mock_jl, mock_xc = patched
         mock_jl.Symbol.side_effect = lambda s: f"<JuliaSymbol:{s}>"
-        from sxact.xcore import x_tension
+        from xact.xcore import x_tension
 
         func = MagicMock()
         x_tension("mypkg", "DefTensor", "Beginning", func)
@@ -385,7 +385,7 @@ class TestAPIForwarding:
     def test_make_x_tensions_converts_defcommand(self, patched: Any) -> None:
         mock_jl, mock_xc = patched
         mock_jl.Symbol.side_effect = lambda s: f"<JuliaSymbol:{s}>"
-        from sxact.xcore import make_x_tensions
+        from xact.xcore import make_x_tensions
 
         make_x_tensions("DefTensor", "End", "arg1")
         mock_xc.MakexTensions.assert_called_once_with(
@@ -395,14 +395,14 @@ class TestAPIForwarding:
     def test_x_perm_names_returns_list(self, patched: Any) -> None:
         _, mock_xc = patched
         mock_xc.xPermNames = ["A", "B"]
-        from sxact.xcore import x_perm_names
+        from xact.xcore import x_perm_names
 
         assert x_perm_names() == ["A", "B"]
 
     def test_x_core_names_returns_list(self, patched: Any) -> None:
         _, mock_xc = patched
         mock_xc.xCoreNames = ["ValidateSymbol"]
-        from sxact.xcore import x_core_names
+        from xact.xcore import x_core_names
 
         assert x_core_names() == ["ValidateSymbol"]
 
@@ -410,7 +410,7 @@ class TestAPIForwarding:
         _, mock_xc = patched
         sentinel = object()
         mock_xc.SubHead.return_value = sentinel
-        from sxact.xcore import sub_head
+        from xact.xcore import sub_head
 
         result = sub_head("expr")
         mock_xc.SubHead.assert_called_once_with("expr")
@@ -419,7 +419,7 @@ class TestAPIForwarding:
     def test_report_set_passes_kwargs(self, patched: Any) -> None:
         _, mock_xc = patched
         ref = MagicMock()
-        from sxact.xcore import report_set
+        from xact.xcore import report_set
 
         report_set(ref, 42, verbose=False)
         mock_xc.ReportSet.assert_called_once_with(ref, 42, verbose=False)
@@ -436,7 +436,7 @@ class TestMutableRefs:
     def test_dagger_character_reads_via_seval(self, patched: Any) -> None:
         mock_jl, _ = patched
         mock_jl.seval.return_value = "†"
-        from sxact.xcore import dagger_character
+        from xact.xcore import dagger_character
 
         result = dagger_character()
         assert result == "†"
@@ -444,7 +444,7 @@ class TestMutableRefs:
 
     def test_set_dagger_character_writes_via_seval(self, patched: Any) -> None:
         mock_jl, _ = patched
-        from sxact.xcore import set_dagger_character
+        from xact.xcore import set_dagger_character
 
         set_dagger_character("‡")
         call_code = mock_jl.seval.call_args[0][0]
@@ -454,7 +454,7 @@ class TestMutableRefs:
     def test_link_character_reads_via_seval(self, patched: Any) -> None:
         mock_jl, _ = patched
         mock_jl.seval.return_value = "_"
-        from sxact.xcore import link_character
+        from xact.xcore import link_character
 
         result = link_character()
         assert result == "_"
@@ -462,7 +462,7 @@ class TestMutableRefs:
 
     def test_set_link_character_writes_via_seval(self, patched: Any) -> None:
         mock_jl, _ = patched
-        from sxact.xcore import set_link_character
+        from xact.xcore import set_link_character
 
         set_link_character("|")
         call_code = mock_jl.seval.call_args[0][0]
@@ -472,14 +472,14 @@ class TestMutableRefs:
     def test_warning_from_reads_via_seval(self, patched: Any) -> None:
         mock_jl, _ = patched
         mock_jl.seval.return_value = "xAct"
-        from sxact.xcore import warning_from
+        from xact.xcore import warning_from
 
         result = warning_from()
         assert result == "xAct"
 
     def test_xact_directory_reads_via_seval(self, patched: Any) -> None:
         mock_jl, _ = patched
-        from sxact.xcore import xact_directory
+        from xact.xcore import xact_directory
 
         result = xact_directory()
         # _default_seval returns "/xact" for xActDirectory[] patterns
@@ -487,7 +487,7 @@ class TestMutableRefs:
 
     def test_xact_doc_directory_reads_via_seval(self, patched: Any) -> None:
         mock_jl, _ = patched
-        from sxact.xcore import xact_doc_directory
+        from xact.xcore import xact_doc_directory
 
         result = xact_doc_directory()
         # _default_seval returns "/xact/doc" for xActDocDirectory[] patterns
@@ -508,7 +508,7 @@ class TestExceptionPropagation:
         mock_jl, mock_xc = patched
         mock_jl.Symbol.return_value = "<JuliaSymbol:Foo>"
         mock_xc.ValidateSymbol.side_effect = JuliaError("Symbol already registered")
-        from sxact.xcore import validate_symbol
+        from xact.xcore import validate_symbol
 
         with pytest.raises(JuliaError):
             validate_symbol("Foo")
@@ -518,7 +518,7 @@ class TestExceptionPropagation:
 
         _, mock_xc = patched
         mock_xc.JustOne.side_effect = JuliaError("Expected singleton list")
-        from sxact.xcore import just_one
+        from xact.xcore import just_one
 
         with pytest.raises(JuliaError):
             just_one([1, 2])
@@ -528,7 +528,7 @@ class TestExceptionPropagation:
 
         _, mock_xc = patched
         mock_xc.register_symbol.side_effect = JuliaError("Already owned by xTensor")
-        from sxact.xcore import register_symbol
+        from xact.xcore import register_symbol
 
         with pytest.raises(JuliaError):
             register_symbol("ExistingSymbol", "xCoba")
@@ -539,7 +539,7 @@ class TestExceptionPropagation:
         mock_jl, mock_xc = patched
         mock_jl.Symbol.side_effect = lambda s: f"<JuliaSymbol:{s}>"
         mock_xc.xUpSet_b.side_effect = JuliaError("Upvalue conflict")
-        from sxact.xcore import x_up_set
+        from xact.xcore import x_up_set
 
         with pytest.raises(JuliaError):
             x_up_set("prop", "tag", "val")
@@ -551,7 +551,7 @@ class TestExceptionPropagation:
         _, mock_xc = patched
         msg = "Duplicate symbol: AlreadyThere"
         mock_xc.JustOne.side_effect = JuliaError(msg)
-        from sxact.xcore import just_one
+        from xact.xcore import just_one
 
         with pytest.raises(JuliaError, match=msg):
             just_one([])
@@ -575,8 +575,8 @@ class TestPerformance:
         return time.perf_counter() - t0
 
     def test_symbol_join_overhead(self) -> None:
-        import sxact.xcore as xc
-        from sxact.xcore._runtime import get_xcore
+        import xact.xcore as xc
+        from xact.xcore._runtime import get_xcore
 
         xc.symbol_join("Warm", "Up")  # JIT warm-up
 
@@ -592,8 +592,8 @@ class TestPerformance:
         )
 
     def test_has_dagger_character_q_overhead(self) -> None:
-        import sxact.xcore as xc
-        from sxact.xcore._runtime import get_xcore, get_julia
+        import xact.xcore as xc
+        from xact.xcore._runtime import get_xcore, get_julia
 
         xc.has_dagger_character_q("A†")  # JIT warm-up
 
@@ -616,7 +616,7 @@ class TestPerformance:
 
     def test_delete_duplicates_is_pure_python(self) -> None:
         """Pure-Python delete_duplicates has no Julia overhead to measure."""
-        import sxact.xcore as xc
+        import xact.xcore as xc
 
         lst = list(range(20))
         t0 = time.perf_counter()

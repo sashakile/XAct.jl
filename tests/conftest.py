@@ -8,8 +8,8 @@ import uuid
 
 import pytest
 
-from sxact.oracle import OracleClient
-from sxact.oracle.result import Result
+from xact.oracle import OracleClient
+from xact.oracle.result import Result
 
 
 class MockOracleClient:

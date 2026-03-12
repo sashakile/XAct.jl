@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from sxact.compare.tensor_objects import (
+from xact.compare.tensor_objects import (
     Manifold,
     Metric,
     TensorField,
@@ -15,7 +15,7 @@ from sxact.compare.tensor_objects import (
     _symmetrize,
     _antisymmetrize,
 )
-from sxact.compare.sampling import (
+from xact.compare.sampling import (
     Sample,
     SamplingResult,
     build_tensor_context,

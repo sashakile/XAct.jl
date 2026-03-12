@@ -5,7 +5,7 @@ This repository is dedicated to the Julia implementation of the [xAct](http://xa
 ## Project Scope
 
 - Primary Goal: Migrate xAct's functionality (xCore, xPerm, xTensor, etc.) to Julia for high-performance, open-source tensor calculus.
-- Python Access: Provide an idiomatic Python wrapper (sxact-py) around the Julia core.
+- Python Access: Provide an idiomatic Python wrapper (xact-py) around the Julia core.
 - Validation: Use a Dockerized Wolfram Engine (the "Oracle") to prove implementation correctness.
 
 ### The Migration Architecture
@@ -13,7 +13,7 @@ This repository is dedicated to the Julia implementation of the [xAct](http://xa
 The project is designed to ensure rigorous mathematical correctness through a multi-tier verification pipeline:
 
 1.  **xAct.jl** (Julia): The native computational engine, located in `src/julia`. This is the primary library for high-performance tensor calculus.
-2.  **sxact-py** (Python): A thin wrapper around the Julia core that facilitates interoperability with the broader scientific Python ecosystem and the verification suite.
+2.  **xact-py** (Python): A thin wrapper around the Julia core that facilitates interoperability with the broader scientific Python ecosystem and the verification suite.
 3.  **The Oracle** (Wolfram): A Dockerized Wolfram Engine running the original xAct code. It acts as the "Ground Truth" for proving implementation correctness.
 
 Detailed documentation on the architecture can be found in the [Architecture Guide](https://sashakile.github.io/sxAct/architecture.html).

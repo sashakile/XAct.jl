@@ -1,5 +1,5 @@
 [project]
-name = "sxact"
+name = "xact-py"
 version = "0.3.0"
 description = "Testing framework for xAct implementations"
 requires-python = ">=3.10"
@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-xact-test = "sxact.cli:main"
+xact-test = "xact.cli:main"
 
 [project.optional-dependencies]
 dev = [
@@ -28,13 +28,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/sxact"]
+packages = ["src/xact"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"src/julia" = "sxact/julia"
+"src/julia" = "xact/julia"
 
 [tool.hatch.build.targets.sdist.force-include]
-"src/julia" = "sxact/julia"
+"src/julia" = "xact/julia"
 
 [tool.mypy]
 python_version = "3.10"

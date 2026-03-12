@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from sxact.adapter.python_adapter import PythonAdapter
-from sxact.adapter.base import AdapterError
+from xact.adapter.python_adapter import PythonAdapter
+from xact.adapter.base import AdapterError
 
 # ---------------------------------------------------------------------------
 # Conformance suite
