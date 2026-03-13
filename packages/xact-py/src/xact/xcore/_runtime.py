@@ -49,7 +49,7 @@ def _init_julia() -> None:
     except Exception:
         # Fallback for development if juliapkg hasn't resolved it yet,
         # or if we're running from source without a formal install.
-        julia_dir = (Path(__file__).parents[1] / "julia").resolve()
+        julia_dir = (Path(__file__).parent.parent / "julia").resolve()
         if (julia_dir / "Project.toml").exists():
             _jl.seval(f'import Pkg; Pkg.activate("{julia_dir}"; io=devnull)')
             xact_main = julia_dir / "src" / "xAct.jl"
