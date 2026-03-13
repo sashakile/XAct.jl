@@ -12,6 +12,7 @@ First, we load the `xAct` module (the Julia port of the xAct suite).
 
 ````@example basics
 using xAct
+reset_state!()
 ````
 
 ## 2. Defining a Manifold
@@ -82,4 +83,3 @@ Now that you've mastered the basics, check out:
 ---
 
 *This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
-
