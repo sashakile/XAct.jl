@@ -309,8 +309,8 @@ The **second (differential) Bianchi identity** ∇_{[e}R_{ab]cd} = 0 implies the
 contracted form ∇^a G_{ab} = 0, which is the conservation law for the
 Einstein tensor.
 
-xAct can verify and apply these symmetries automatically via `Symmetrize`,
-`Antisymmetrize`, and the canonicalization routines in `xPerm`.
+xAct can verify and apply these symmetries automatically via the
+canonicalization routines in `XPerm.jl` (Butler-Portugal algorithm).
 
 ---
 
