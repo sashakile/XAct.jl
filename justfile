@@ -6,4 +6,4 @@ docs:
 
 # Serve docs with live reload — watches docs/src/ and rebuilds on change
 serve-docs:
-    julia --project=docs/ -e 'using LiveServer; servedocs(literate_dir="docs/examples")'
+    julia --project=docs/ -e 'using LiveServer; servedocs(literate_dir="docs/examples", skip_dirs=["docs/src/examples"])'
