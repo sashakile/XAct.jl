@@ -7,14 +7,14 @@ This guide covers how to install the `xAct.jl` package for research use, as well
 If you just want to use `xAct` for tensor calculus in Julia, you only need the Julia package.
 
 ### Prerequisites
-- [Julia 1.10+](https://julialang.org/downloads/)
+- [Julia 1.12+](https://julialang.org/downloads/)
 
 ### Installation
 Open your Julia REPL and run:
 
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/sashakile/sxAct.git", subdir="src/julia")
+Pkg.add(url="https://github.com/sashakile/sxAct.git")
 ```
 
 Wait for the installation to finish, then you can start using it:
@@ -29,12 +29,15 @@ The Python wrapper provides an idiomatic interface to the Julia core and is requ
 ### Prerequisites
 - [Julia 1.12+](https://julialang.org/downloads/)
 - Python 3.10+
+- [uv](https://docs.astral.sh/uv/) (recommended)
 
 ### Installation
-You can install the wrapper via pip:
+The Python wrapper is not yet published to PyPI. Install from the repository:
 
 ```bash
-pip install xact-py
+git clone https://github.com/sashakile/sxAct.git
+cd sxAct
+uv pip install packages/xact-py
 ```
 
 *Note: The wrapper will automatically manage its Julia dependencies using `juliapkg`.*
@@ -46,6 +49,7 @@ pip install xact-py
 The full suite includes a Python wrapper and a Dockerized Wolfram Oracle for proving implementation parity.
 
 ### Prerequisites
+- [Julia 1.12+](https://julialang.org/downloads/)
 - [uv](https://docs.astral.sh/uv/) (recommended) or Python 3.10+
 - [Docker](https://www.docker.com/)
 
@@ -87,4 +91,4 @@ docker compose run --rm wolfram wolframscript -activate
 Ensure your user is in the `docker` group or prefix commands with `sudo`.
 
 ### Julia: "Package not found"
-If you are adding the package via URL, ensure the `subdir="src/julia"` argument is present.
+Ensure you are using the correct URL when adding via `Pkg.add(url=...)`.
