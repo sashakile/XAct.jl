@@ -7,7 +7,7 @@ This repository contains both the `xAct.jl` Julia package and the `sxact-py` ver
 The Julia source code is located in `src/`.
 
 ### Setup
-- [Julia 1.10+](https://julialang.org/downloads/)
+- [Julia 1.12+](https://julialang.org/downloads/)
 - Optional: [JuliaExtension](https://marketplace.visualstudio.com/items?itemName=julialang.language-julia) for VS Code.
 
 ### Running Julia Tests
@@ -58,7 +58,7 @@ uv run mypy packages/xact-py/src packages/sxact/src
 
 Test markers:
 - `oracle` — requires the Docker oracle server (`docker compose up -d`)
-- `slow` — these take several minutes due to xAct initialization time.
+- `slow` — these take longer due to xAct initialization time.
 
 ---
 
@@ -86,9 +86,9 @@ just serve-docs
 | `tests/` | Multi-tier test suite (Julia, Python, Oracle). |
 | `docs/` | Documentation (Julia-centric, built with Documenter.jl). |
 
-## 4. Workflow
+## 5. Workflow
 
-This repo uses a local-only git workflow (no remote pushes). Changes are tracked via [beads](https://github.com/sk/beads) for issue management.
+Changes are tracked via [beads](https://github.com/sk/beads) for issue management.
 
 ```bash
 # Check available work
