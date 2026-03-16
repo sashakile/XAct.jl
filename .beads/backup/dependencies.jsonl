@@ -168,5 +168,9 @@
 {"created_at":"2026-03-11T15:50:04Z","created_by":"sashakile","depends_on_id":"sxAct-04r","issue_id":"sxAct-w50","metadata":"{}","type":"blocks"}
 {"created_at":"2026-03-10T14:45:11Z","created_by":"sashakile","depends_on_id":"sxAct-hyy","issue_id":"sxAct-wom","metadata":"{}","type":"blocks"}
 {"created_at":"2026-03-11T16:19:42Z","created_by":"sashakile","depends_on_id":"sxAct-3s3","issue_id":"sxAct-z69","metadata":"{}","type":"blocks"}
+{"created_at":"2026-03-16T13:20:35Z","created_by":"sashakile","depends_on_id":"sxAct-z7i0","issue_id":"sxAct-z7i0.1","metadata":"{}","type":"parent-child"}
+{"created_at":"2026-03-16T13:20:35Z","created_by":"sashakile","depends_on_id":"sxAct-z7i0","issue_id":"sxAct-z7i0.2","metadata":"{}","type":"parent-child"}
+{"created_at":"2026-03-16T13:20:35Z","created_by":"sashakile","depends_on_id":"sxAct-z7i0","issue_id":"sxAct-z7i0.3","metadata":"{}","type":"parent-child"}
+{"created_at":"2026-03-16T13:20:36Z","created_by":"sashakile","depends_on_id":"sxAct-z7i0","issue_id":"sxAct-z7i0.4","metadata":"{}","type":"parent-child"}
 {"created_at":"2026-02-23T16:51:12Z","created_by":"sashakile","depends_on_id":"sxAct-67u","issue_id":"sxAct-z8g","metadata":"{}","type":"blocks"}
 {"created_at":"2026-02-23T16:51:17Z","created_by":"sashakile","depends_on_id":"sxAct-8wd","issue_id":"sxAct-zaj","metadata":"{}","type":"blocks"}

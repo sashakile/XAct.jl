@@ -473,7 +473,12 @@ Collect all bare index names used in the expression.
 function _collect_used_indices(expr::AbstractString)::Set{String}
     used = Set{String}()
     for m in eachmatch(r"[\[,]\s*(-?[a-zA-Z]\w*)", expr)
-        push!(used, _bare_index(strip(m.captures[1])))
+        # JET: m.captures[1] can be Nothing if the group didn't match.
+        # But our regex always matches the group if the match succeeds.
+        cap = m.captures[1]
+        if !isnothing(cap)
+            push!(used, _bare_index(strip(cap)))
+        end
     end
     used
 end
@@ -533,18 +538,26 @@ function _parse_invar_monomial(mono::AbstractString)
     # Try rational coefficient: (N/M)
     m_rat = match(r"^\((-?\d+)/(\d+)\)\s*\*?\s*", s)
     if !isnothing(m_rat)
-        num = parse(Int, m_rat.captures[1])
-        den = parse(Int, m_rat.captures[2])
-        coeff = num // den
-        s = String(strip(s[(length(m_rat.match) + 1):end]))
+        # JET: check captures are not nothing
+        c1 = m_rat.captures[1]
+        c2 = m_rat.captures[2]
+        if !isnothing(c1) && !isnothing(c2)
+            num = parse(Int, c1)
+            den = parse(Int, c2)
+            coeff = num // den
+            s = String(strip(s[(length(m_rat.match) + 1):end]))
+        end
     else
         # Try integer coefficient: only if followed by whitespace or *
         m_int = match(r"^(-?\d+)\s*(\*\s*|\s+)", s)
         if !isnothing(m_int)
-            rest = String(strip(s[(length(m_int.match) + 1):end]))
-            if !isempty(rest) && (isletter(rest[1]) || rest[1] == '(')
-                coeff = parse(Int, m_int.captures[1]) // 1
-                s = rest
+            c1 = m_int.captures[1]
+            if !isnothing(c1)
+                rest = String(strip(s[(length(m_int.match) + 1):end]))
+                if !isempty(rest) && (isletter(rest[1]) || rest[1] == '(')
+                    coeff = parse(Int, c1) // 1
+                    s = rest
+                end
             end
         end
     end
@@ -793,7 +806,9 @@ function _ricci_to_riemann(expr::AbstractString, covd::Symbol)::String
             result,
         )
         isnothing(m) && break
-        indices = _parse_idx_list(m.captures[1])
+        cap = m.captures[1]
+        isnothing(cap) && break
+        indices = _parse_idx_list(cap)
         length(indices) == 2 || error("Ricci tensor must have 2 indices, got: $(m.match)")
         fresh = _fresh_indices(1, used)
         # Ricci_{ab} = R^c{}_{acb}: contract slots 1&3 of Riemann
@@ -1458,7 +1473,7 @@ function PermToInv(rperm::RPerm; db::InvarDB)::RInv
     dispatch = is_dual ? _ensure_dual_dispatch(db) : _ensure_dispatch(db)
     label = is_dual ? "dual database" : "database"
 
-    if !haskey(dispatch, case_key)
+    if isnothing(dispatch) || !haskey(dispatch, case_key)
         throw(
             ArgumentError(
                 "Case $case_key not found in $label. " *

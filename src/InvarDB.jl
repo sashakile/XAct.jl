@@ -318,7 +318,9 @@ function _extract_inv_index(s::AbstractString)
     # Match pattern: ...},N] at the end
     m = match(r"},\s*(\d+)\s*\]$", s)
     m === nothing && return nothing
-    return parse(Int, m.captures[1])
+    cap = m.captures[1]
+    isnothing(cap) && return nothing
+    return parse(Int, cap)
 end
 
 """

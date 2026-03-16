@@ -755,3 +755,11 @@ end
     ```
     @test success(cmd)
 end
+
+# ============================================================
+# Functional tests (Included from test/julia/)
+# ============================================================
+
+include("julia/test_xperm.jl")
+include("julia/test_xtensor.jl")
+include("julia/test_xinvar.jl")
