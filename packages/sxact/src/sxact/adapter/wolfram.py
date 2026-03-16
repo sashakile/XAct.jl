@@ -122,6 +122,43 @@ class WolframAdapter(TestAdapter[_WolframContext]):
     # Execution
     # ------------------------------------------------------------------
 
+    def supported_actions(self) -> frozenset[str]:
+        """Actions this adapter can translate to Wolfram expressions."""
+        return frozenset(
+            {
+                "DefManifold",
+                "DefMetric",
+                "DefTensor",
+                "Evaluate",
+                "ToCanonical",
+                "Simplify",
+                "Contract",
+                "Assert",
+                "Christoffel",
+                "DefPerturbation",
+                "Perturb",
+                "PerturbCurvature",
+                "PerturbationOrder",
+                "PerturbationAtOrder",
+                "CommuteCovDs",
+                "CheckMetricConsistency",
+                "IntegrateByParts",
+                "TotalDerivativeQ",
+                "VarD",
+                "SetBasisChange",
+                "ChangeBasis",
+                "GetJacobian",
+                "BasisChangeQ",
+                "SetComponents",
+                "GetComponents",
+                "ComponentValue",
+                "CTensorQ",
+                "ToBasis",
+                "FromBasis",
+                "TraceBasisDummy",
+            }
+        )
+
     def execute(
         self, ctx: _WolframContext, action: str, args: dict[str, Any]
     ) -> Result:
