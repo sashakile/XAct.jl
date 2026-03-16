@@ -1808,7 +1808,7 @@ _invar_db::Union{Nothing,InvarDB} = nothing
 Load the Invar database if not already cached. Returns the cached instance.
 If `dbdir` is empty, searches standard resource paths.
 """
-function _ensure_invar_db(; dbdir::String="", dim::Int=4)::InvarDB
+function _ensure_invar_db(dbdir::String=""; dim::Int=4)::InvarDB
     global _invar_db
     if _invar_db === nothing
         path = if isempty(dbdir)
@@ -1819,7 +1819,7 @@ function _ensure_invar_db(; dbdir::String="", dim::Int=4)::InvarDB
         end
         _invar_db = LoadInvarDB(path; dim=dim)
     end
-    return _invar_db
+    return _invar_db::InvarDB
 end
 
 """

@@ -32,6 +32,7 @@ makedocs(;
         "Status" => "theory/STATUS.md",
         "Installation" => "installation.md",
         "Getting Started" => "getting-started.md",
+        "Migrating from Wolfram" => "wolfram-migration.md",
         "Tutorials" =>
             ["Basics" => "examples/basics.md", "Riemann Invariants" => "examples/invar.md"],
         "Theory" => ["Differential Geometry Primer" => "differential-geometry-primer.md"],

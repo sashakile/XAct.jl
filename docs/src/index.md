@@ -45,6 +45,9 @@ For the full table, see [Getting Started](getting-started.md#2-reference-migrati
 | **RiemannSimplify** | `RiemannSimplify[expr, CD]` | `RiemannSimplify(expr, :CD)` | ✅ Verified |
 | **RiemannToPerm** | `RiemannToPerm[expr]` | `RiemannToPerm(expr)` | ✅ Verified |
 
+## Coming from Wolfram xAct?
+Use the [Wolfram Migration Guide](wolfram-migration.md) to automatically translate your existing Wolfram code to Julia with the `xact-test translate` CLI.
+
 ## Installation
 See the [Installation Guide](installation.md) for details on setting up the Julia package. Docker and the Wolfram Oracle are only required for running the verification suite.
 

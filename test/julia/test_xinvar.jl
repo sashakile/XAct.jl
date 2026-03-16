@@ -801,14 +801,14 @@ using xAct
             xAct.XInvar._reset_invar_db!()
             @test xAct.XInvar._invar_db === nothing
 
-            # _ensure_db_loaded with nonexistent path creates an empty DB
-            db = xAct.XInvar._ensure_db_loaded("/nonexistent")
+            # _ensure_invar_db with nonexistent path creates an empty DB
+            db = xAct.XInvar._ensure_invar_db("/nonexistent")
             @test db isa InvarDB
             @test xAct.XInvar._invar_db !== nothing
             @test xAct.XInvar._invar_db === db
 
             # Calling again returns the same cached instance
-            db2 = xAct.XInvar._ensure_db_loaded("/nonexistent")
+            db2 = xAct.XInvar._ensure_invar_db("/nonexistent")
             @test db2 === db
 
             # Reset clears it
@@ -822,7 +822,7 @@ using xAct
 
         @testset "reset_state! clears InvarDB" begin
             # Load a DB
-            xAct.XInvar._ensure_db_loaded("/nonexistent")
+            xAct.XInvar._ensure_invar_db("/nonexistent")
             @test xAct.XInvar._invar_db !== nothing
 
             # reset_state! should clear it

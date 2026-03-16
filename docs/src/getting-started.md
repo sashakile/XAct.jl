@@ -77,5 +77,6 @@ See the [Developer/Verification Install](installation.md#3-developerverification
 
 ## Next Steps
 
+- **Migrating from Wolfram?** See the [Wolfram Migration Guide](wolfram-migration.md) for the expression translator and REPL.
 - **Installation**: See the [Installation Guide](installation.md) for local setup.
 - **Status Dashboard**: Check the [Feature Matrix](theory/STATUS.md) to see which functions are ready for production use.
