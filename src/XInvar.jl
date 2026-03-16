@@ -1566,7 +1566,7 @@ function InvSimplify(
     db::Union{InvarDB,Nothing}=nothing,
     dim::Union{Int,Nothing}=nothing,
 )
-    _db = db === nothing ? _ensure_invar_db() : db
+    _db = (db === nothing ? _ensure_invar_db() : db)::InvarDB
     return InvSimplify(Tuple{Rational{Int},RInv}[(1 // 1, rinv)], level; db=_db, dim=dim)
 end
 
@@ -1585,7 +1585,7 @@ function InvSimplify(
     dim::Union{Int,Nothing}=nothing,
 )
     isempty(expr) && return expr
-    _db = db === nothing ? _ensure_invar_db() : db
+    _db = (db === nothing ? _ensure_invar_db() : db)::InvarDB
 
     # Validate: dual invariants require dim == 4
     for (_, rinv) in expr
@@ -1708,7 +1708,7 @@ function RiemannSimplify(
     db::Union{InvarDB,Nothing}=nothing,
     dim::Union{Int,Nothing}=nothing,
 )::String
-    _db = db === nothing ? _ensure_invar_db() : db
+    _db = (db === nothing ? _ensure_invar_db() : db)::InvarDB
     s = String(strip(expr))
     (s == "0" || isempty(s)) && return "0"
 
@@ -1751,7 +1751,7 @@ function _inv_expr_to_string(
     db::Union{InvarDB,Nothing}=nothing,
 )::String
     isempty(expr) && return "0"
-    _db = db === nothing ? _ensure_invar_db() : db
+    _db = (db === nothing ? _ensure_invar_db() : db)::InvarDB
 
     parts = String[]
     for (i, (coeff, rinv)) in enumerate(expr)
@@ -1803,15 +1803,21 @@ Global cached InvarDB instance. Loaded on first access via `_ensure_db_loaded`.
 _invar_db::Union{Nothing,InvarDB} = nothing
 
 """
-    _ensure_db_loaded(dbdir::String; dim::Int=4) -> InvarDB
+    _ensure_invar_db(; dbdir::String="", dim::Int=4) -> InvarDB
 
 Load the Invar database if not already cached. Returns the cached instance.
-Thread-safe via simple check-and-set (sufficient for single-threaded use).
+If `dbdir` is empty, searches standard resource paths.
 """
-function _ensure_db_loaded(dbdir::String; dim::Int=4)
+function _ensure_invar_db(; dbdir::String="", dim::Int=4)::InvarDB
     global _invar_db
     if _invar_db === nothing
-        _invar_db = LoadInvarDB(dbdir; dim=dim)
+        path = if isempty(dbdir)
+            # Default to resources/xAct/Invar relative to project root
+            joinpath(@__DIR__, "..", "resources", "xAct", "Invar")
+        else
+            dbdir
+        end
+        _invar_db = LoadInvarDB(path; dim=dim)
     end
     return _invar_db
 end
