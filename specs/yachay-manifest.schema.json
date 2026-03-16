@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/sashakile/chacana/main/specs/yachay-manifest.schema.json",
+  "title": "Yachay Database Manifest",
+  "description": "Metadata and global settings for a Yachay invariant database",
+  "type": "object",
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "source": { "type": "string" },
+        "spec_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$" }
+      },
+      "required": ["name", "version", "spec_version"]
+    },
+    "notation": {
+      "type": "object",
+      "properties": {
+        "permutation": { "enum": ["images", "cycles"] },
+        "coefficient": { "enum": ["rational", "float"] },
+        "indexing": { "enum": ["1-based", "0-based"] }
+      },
+      "required": ["permutation", "coefficient", "indexing"]
+    },
+    "coverage": {
+      "type": "object",
+      "properties": {
+        "dimension": { "type": "integer", "minimum": 1 },
+        "max_degree": { "type": "integer" },
+        "max_order": { "type": "integer" },
+        "steps": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "uniqueItems": true
+        }
+      },
+      "required": ["dimension", "steps"]
+    }
+  },
+  "required": ["meta", "notation", "coverage"]
+}

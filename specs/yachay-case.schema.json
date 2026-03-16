@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/sashakile/chacana/main/specs/yachay-case.schema.json",
+  "title": "Yachay Case Data",
+  "description": "Invariant basis and reduction rules for a specific derivative/degree case",
+  "type": "object",
+  "properties": {
+    "case": {
+      "type": "string",
+      "pattern": "^\\d+(_\\d+)*$"
+    },
+    "degree": { "type": "integer", "minimum": 1 },
+    "deriv_orders": {
+      "type": "array",
+      "items": { "type": "integer" }
+    },
+    "total_indices": { "type": "integer", "minimum": 4 },
+    "basis": {
+      "type": "object",
+      "properties": {
+        "perms": {
+          "type": "array",
+          "description": "List of permutations (images notation) for each invariant. Index i represents invariant i. 0-th element is null to maintain 1-based alignment with Wolfram source.",
+          "items": {
+            "anyOf": [
+              { "type": "null" },
+              {
+                "type": "array",
+                "items": { "type": "integer" }
+              }
+            ]
+          }
+        }
+      },
+      "required": ["perms"]
+    },
+    "rules": {
+      "type": "object",
+      "description": "A map of reduction steps. Keys should be descriptive (e.g. cyclic, bianchi).",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "step": { "type": "integer", "enum": [2, 3, 4, 5, 6] },
+          "dim": { "type": "integer", "minimum": 1 },
+          "identities": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  { "type": "integer" },
+                  { "type": "string", "pattern": "^-?\\d+/\\d+$" }
+                ],
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          }
+        },
+        "required": ["step", "identities"]
+      },
+      "propertyNames": {
+        "enum": ["cyclic", "bianchi", "commutation", "dimension", "dual"]
+      }
+    }
+  },
+  "required": ["case", "degree", "deriv_orders", "basis", "rules"]
+}
