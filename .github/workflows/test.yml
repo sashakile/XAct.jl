@@ -22,8 +22,8 @@ jobs:
       - name: Run pytest
         run: uv run pytest tests/ -q --ignore=tests/integration --ignore=tests/properties --ignore=tests/xperm --ignore=tests/xtensor
 
-  julia-unit:
-    name: Julia Unit Tests (XCore + Quality)
+  julia-tests:
+    name: Julia Unit + Functional Tests (Quality & Logic)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,50 +42,8 @@ jobs:
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
       - name: Instantiate tooling project (JuliaFormatter)
         run: julia --project=tooling -e 'using Pkg; Pkg.instantiate()'
-      - name: Run unit tests
+      - name: Run all Julia tests
         run: julia --project=. test/runtests.jl
-
-  julia-xperm:
-    name: Julia XPerm unit tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: "1.12"
-      - name: Cache Julia packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.julia/packages
-            ~/.julia/compiled
-          key: julia-1.12-${{ hashFiles('Project.toml') }}
-          restore-keys: julia-1.12-
-      - name: Instantiate Julia project
-        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
-      - name: Run XPerm tests
-        run: julia --project=. test/julia/test_xperm.jl
-
-  julia-xtensor:
-    name: Julia XTensor unit tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: "1.12"
-      - name: Cache Julia packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.julia/packages
-            ~/.julia/compiled
-          key: julia-1.12-${{ hashFiles('Project.toml') }}
-          restore-keys: julia-1.12-
-      - name: Instantiate Julia project
-        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
-      - name: Run XTensor tests
-        run: julia --project=. test/julia/test_xtensor.jl
 
   toml-regression:
     name: TOML snapshot regression tests
