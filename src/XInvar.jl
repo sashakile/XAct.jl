@@ -27,6 +27,7 @@ export PermDegree, MaxIndex, MaxDualIndex
 export InvarCases, InvarDualCases
 export RiemannToPerm, PermToRiemann
 export PermToInv, InvToPerm
+export InvSimplify
 
 # InvarDB submodule — database loading and rule parser
 include("InvarDB.jl")
@@ -1479,6 +1480,109 @@ function InvToPerm(rinv::RInv; db::InvarDB)::RPerm
     end
 
     RPerm(rinv.metric, rinv.case, index_to_perm[rinv.index])
+end
+
+# ============================================================
+# Phase 6: InvSimplify — Multi-Level Simplification
+# ============================================================
+
+"""
+A linear combination of RInv terms: [(coefficient, RInv), ...].
+"""
+const InvExpr = Vector{Tuple{Rational{Int},RInv}}
+
+"""
+    InvSimplify(rinv::RInv, level::Int=6; db::InvarDB, dim=nothing) -> InvExpr
+
+Simplify a single Riemann invariant using pre-computed database rules.
+Returns a linear combination of independent invariants.
+
+Levels:
+
+  - 1: identity (no simplification)
+  - 2: cyclic identity rules
+  - 3: + Bianchi identity rules
+  - 4: + CovD commutation rules
+  - 5: + dimension-dependent rules (requires integer `dim`)
+  - 6: + dual reduction rules (requires `dim == 4`)
+
+Source: Invar.m:628-678
+"""
+function InvSimplify(rinv::RInv, level::Int=6; db::InvarDB, dim::Union{Int,Nothing}=nothing)
+    return InvSimplify(Tuple{Rational{Int},RInv}[(1 // 1, rinv)], level; db=db, dim=dim)
+end
+
+"""
+    InvSimplify(expr::InvExpr, level::Int=6; db::InvarDB, dim=nothing) -> InvExpr
+
+Simplify a linear combination of Riemann invariants.
+"""
+function InvSimplify(
+    expr::InvExpr, level::Int=6; db::InvarDB, dim::Union{Int,Nothing}=nothing
+)
+    isempty(expr) && return expr
+    level <= 1 && return _collect_inv_terms(expr)
+
+    result = _apply_step_rules(expr, 2, db)
+    level >= 3 && (result = _apply_step_rules(result, 3, db))
+    level >= 4 && (result = _apply_step_rules(result, 4, db))
+    if level >= 5 && dim isa Int
+        result = _apply_step_rules(result, 5, db; dim=dim)
+    end
+    if level >= 6 && dim isa Int && dim == 4
+        result = _apply_step_rules(result, 6, db; dim=dim)
+    end
+
+    _collect_inv_terms(result)
+end
+
+"""
+    _apply_step_rules(expr::InvExpr, step::Int, db::InvarDB; dim::Int=4) -> InvExpr
+
+Apply substitution rules from database step to each term in the expression.
+Dependent invariants are replaced with linear combinations of independent ones.
+"""
+function _apply_step_rules(expr::InvExpr, step::Int, db::InvarDB; dim::Int=4)
+    step_rules = get(db.rules, step, nothing)
+    isnothing(step_rules) && return expr
+
+    result = InvExpr()
+    for (coeff, rinv) in expr
+        case_key = rinv.case.deriv_orders
+        case_rules = get(step_rules, case_key, nothing)
+
+        if !isnothing(case_rules) && haskey(case_rules, rinv.index)
+            # Dependent invariant — substitute using the rule
+            for (ind, rule_coeff) in case_rules[rinv.index]
+                push!(result, (coeff * rule_coeff, RInv(rinv.metric, rinv.case, ind)))
+            end
+        else
+            # Independent at this step — keep it
+            push!(result, (coeff, rinv))
+        end
+    end
+
+    result
+end
+
+"""
+    _collect_inv_terms(expr::InvExpr) -> InvExpr
+
+Combine like terms (same RInv) and remove zeros. Returns sorted result.
+"""
+function _collect_inv_terms(expr::InvExpr)::InvExpr
+    combined = Dict{RInv,Rational{Int}}()
+    for (coeff, rinv) in expr
+        combined[rinv] = get(combined, rinv, 0 // 1) + coeff
+    end
+
+    result = InvExpr()
+    for (rinv, coeff) in combined
+        coeff != 0 && push!(result, (coeff, rinv))
+    end
+
+    sort!(result; by=t -> (t[2].case.deriv_orders, t[2].index))
+    result
 end
 
 # ============================================================

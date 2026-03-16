@@ -1379,4 +1379,252 @@ using xAct
             end
         end
     end
+
+    # ================================================================
+    # Phase 6: InvSimplify
+    # ================================================================
+
+    @testset "Phase 6: InvSimplify" begin
+
+        # Build a synthetic DB with rules at multiple steps
+        function _make_simplify_db()
+            # Case [0,0]: 3 invariants, invariant 3 depends on 1 and 2
+            perms_00 = Dict{Int,Vector{Int}}(
+                1 => [2, 1, 4, 3, 6, 5, 8, 7],
+                2 => [6, 5, 8, 7, 2, 1, 4, 3],
+                3 => [8, 5, 4, 3, 2, 7, 6, 1],
+            )
+
+            # Case [0,0,0]: 9 invariants
+            # At step 2: inv 4 → inv 1 - inv 2
+            # At step 3: inv 5 → 2*inv 1 + inv 3
+            perms_000 = Dict{Int,Vector{Int}}(
+                i => collect(1:12) for i in 1:9  # placeholder perms
+            )
+
+            perms = Dict{Vector{Int},Dict{Int,Vector{Int}}}(
+                [0, 0] => perms_00, [0, 0, 0] => perms_000
+            )
+
+            # Step 2 rules: cyclic identities
+            step2_rules = Dict{Vector{Int},Dict{Int,Vector{Tuple{Int,Rational{Int}}}}}(
+                [0, 0] => Dict{Int,Vector{Tuple{Int,Rational{Int}}}}(
+                    3 => [(1, 1 // 1), (2, -1 // 1)],  # inv3 = inv1 - inv2
+                ),
+                [0, 0, 0] => Dict{Int,Vector{Tuple{Int,Rational{Int}}}}(
+                    4 => [(1, 1 // 1), (2, -1 // 1)],  # inv4 = inv1 - inv2
+                ),
+            )
+
+            # Step 3 rules: Bianchi identities
+            step3_rules = Dict{Vector{Int},Dict{Int,Vector{Tuple{Int,Rational{Int}}}}}(
+                [0, 0, 0] => Dict{Int,Vector{Tuple{Int,Rational{Int}}}}(
+                    5 => [(1, 2 // 1), (3, 1 // 1)],   # inv5 = 2*inv1 + inv3
+                ),
+            )
+
+            # Step 5 rules: dimension-dependent (dim=4)
+            step5_rules = Dict{Vector{Int},Dict{Int,Vector{Tuple{Int,Rational{Int}}}}}(
+                [0, 0] => Dict{Int,Vector{Tuple{Int,Rational{Int}}}}(
+                    2 => [(1, 1 // 2)],  # inv2 = (1/2)*inv1 in 4D
+                )
+            )
+
+            rules = Dict{Int,Dict{Vector{Int},Dict{Int,Vector{Tuple{Int,Rational{Int}}}}}}(
+                2 => step2_rules, 3 => step3_rules, 5 => step5_rules
+            )
+
+            InvarDB(
+                perms,
+                Dict{Vector{Int},Dict{Int,Vector{Int}}}(),
+                rules,
+                Dict{Int,Dict{Vector{Int},Dict{Int,Vector{Tuple{Int,Rational{Int}}}}}}(),
+            )
+        end
+
+        @testset "level 1: identity" begin
+            db = _make_simplify_db()
+            rinv = RInv(:CD, InvariantCase([0, 0]), 3)
+            result = InvSimplify(rinv, 1; db=db)
+            @test length(result) == 1
+            @test result[1] == (1 // 1, rinv)
+        end
+
+        @testset "level 2: cyclic rules" begin
+            db = _make_simplify_db()
+            rinv = RInv(:CD, InvariantCase([0, 0]), 3)
+            result = InvSimplify(rinv, 2; db=db)
+            # inv3 → inv1 - inv2
+            @test length(result) == 2
+            coeffs = Dict(r.index => c for (c, r) in result)
+            @test coeffs[1] == 1 // 1
+            @test coeffs[2] == -1 // 1
+        end
+
+        @testset "level 2: independent invariant unchanged" begin
+            db = _make_simplify_db()
+            rinv = RInv(:CD, InvariantCase([0, 0]), 1)
+            result = InvSimplify(rinv, 2; db=db)
+            @test length(result) == 1
+            @test result[1] == (1 // 1, rinv)
+        end
+
+        @testset "level 3: Bianchi rules applied after cyclic" begin
+            db = _make_simplify_db()
+            rinv = RInv(:CD, InvariantCase([0, 0, 0]), 5)
+            result = InvSimplify(rinv, 3; db=db)
+            # inv5 → 2*inv1 + inv3 (step 3 rule)
+            coeffs = Dict(r.index => c for (c, r) in result)
+            @test coeffs[1] == 2 // 1
+            @test coeffs[3] == 1 // 1
+        end
+
+        @testset "level 2+3: chained rules" begin
+            db = _make_simplify_db()
+            # inv4 at step 2 → inv1 - inv2
+            # inv5 at step 3 → 2*inv1 + inv3
+            # Sum: inv4 + inv5 at level 3
+            expr = Tuple{Rational{Int},RInv}[
+                (1 // 1, RInv(:CD, InvariantCase([0, 0, 0]), 4)),
+                (1 // 1, RInv(:CD, InvariantCase([0, 0, 0]), 5)),
+            ]
+            result = InvSimplify(expr, 3; db=db)
+            # inv4 → inv1 - inv2 (step 2)
+            # inv5 → 2*inv1 + inv3 (step 3)
+            # Total: 3*inv1 - inv2 + inv3
+            coeffs = Dict(r.index => c for (c, r) in result)
+            @test coeffs[1] == 3 // 1
+            @test coeffs[2] == -1 // 1
+            @test coeffs[3] == 1 // 1
+        end
+
+        @testset "level 4: no step-4 rules → same as level 3" begin
+            db = _make_simplify_db()
+            rinv = RInv(:CD, InvariantCase([0, 0]), 3)
+            r3 = InvSimplify(rinv, 3; db=db)
+            r4 = InvSimplify(rinv, 4; db=db)
+            @test r3 == r4
+        end
+
+        @testset "level 5: dim-dependent rules with dim=4" begin
+            db = _make_simplify_db()
+            rinv = RInv(:CD, InvariantCase([0, 0]), 2)
+            result = InvSimplify(rinv, 5; db=db, dim=4)
+            # Step 5 rule: inv2 → (1/2)*inv1 in 4D
+            @test length(result) == 1
+            @test result[1] == (1 // 2, RInv(:CD, InvariantCase([0, 0]), 1))
+        end
+
+        @testset "level 5: skipped when dim=nothing" begin
+            db = _make_simplify_db()
+            rinv = RInv(:CD, InvariantCase([0, 0]), 2)
+            result = InvSimplify(rinv, 5; db=db, dim=nothing)
+            # No dim → step 5 skipped → inv2 still present (unchanged from step 4)
+            @test length(result) == 1
+            @test result[1] == (1 // 1, rinv)
+        end
+
+        @testset "level 6: skipped when dim != 4" begin
+            db = _make_simplify_db()
+            # Use an invariant that has NO step-5 rule: inv1 is independent at all steps
+            rinv = RInv(:CD, InvariantCase([0, 0]), 1)
+            r6_dim3 = InvSimplify(rinv, 6; db=db, dim=3)
+            r6_dim4 = InvSimplify(rinv, 6; db=db, dim=4)
+            # inv1 is independent everywhere → same result regardless of dim
+            @test r6_dim3 == r6_dim4
+            @test length(r6_dim3) == 1
+            @test r6_dim3[1] == (1 // 1, rinv)
+
+            # Now test with inv2 which HAS a step-5 rule: it applies for any int dim
+            rinv2 = RInv(:CD, InvariantCase([0, 0]), 2)
+            r6_dim3_v2 = InvSimplify(rinv2, 6; db=db, dim=3)
+            # step 5 fires (dim=3 is Int), step 6 skipped (dim!=4)
+            # inv2 → (1/2)*inv1 from step 5
+            @test length(r6_dim3_v2) == 1
+            @test r6_dim3_v2[1] == (1 // 2, RInv(:CD, InvariantCase([0, 0]), 1))
+        end
+
+        @testset "collect terms: cancellation" begin
+            db = _make_simplify_db()
+            # inv3 - inv3 should cancel to empty
+            expr = Tuple{Rational{Int},RInv}[
+                (1 // 1, RInv(:CD, InvariantCase([0, 0]), 1)),
+                (-1 // 1, RInv(:CD, InvariantCase([0, 0]), 1)),
+            ]
+            result = InvSimplify(expr, 1; db=db)
+            @test isempty(result)
+        end
+
+        @testset "collect terms: combine like terms" begin
+            db = _make_simplify_db()
+            expr = Tuple{Rational{Int},RInv}[
+                (3 // 1, RInv(:CD, InvariantCase([0, 0]), 1)),
+                (2 // 1, RInv(:CD, InvariantCase([0, 0]), 1)),
+            ]
+            result = InvSimplify(expr, 1; db=db)
+            @test length(result) == 1
+            @test result[1] == (5 // 1, RInv(:CD, InvariantCase([0, 0]), 1))
+        end
+
+        @testset "empty expression" begin
+            db = _make_simplify_db()
+            result = InvSimplify(Tuple{Rational{Int},RInv}[], 6; db=db)
+            @test isempty(result)
+        end
+
+        @testset "mixed cases in expression" begin
+            db = _make_simplify_db()
+            # Mix case [0,0] and [0,0,0] in one expression
+            expr = Tuple{Rational{Int},RInv}[
+                (1 // 1, RInv(:CD, InvariantCase([0, 0]), 3)),       # → inv1 - inv2
+                (1 // 1, RInv(:CD, InvariantCase([0, 0, 0]), 4)),    # → inv1 - inv2
+            ]
+            result = InvSimplify(expr, 2; db=db)
+            # Both cases should be simplified independently
+            case00_terms = [(c, r) for (c, r) in result if r.case == InvariantCase([0, 0])]
+            case000_terms = [
+                (c, r) for (c, r) in result if r.case == InvariantCase([0, 0, 0])
+            ]
+            @test length(case00_terms) == 2
+            @test length(case000_terms) == 2
+        end
+
+        @testset "metric preserved" begin
+            db = _make_simplify_db()
+            rinv = RInv(:MyMetric, InvariantCase([0, 0]), 3)
+            result = InvSimplify(rinv, 2; db=db)
+            for (_, r) in result
+                @test r.metric == :MyMetric
+            end
+        end
+
+        @testset "result is sorted by (case, index)" begin
+            db = _make_simplify_db()
+            expr = Tuple{Rational{Int},RInv}[
+                (1 // 1, RInv(:CD, InvariantCase([0, 0, 0]), 4)),
+                (1 // 1, RInv(:CD, InvariantCase([0, 0]), 3)),
+            ]
+            result = InvSimplify(expr, 2; db=db)
+            # Should be sorted: case [0,0] before [0,0,0], then by index
+            for i in 1:(length(result) - 1)
+                a = result[i][2]
+                b = result[i + 1][2]
+                @test (a.case.deriv_orders, a.index) <= (b.case.deriv_orders, b.index)
+            end
+        end
+
+        @testset "substitution chain: dependent reduces to dependent" begin
+            # Test that a rule producing another dependent invariant gets resolved
+            # at a later step (not within the same step — this matches Wolfram behavior)
+            db = _make_simplify_db()
+            # In case [0,0,0]: inv4 → inv1 - inv2 at step 2 (both independent)
+            # inv5 → 2*inv1 + inv3 at step 3 (both independent at step 3)
+            # Applying step 2 first, then step 3 independently is correct
+            rinv = RInv(:CD, InvariantCase([0, 0, 0]), 4)
+            r2 = InvSimplify(rinv, 2; db=db)
+            r3 = InvSimplify(rinv, 3; db=db)
+            # At both levels, inv4 → inv1 - inv2 (step 2 handles it)
+            @test r2 == r3
+        end
+    end
 end
