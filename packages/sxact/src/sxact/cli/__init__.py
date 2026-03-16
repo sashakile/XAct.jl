@@ -37,6 +37,7 @@ from .run import (
 from .snapshot import _cmd_snapshot
 from .regen import _interactive_review as _interactive_review, _cmd_regen_oracle
 from .property import _cmd_property
+from .repl import _cmd_repl
 from .translate import _cmd_translate
 
 
@@ -559,6 +560,20 @@ def main() -> None:
         help="Path to a .wl file to translate",
     )
     translate.set_defaults(func=_cmd_translate)
+
+    # --- repl subcommand ---
+    repl = subparsers.add_parser(
+        "repl",
+        help="Interactive Wolfram-style REPL with optional Julia evaluation",
+    )
+    repl.add_argument(
+        "--no-eval",
+        action="store_true",
+        default=False,
+        dest="no_eval",
+        help="Translate-only mode: parse and translate without Julia execution",
+    )
+    repl.set_defaults(func=_cmd_repl)
 
     args = parser.parse_args()
     sys.exit(args.func(args))

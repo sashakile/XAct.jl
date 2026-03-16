@@ -1560,8 +1560,14 @@ Levels:
 
 Source: Invar.m:628-678
 """
-function InvSimplify(rinv::RInv, level::Int=6; db::InvarDB, dim::Union{Int,Nothing}=nothing)
-    return InvSimplify(Tuple{Rational{Int},RInv}[(1 // 1, rinv)], level; db=db, dim=dim)
+function InvSimplify(
+    rinv::RInv,
+    level::Int=6;
+    db::Union{InvarDB,Nothing}=nothing,
+    dim::Union{Int,Nothing}=nothing,
+)
+    _db = db === nothing ? _ensure_invar_db() : db
+    return InvSimplify(Tuple{Rational{Int},RInv}[(1 // 1, rinv)], level; db=_db, dim=dim)
 end
 
 """
@@ -1573,9 +1579,13 @@ Dual invariants (`n_epsilon == 1`) require `dim == 4`. An `ArgumentError` is
 raised if any dual term is present and `dim` is not 4.
 """
 function InvSimplify(
-    expr::InvExpr, level::Int=6; db::InvarDB, dim::Union{Int,Nothing}=nothing
+    expr::InvExpr,
+    level::Int=6;
+    db::Union{InvarDB,Nothing}=nothing,
+    dim::Union{Int,Nothing}=nothing,
 )
     isempty(expr) && return expr
+    _db = db === nothing ? _ensure_invar_db() : db
 
     # Validate: dual invariants require dim == 4
     for (_, rinv) in expr
@@ -1592,14 +1602,14 @@ function InvSimplify(
 
     level <= 1 && return _collect_inv_terms(expr)
 
-    result = _apply_step_rules(expr, 2, db)
-    level >= 3 && (result = _apply_step_rules(result, 3, db))
-    level >= 4 && (result = _apply_step_rules(result, 4, db))
+    result = _apply_step_rules(expr, 2, _db)
+    level >= 3 && (result = _apply_step_rules(result, 3, _db))
+    level >= 4 && (result = _apply_step_rules(result, 4, _db))
     if level >= 5 && dim isa Int
-        result = _apply_step_rules(result, 5, db; dim=dim)
+        result = _apply_step_rules(result, 5, _db; dim=dim)
     end
     if level >= 6 && dim isa Int && dim == 4
-        result = _apply_step_rules(result, 6, db; dim=dim)
+        result = _apply_step_rules(result, 6, _db; dim=dim)
     end
 
     _collect_inv_terms(result)
@@ -1695,9 +1705,10 @@ function RiemannSimplify(
     covd::Symbol=metric,
     level::Int=6,
     curvature_relations::Bool=false,
-    db::InvarDB,
+    db::Union{InvarDB,Nothing}=nothing,
     dim::Union{Int,Nothing}=nothing,
 )::String
+    _db = db === nothing ? _ensure_invar_db() : db
     s = String(strip(expr))
     (s == "0" || isempty(s)) && return "0"
 
@@ -1714,17 +1725,17 @@ function RiemannSimplify(
     # Convert to InvExpr via PermToInv
     inv_terms = InvExpr()
     for (coeff, rperm) in rperm_terms
-        rinv = PermToInv(rperm; db=db)
+        rinv = PermToInv(rperm; db=_db)
         push!(inv_terms, (coeff, rinv))
     end
 
     # Simplify
-    simplified = InvSimplify(inv_terms, level; db=db, dim=dim)
+    simplified = InvSimplify(inv_terms, level; db=_db, dim=dim)
     isempty(simplified) && return "0"
 
     # Convert back to tensor expression
     _inv_expr_to_string(
-        simplified; covd=covd, curvature_relations=curvature_relations, db=db
+        simplified; covd=covd, curvature_relations=curvature_relations, db=_db
     )
 end
 
@@ -1734,13 +1745,17 @@ end
 Convert a simplified InvExpr back to a tensor expression string.
 """
 function _inv_expr_to_string(
-    expr::InvExpr; covd::Symbol, curvature_relations::Bool=false, db::InvarDB
+    expr::InvExpr;
+    covd::Symbol,
+    curvature_relations::Bool=false,
+    db::Union{InvarDB,Nothing}=nothing,
 )::String
     isempty(expr) && return "0"
+    _db = db === nothing ? _ensure_invar_db() : db
 
     parts = String[]
     for (i, (coeff, rinv)) in enumerate(expr)
-        rperm = InvToPerm(rinv; db=db)
+        rperm = InvToPerm(rinv; db=_db)
         tensor = PermToRiemann(rperm; covd=covd, curvature_relations=curvature_relations)
 
         if i == 1
