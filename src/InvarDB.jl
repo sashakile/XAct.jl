@@ -162,44 +162,50 @@ end
 
 Parse a single line of step-1 (Maple format) perm file.
 
-Raw format (from Wolfram Invar database):
-RInv[{0,0},1] := [[2,1],[4,3],[6,5],[8,7]];
+Handles two formats:
 
-The Wolfram parser (`ReadInvarPerms`, Invar.m:284):
+ 1. Legacy: `RInv[{0,0},1] := [[2,1],[4,3],[6,5],[8,7]];`
+ 2. Current (xact.es download): `[[2,3],[4,5],[6,7]]:` (bare cycles + trailing colon)
 
- 1. `readline`: extracts substring after `:=` up to last char before `;`
- 2. `replacebrackets`: `[` → `{`, `]` → `}`
- 3. `ToExpression`: evaluates to Mathematica list of cycles
+The Wolfram parser (`ReadInvarPerms`, Invar.m:284) uses `readline` to strip
+the prefix before `:=` and the trailing `;` or `:`, then `replacebrackets`
+and `ToExpression`.
 
-We replicate this: extract cycles part, parse the nested lists, convert to images.
 Returns `nothing` for blank or comment lines.
 """
-function _parse_maple_perm_line(line::AbstractString)
+function _parse_maple_perm_line(line::AbstractString; degree::Int=0)
     stripped = strip(line)
     isempty(stripped) && return nothing
 
-    # Find " := " delimiter (Wolfram's readline function)
+    # Try legacy format: find " := " delimiter
     assign_pos = findfirst(" := ", stripped)
-    assign_pos === nothing && return nothing
+    if assign_pos !== nothing
+        rhs = strip(stripped[(last(assign_pos) + 1):end])
+    else
+        # Current format: bare cycle notation, possibly with trailing ':'
+        rhs = stripped
+    end
 
-    # Extract RHS: everything after " := " and before trailing ";"
-    rhs_start = last(assign_pos) + 1
-    rhs = strip(stripped[rhs_start:end])
-
-    # Strip trailing semicolon
-    if endswith(rhs, ";")
+    # Strip trailing ';' or ':'
+    while endswith(rhs, ";") || endswith(rhs, ":")
         rhs = rhs[1:(end - 1)]
     end
+    rhs = strip(rhs)
+    isempty(rhs) && return nothing
+
+    # Must look like cycle notation (starts with '[')
+    startswith(rhs, "[") || startswith(rhs, "{") || return nothing
 
     # Parse the cycle notation: [[a,b],[c,d],...]
     cycles = _parse_nested_intlist(rhs)
     isempty(cycles) && return nothing
 
-    # Determine degree from max element
+    # Determine degree: use provided degree, or infer from max element
     max_elem = maximum(maximum(c) for c in cycles if !isempty(c); init=0)
     max_elem == 0 && return nothing
+    actual_degree = degree > 0 ? degree : max_elem
 
-    return _cycles_to_images(cycles, max_elem)
+    return _cycles_to_images(cycles, actual_degree)
 end
 
 """
@@ -344,23 +350,16 @@ Examples:
   - `RInv[{0,0},1] - RInv[{0,0},2]` → [(1, 1//1), (2, -1//1)]
   - `2*RInv[{0,0},1]` → [(1, 2//1)]
   - `-3/2*RInv[{0,0},1] + RInv[{0,0},2]` → [(1, -3//2), (2, 1//1)]
-  - `sigma*RInv[{0,0},1]` → [(1, 1//1)] with sigma flag
+  - `RInv[{0,0},2]/2` → [(2, 1//2)] (trailing division)
+  - `-RInv[{0,0,0},5]/4+RInv[{0,0,0},8]` → [(5, -1//4), (8, 1//1)]
 """
 function _parse_linear_combination(s::AbstractString)
     terms = Tuple{Int,Rational{Int}}[]
     s = strip(s)
     isempty(s) && return terms
 
-    # Tokenize: find all RInv[...] or DualRInv[...] occurrences and their coefficients
-    # Strategy: use regex to find each term pattern
-    #   Optional coefficient (possibly negative, possibly rational, possibly with sigma)
-    #   followed by RInv[{...},N] or DualRInv[{...},N]
-
-    # First normalize: ensure + and - at term boundaries have spaces
-    # Handle "- RInv" and "+ RInv" patterns
-
-    # Find all invariant references and work backwards for coefficients
-    inv_pattern = r"((?:Dual)?[RWD]Inv)\[\{[^}]*\},\s*(\d+)\s*\]"
+    # Find all invariant references: RInv[{...},N] possibly followed by /denom
+    inv_pattern = r"((?:Dual)?[RWD]Inv)\[\{[^}]*\},\s*(\d+)\s*\](?:/(\d+))?"
 
     positions = collect(eachmatch(inv_pattern, s))
     isempty(positions) && return terms
@@ -368,8 +367,13 @@ function _parse_linear_combination(s::AbstractString)
     for (i, m) in enumerate(positions)
         idx = parse(Int, m.captures[2])
 
+        # Trailing divisor: RInv[...]/N
+        trailing_denom = 1
+        if m.captures[3] !== nothing
+            trailing_denom = parse(Int, m.captures[3])
+        end
+
         # Extract the coefficient: everything between previous match end and current match start
-        coeff_start = i == 1 ? 1 : m.offset
         if i > 1
             prev_end = positions[i - 1].offset + length(positions[i - 1].match)
             coeff_str = strip(s[prev_end:(m.offset - 1)])
@@ -378,7 +382,7 @@ function _parse_linear_combination(s::AbstractString)
         end
 
         coeff = _parse_coefficient(coeff_str)
-        push!(terms, (idx, coeff))
+        push!(terms, (idx, coeff // trailing_denom))
     end
 
     return terms
@@ -454,7 +458,7 @@ end
 # ============================================================
 
 """
-    read_invar_perms(filepath::String) -> Dict{Int, Vector{Int}}
+    read_invar_perms(filepath::String; degree::Int=0) -> Dict{Int, Vector{Int}}
 
 Read a step-1 (Maple format) permutation basis file.
 Returns Dict mapping invariant index (1-based, positional) to permutation in images notation.
@@ -462,9 +466,13 @@ Returns Dict mapping invariant index (1-based, positional) to permutation in ima
 Each line in the file defines one invariant's contraction permutation.
 Lines are indexed sequentially: line 1 = invariant 1, line 2 = invariant 2, etc.
 
+The `degree` parameter specifies the permutation degree (number of index slots).
+If 0, the degree is inferred from the max element in the cycles (may be too small
+if the last positions are fixed points).
+
 Reference: Wolfram `ReadInvarPerms` (Invar.m:284).
 """
-function read_invar_perms(filepath::String)
+function read_invar_perms(filepath::String; degree::Int=0)
     result = Dict{Int,Vector{Int}}()
 
     if !isfile(filepath)
@@ -475,7 +483,7 @@ function read_invar_perms(filepath::String)
     lines = readlines(filepath)
     idx = 0
     for line in lines
-        perm = _parse_maple_perm_line(line)
+        perm = _parse_maple_perm_line(line; degree=degree)
         perm === nothing && continue
         idx += 1
         result[idx] = perm
@@ -587,14 +595,16 @@ function LoadInvarDB(dbdir::String; dim::Int=4)
         fname = _rinv_filename(1, case)
         fpath = joinpath(step1_dir, fname)
         if isfile(fpath)
-            perms[case] = read_invar_perms(fpath)
+            deg = PermDegree(InvariantCase(case))
+            perms[case] = read_invar_perms(fpath; degree=deg)
         end
     end
     for case in all_dual_cases
         fname = _dinv_filename(1, case)
         fpath = joinpath(step1_dir, fname)
         if isfile(fpath)
-            dual_perms[case] = read_invar_perms(fpath)
+            deg = PermDegree(InvariantCase(case, 1))
+            dual_perms[case] = read_invar_perms(fpath; degree=deg)
         end
     end
 

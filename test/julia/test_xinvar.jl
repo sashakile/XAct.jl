@@ -2123,4 +2123,192 @@ using xAct
             @test xAct.XInvar._dual_perm_dispatch === nothing
         end
     end
+
+    # ================================================================
+    # Phase 11: Validation with Real Invar Database
+    # ================================================================
+
+    # These tests require the real Invar database downloaded from xact.es.
+    # Skipped if not present.
+    _INVAR_DB_DIR = joinpath(@__DIR__, "..", "..", "resources", "xAct", "Invar")
+    _HAS_INVAR_DB =
+        isdir(joinpath(_INVAR_DB_DIR, "Riemann", "1")) &&
+        isfile(joinpath(_INVAR_DB_DIR, "Riemann", "1", "RInv-0-1"))
+
+    if _HAS_INVAR_DB
+        @testset "Phase 11: Real Database Validation" begin
+            db = LoadInvarDB(_INVAR_DB_DIR)
+
+            @testset "step-1 perm counts match MaxIndex" begin
+                for c in InvarCases()
+                    key = c.deriv_orders
+                    if haskey(db.perms, key)
+                        @test length(db.perms[key]) == MaxIndex(key)
+                    end
+                end
+            end
+
+            @testset "step-1 perm lengths match PermDegree" begin
+                for c in InvarCases()
+                    key = c.deriv_orders
+                    deg = PermDegree(c)
+                    if haskey(db.perms, key)
+                        for (_, perm) in db.perms[key]
+                            @test length(perm) == deg
+                        end
+                    end
+                end
+            end
+
+            @testset "step-1 perms are valid permutations" begin
+                # Each perm must be a valid permutation (all values in 1:degree, each appearing once)
+                for c in [
+                    InvariantCase([0]),
+                    InvariantCase([0, 0]),
+                    InvariantCase([0, 0, 0]),
+                    InvariantCase([2]),
+                ]
+                    key = c.deriv_orders
+                    deg = PermDegree(c)
+                    haskey(db.perms, key) || continue
+                    for (idx, perm) in db.perms[key]
+                        @test sort(perm) == collect(1:deg)
+                    end
+                end
+            end
+
+            @testset "step-1 all low-order cases loaded" begin
+                # Orders 2-8 should all be loaded
+                for c in InvarCases()
+                    order = 2 * length(c.deriv_orders) + sum(c.deriv_orders; init=0)
+                    order > 8 && continue
+                    @test haskey(db.perms, c.deriv_orders)
+                end
+            end
+
+            @testset "step-2 rules: case [0,0]" begin
+                # Case [0,0] has 3 invariants, step 2 eliminates inv 3
+                @test haskey(db.rules[2], [0, 0])
+                rules_00 = db.rules[2][[0, 0]]
+                @test haskey(rules_00, 3)
+                # inv 3 → (1/2) inv 2 (from real data)
+                @test rules_00[3] == [(2, 1 // 2)]
+            end
+
+            @testset "step-2 rules: case [0,0,0]" begin
+                @test haskey(db.rules[2], [0, 0, 0])
+                rules_000 = db.rules[2][[0, 0, 0]]
+                # 4 dependent invariants at step 2
+                @test length(rules_000) == 4
+                @test haskey(rules_000, 4)
+                @test haskey(rules_000, 6)
+                @test haskey(rules_000, 7)
+                @test haskey(rules_000, 9)
+            end
+
+            @testset "step-2 independent count" begin
+                # After step 2, the number of independent invariants
+                # = MaxIndex - number of step-2 rules
+                for case_key in [[0, 0], [0, 0, 0]]
+                    total = MaxIndex(case_key)
+                    haskey(db.rules[2], case_key) || continue
+                    n_dep = length(db.rules[2][case_key])
+                    n_indep = total - n_dep
+                    @test n_indep > 0
+                end
+            end
+
+            @testset "dual step-1 perm counts match MaxDualIndex" begin
+                for c in InvarDualCases()
+                    key = c.deriv_orders
+                    if haskey(db.dual_perms, key)
+                        @test length(db.dual_perms[key]) == MaxDualIndex(key)
+                    end
+                end
+            end
+
+            @testset "dual step-1 perm lengths match PermDegree" begin
+                for c in InvarDualCases()
+                    key = c.deriv_orders
+                    deg = PermDegree(c)
+                    if haskey(db.dual_perms, key)
+                        for (_, perm) in db.dual_perms[key]
+                            @test length(perm) == deg
+                        end
+                    end
+                end
+            end
+
+            @testset "PermToInv round-trip: case [0]" begin
+                xAct.XInvar._perm_dispatch = nothing
+                # The single case-[0] invariant
+                perm = db.perms[[0]][1]
+                rperm = RPerm(:CD, InvariantCase([0]), perm)
+                rinv = PermToInv(rperm; db=db)
+                @test rinv.index == 1
+                rperm2 = InvToPerm(rinv; db=db)
+                @test rperm2.perm == perm
+            end
+
+            @testset "PermToInv round-trip: case [0,0] all 3" begin
+                xAct.XInvar._perm_dispatch = nothing
+                for idx in 1:3
+                    perm = db.perms[[0, 0]][idx]
+                    rperm = RPerm(:CD, InvariantCase([0, 0]), perm)
+                    rinv = PermToInv(rperm; db=db)
+                    @test rinv.index == idx
+                    rperm2 = InvToPerm(rinv; db=db)
+                    @test rperm2.perm == perm
+                end
+            end
+
+            @testset "InvSimplify level 2: case [0,0]" begin
+                xAct.XInvar._perm_dispatch = nothing
+                # inv 3 is dependent: inv3 → (1/2)*inv2
+                rinv3 = RInv(:CD, InvariantCase([0, 0]), 3)
+                result = InvSimplify(rinv3, 2; db=db)
+                @test length(result) == 1
+                @test result[1][2].index == 2
+                @test result[1][1] == 1 // 2
+            end
+
+            @testset "InvSimplify level 2: case [0,0] independent unchanged" begin
+                xAct.XInvar._perm_dispatch = nothing
+                for idx in [1, 2]
+                    rinv = RInv(:CD, InvariantCase([0, 0]), idx)
+                    result = InvSimplify(rinv, 2; db=db)
+                    @test length(result) == 1
+                    @test result[1] == (1 // 1, rinv)
+                end
+            end
+
+            @testset "InvSimplify level 2: case [0,0,0]" begin
+                xAct.XInvar._perm_dispatch = nothing
+                # inv 7 → (1/4)*inv 5
+                rinv7 = RInv(:CD, InvariantCase([0, 0, 0]), 7)
+                result = InvSimplify(rinv7, 2; db=db)
+                @test length(result) == 1
+                @test result[1][2].index == 5
+                @test result[1][1] == 1 // 4
+            end
+
+            @testset "performance: step-1 loading" begin
+                # Loading should be reasonably fast
+                t = @elapsed LoadInvarDB(_INVAR_DB_DIR)
+                @test t < 30.0  # generous: should be well under 30s
+            end
+
+            @testset "performance: PermToInv dispatch build" begin
+                xAct.XInvar._perm_dispatch = nothing
+                rperm = RPerm(:CD, InvariantCase([0]), db.perms[[0]][1])
+                t = @elapsed PermToInv(rperm; db=db)
+                @test t < 5.0  # first call builds dispatch
+                # Second call should be fast (cached)
+                t2 = @elapsed PermToInv(rperm; db=db)
+                @test t2 < 0.01
+            end
+        end
+    else
+        @info "Skipping Phase 11 real-DB tests: Invar database not found at $(_INVAR_DB_DIR)"
+    end
 end

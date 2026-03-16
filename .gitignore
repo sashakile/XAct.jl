@@ -44,3 +44,6 @@ docs/.CondaPkg/
 # Dolt database files (added by bd init)
 .dolt/
 *.db
+
+# Invar database (downloaded, not committed — 350MB)
+resources/xAct/Invar/Riemann/
