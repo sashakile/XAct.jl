@@ -81,6 +81,9 @@ export christoffel!
 # xCoba ToBasis / FromBasis / TraceBasisDummy
 export ToBasis, FromBasis, TraceBasisDummy
 
+# Multi-term identity framework
+export MultiTermIdentity, RegisterIdentity!
+
 # xTras utilities
 export CollectTensors, AllContractions, SymmetryOf, MakeTraceFree
 
@@ -192,6 +195,42 @@ struct CTensorObj
     weight::Int             # density weight (usually 0)
 end
 
+"""
+    MultiTermIdentity
+
+A multi-term identity relating N canonical tensor terms by a linear relation.
+
+The identity asserts: Σᵢ coefficients[i] * T[slot_perms[i](free_indices)] = 0
+
+Fields:
+
+  - `name`: identity label (e.g. :FirstBianchi)
+  - `tensor`: which tensor this applies to (e.g. :RiemannCD)
+  - `n_slots`: total tensor rank (4 for Riemann)
+  - `fixed_slots`: slot positions held constant across terms
+  - `cycled_slots`: slot positions permuted across terms
+  - `slot_perms`: for each term, the rank-permutation of cycled_slot values
+  - `coefficients`: coefficient of each term in the identity (Σ coefficients[i] * X_i = 0)
+  - `eliminate`: which term index to eliminate (reduce away)
+
+Example — First Bianchi identity R_{a[bcd]} = 0:
+Three canonical forms for 4 distinct indices p < q < r < s:
+X₁ = R[p,q,r,s]  →  cycled ranks [1,2,3]
+X₂ = R[p,r,q,s]  →  cycled ranks [2,1,3]
+X₃ = R[p,s,q,r]  →  cycled ranks [3,1,2]
+Identity: X₁ - X₂ + X₃ = 0;  eliminate X₃.
+"""
+struct MultiTermIdentity
+    name::Symbol
+    tensor::Symbol
+    n_slots::Int
+    fixed_slots::Vector{Int}
+    cycled_slots::Vector{Int}
+    slot_perms::Vector{Vector{Int}}
+    coefficients::Vector{Rational{Int}}
+    eliminate::Int
+end
+
 # ============================================================
 # Global state
 # ============================================================
@@ -223,6 +262,10 @@ const _trace_scalars = Dict{Symbol,Tuple{Symbol,Int}}()
 # Einstein expansion rules: EinsteinXXX → (RicciXXX, metricXXX, RicciScalarXXX)
 # Allows ToCanonical to substitute G_{ab} = R_{ab} - (1/2) g_{ab} R
 const _einstein_expansion = Dict{Symbol,Tuple{Symbol,Symbol,Symbol}}()
+
+# Multi-term identity registry: tensor name → list of identities
+# Auto-populated by def_tensor! for RiemannSymmetric tensors (first Bianchi).
+const _identity_registry = Dict{Symbol,Vector{MultiTermIdentity}}()
 
 # ============================================================
 # Symbol validation hooks
@@ -300,6 +343,147 @@ function reset_state!()
     empty!(_traceless_tensors);
     empty!(_trace_scalars)
     empty!(_einstein_expansion)
+    empty!(_identity_registry)
+end
+
+# ============================================================
+# Multi-term identity framework
+# ============================================================
+
+"""
+    RegisterIdentity!(tensor_name, identity)
+
+Register a multi-term identity for a tensor. Identities are applied during
+canonicalization by `_apply_identities!`.
+"""
+function RegisterIdentity!(tensor_name::Symbol, identity::MultiTermIdentity)
+    if !haskey(_identity_registry, tensor_name)
+        _identity_registry[tensor_name] = MultiTermIdentity[]
+    end
+    push!(_identity_registry[tensor_name], identity)
+    nothing
+end
+
+"""
+    _make_bianchi_identity(tensor_name)
+
+Construct the first Bianchi identity R_{a[bcd]} = 0 for a 4-slot tensor
+with RiemannSymmetric symmetry.
+
+Canonical forms for indices p < q < r < s:
+X₁ = R[p,q,r,s]  →  cycled ranks [1,2,3]
+X₂ = R[p,r,q,s]  →  cycled ranks [2,1,3]
+X₃ = R[p,s,q,r]  →  cycled ranks [3,1,2]
+Identity: X₁ - X₂ + X₃ = 0;  eliminate X₃.
+"""
+function _make_bianchi_identity(tensor_name::Symbol)
+    MultiTermIdentity(
+        :FirstBianchi,
+        tensor_name,
+        4,
+        [1],
+        [2, 3, 4],
+        [[1, 2, 3], [2, 1, 3], [3, 1, 2]],
+        [1 // 1, -1 // 1, 1 // 1],
+        3,
+    )
+end
+
+"""
+    _apply_identities!(coeff_map, key_order)
+
+Apply all registered multi-term identities to the canonical term map.
+Replaces the hardcoded `_bianchi_reduce!` with a general framework.
+"""
+function _apply_identities!(
+    coeff_map::Dict{Vector{Tuple{Symbol,Vector{String}}},Rational{Int}},
+    key_order::Vector{Vector{Tuple{Symbol,Vector{String}}}},
+)
+    isempty(_identity_registry) && return nothing
+    for (_, identities) in _identity_registry
+        for identity in identities
+            _apply_single_identity!(coeff_map, key_order, identity)
+        end
+    end
+    nothing
+end
+
+"""
+    _apply_single_identity!(coeff_map, key_order, id)
+
+Apply one multi-term identity to the canonical term map.
+
+Groups single-factor terms by sector (values at fixed_slots + sorted values at cycled_slots),
+then for each complete sector eliminates the designated term.
+"""
+function _apply_single_identity!(
+    coeff_map::Dict{Vector{Tuple{Symbol,Vector{String}}},Rational{Int}},
+    key_order::Vector{Vector{Tuple{Symbol,Vector{String}}}},
+    id::MultiTermIdentity,
+)
+    # Map: sector_key → (rank_perm → key)
+    # sector_key = (fixed_values, sorted_cycled_values)
+    SectorKey = Tuple{Vector{String},Vector{String}}
+    KeyType = Vector{Tuple{Symbol,Vector{String}}}
+    sectors = Dict{SectorKey,Dict{Vector{Int},KeyType}}()
+
+    for key in key_order
+        get(coeff_map, key, 0 // 1) == 0 && continue
+        length(key) != 1 && continue
+        tname, indices = key[1]
+        tname != id.tensor && continue
+        length(indices) != id.n_slots && continue
+
+        bare = [_bare(idx) for idx in indices]
+        fixed_vals = [bare[s] for s in id.fixed_slots]
+        cycled_vals = [bare[s] for s in id.cycled_slots]
+        sorted_cycled = sort(cycled_vals)
+
+        sector_key = (fixed_vals, sorted_cycled)
+        if !haskey(sectors, sector_key)
+            sectors[sector_key] = Dict{Vector{Int},KeyType}()
+        end
+
+        # Compute rank permutation: map each cycled value to its rank in sorted order
+        rank_map = Dict{String,Int}()
+        for (i, v) in enumerate(sorted_cycled)
+            rank_map[v] = i
+        end
+        perm = [rank_map[v] for v in cycled_vals]
+
+        sectors[sector_key][perm] = key
+    end
+
+    # Apply identity to each complete sector
+    n_terms = length(id.coefficients)
+    for (_, perm_to_key) in sectors
+        length(perm_to_key) < n_terms && continue
+
+        # Check all identity terms are present
+        all_present = true
+        for sp in id.slot_perms
+            if !haskey(perm_to_key, sp)
+                all_present = false
+                break
+            end
+        end
+        all_present || continue
+
+        elim_key = perm_to_key[id.slot_perms[id.eliminate]]
+        c_e = get(coeff_map, elim_key, 0 // 1)
+        iszero(c_e) && continue
+
+        # Eliminate: X_e = -(1/c_id_e) Σ_{i≠e} c_id_i * X_i
+        c_id_e = id.coefficients[id.eliminate]
+        for (i, sp) in enumerate(id.slot_perms)
+            i == id.eliminate && continue
+            other_key = perm_to_key[sp]
+            coeff_map[other_key] =
+                get(coeff_map, other_key, 0 // 1) + c_e * (-id.coefficients[i] / c_id_e)
+        end
+        coeff_map[elim_key] = 0 // 1
+    end
+    nothing
 end
 
 # ============================================================
@@ -594,6 +778,11 @@ function def_tensor!(
 
     _register_symbol_hook[](name, "XTensor")
 
+    # Auto-register first Bianchi identity for RiemannSymmetric tensors
+    if sym.type == :RiemannSymmetric && length(slots) == 4
+        RegisterIdentity!(name, _make_bianchi_identity(name))
+    end
+
     t
 end
 
@@ -662,6 +851,11 @@ function def_tensor!(
     push!(Tensors, name)
 
     _register_symbol_hook[](name, "XTensor")
+
+    # Auto-register first Bianchi identity for RiemannSymmetric tensors
+    if sym.type == :RiemannSymmetric && length(slots) == 4
+        RegisterIdentity!(name, _make_bianchi_identity(name))
+    end
 
     t
 end
@@ -1206,71 +1400,16 @@ function _expand_einstein_terms(terms::Vector{TermAST})::Vector{TermAST}
 end
 
 """
-Apply first Bianchi identity R_{a[bcd]} = 0 to reduce canonical Riemann terms.
+    _bianchi_reduce!(coeff_map, key_order)
 
-For 4 distinct abstract indices p < q < r < s, the canonical Bianchi identity is:
-X₁ - X₂ + X₃ = 0  where:
-X₁ = R[p,q,r,s]  (second index = q, smallest remaining)
-X₂ = R[p,r,q,s]  (second index = r, middle remaining)
-X₃ = R[p,s,q,r]  (second index = s, largest remaining)
-
-Replaces X₃ with X₂ - X₁ when all three are present.
+Legacy wrapper: delegates to `_apply_identities!`.
+Kept for backward compatibility; new code should call `_apply_identities!` directly.
 """
 function _bianchi_reduce!(
     coeff_map::Dict{Vector{Tuple{Symbol,Vector{String}}},Rational{Int}},
     key_order::Vector{Vector{Tuple{Symbol,Vector{String}}}},
 )
-    # Find all single-factor Riemann canonical terms and group by sector
-    # sector = (tensor_name, first_bare_index, Set{second/third/fourth bare indices})
-    sectors = Dict{
-        Tuple{Symbol,String,Set{String}},Dict{String,Vector{Tuple{Symbol,Vector{String}}}}
-    }()
-
-    for key in key_order
-        get(coeff_map, key, 0 // 1) == 0 && continue
-        length(key) != 1 && continue
-        tensor_name, indices = key[1]
-        t = get(_tensors, tensor_name, nothing)
-        isnothing(t) && continue
-        t.symmetry.type != :RiemannSymmetric && continue
-        length(indices) != 4 && continue
-
-        bare = [_bare(idx) for idx in indices]
-        p = bare[1]  # first index (lex-min after canonical form)
-        rem = Set(bare[2:4])
-        sector = (tensor_name, p, rem)
-
-        if !haskey(sectors, sector)
-            sectors[sector] = Dict{String,Vector{Tuple{Symbol,Vector{String}}}}()
-        end
-        # Second bare index identifies X₁/X₂/X₃
-        sectors[sector][bare[2]] = key
-    end
-
-    # For each sector with all three Bianchi representatives, reduce X₃ = X₂ - X₁
-    for (sector, idx_to_key) in sectors
-        length(idx_to_key) < 3 && continue
-        _, p, rem = sector
-        sorted_rem = sort(collect(rem))  # q < r < s
-        length(sorted_rem) != 3 && continue
-        q, r, s = sorted_rem[1], sorted_rem[2], sorted_rem[3]
-
-        haskey(idx_to_key, q) || continue
-        haskey(idx_to_key, r) || continue
-        haskey(idx_to_key, s) || continue
-
-        key1 = idx_to_key[q]  # X₁
-        key2 = idx_to_key[r]  # X₂
-        key3 = idx_to_key[s]  # X₃
-
-        c3 = get(coeff_map, key3, 0 // 1)
-        iszero(c3) && continue
-
-        # X₃ = X₂ - X₁  →  c₃*X₃ adds -c₃ to X₁ and +c₃ to X₂
-        coeff_map[key1] = get(coeff_map, key1, 0 // 1) - c3
-        coeff_map[key2] = get(coeff_map, key2, 0 // 1) + c3
-        coeff_map[key3] = 0 // 1
-    end
+    _apply_identities!(coeff_map, key_order)
 end
 
 # ============================================================
@@ -1566,7 +1705,7 @@ function ToCanonical(expression::AbstractString)::String
     end
 
     # Apply Bianchi identity reduction: R_{a[bcd]} = 0
-    _bianchi_reduce!(coeff_map, key_order)
+    _apply_identities!(coeff_map, key_order)
 
     # Drop zero-coefficient terms
     keys_nonzero = filter(k -> coeff_map[k] != 0, key_order)
