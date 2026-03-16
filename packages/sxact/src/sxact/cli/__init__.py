@@ -37,6 +37,7 @@ from .run import (
 from .snapshot import _cmd_snapshot
 from .regen import _interactive_review as _interactive_review, _cmd_regen_oracle
 from .property import _cmd_property
+from .translate import _cmd_translate
 
 
 # ---------------------------------------------------------------------------
@@ -532,6 +533,32 @@ def main() -> None:
         help="Output format (default: terminal)",
     )
     prop.set_defaults(func=_cmd_property)
+
+    # --- translate subcommand ---
+    translate = subparsers.add_parser(
+        "translate",
+        help="Translate Wolfram xAct expressions to JSON, Julia, TOML, or Python",
+    )
+    translate.add_argument(
+        "--to",
+        choices=["json", "julia", "toml", "python"],
+        default="json",
+        help="Output format (default: json)",
+    )
+    translate.add_argument(
+        "-e",
+        "--expr",
+        default=None,
+        metavar="EXPR",
+        help="Single Wolfram expression to translate",
+    )
+    translate.add_argument(
+        "--file",
+        default=None,
+        metavar="PATH",
+        help="Path to a .wl file to translate",
+    )
+    translate.set_defaults(func=_cmd_translate)
 
     args = parser.parse_args()
     sys.exit(args.func(args))
