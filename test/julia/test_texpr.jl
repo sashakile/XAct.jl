@@ -380,10 +380,10 @@ using .xAct
         T = tensor(:TET)
         V = tensor(:TEV)
 
-        @test _to_string(T[-tea, -teb] * V[tea]) == "TET[-tea,-teb] * TEV[tea]"
+        @test _to_string(T[-tea, -teb] * V[tea]) == "TET[-tea,-teb] TEV[tea]"
         @test _to_string(-(T[-tea, -teb])) == "-TET[-tea,-teb]"
-        @test _to_string(2 * T[-tea, -teb]) == "2 * TET[-tea,-teb]"
-        @test _to_string((1//2) * T[-tea, -teb]) == "(1/2) * TET[-tea,-teb]"
+        @test _to_string(2 * T[-tea, -teb]) == "2 TET[-tea,-teb]"
+        @test _to_string((1//2) * T[-tea, -teb]) == "(1/2) TET[-tea,-teb]"
     end
 
     @testset "_to_string — TProd with parenthesized sub-sums" begin
@@ -512,7 +512,8 @@ using .xAct
         g = tensor(:TEg)
 
         typed_result = Contract(V[tea] * g[-tea, -teb])
-        string_result = Contract("TEV[tea] * TEg[-tea,-teb]")
+        # Compare against space-format string (same format _to_string now produces)
+        string_result = Contract("TEV[tea] TEg[-tea,-teb]")
         @test typed_result == string_result
     end
 
@@ -529,7 +530,7 @@ using .xAct
         @test typed_result == string_result
     end
 
-    @testset "perturb — typed vs string equivalence" begin
+    @testset "perturb — typed result is TExpr matching string result" begin
         reset_state!()
         def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
         def_metric!(-1, "TEg[-tea,-teb]", :TECD)
@@ -541,7 +542,8 @@ using .xAct
 
         typed_result = perturb(g[-tea, -teb], 1)
         string_result = perturb("TEg[-tea,-teb]", 1)
-        @test typed_result == string_result
+        @test typed_result isa TExpr
+        @test typed_result == string_result  # TExpr == String via _to_string
     end
 
     # ---------------------------------------------------------------------------
@@ -586,9 +588,285 @@ using .xAct
         V = tensor(:TEV)
 
         expr = 2 * T[-tea, -teb] - (3//2) * S[-tea, -teb] + T[-teb, -tea]
-        str = _to_string(expr)
-
         result = ToCanonical(expr)
-        @test result isa String
+        @test result isa TExpr
+    end
+    # ---------------------------------------------------------------------------
+    # Batch 10: Parser (_parse_to_texpr) and Round-Trip
+    # ---------------------------------------------------------------------------
+
+    @testset "_parse_to_texpr — zero" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+
+        r = _parse_to_texpr("0")
+        @test r isa TScalar
+        @test r.value == 0//1
+    end
+
+    @testset "_parse_to_texpr — single tensor" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_tensor!(:TET, ["-tea", "-teb"], :TE4)
+
+        r = _parse_to_texpr("TET[-tea,-teb]")
+        @test r isa TTensor
+        @test r.head.name == :TET
+        @test length(r.indices) == 2
+        @test r.indices[1] isa DnIdx
+        @test r.indices[1].parent.label == :tea
+        @test r.indices[2] isa DnIdx
+        @test r.indices[2].parent.label == :teb
+    end
+
+    @testset "_parse_to_texpr — rank-0 tensor" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_metric!(-1, "TEg[-tea,-teb]", :TECD)
+
+        r = _parse_to_texpr("RicciScalarTECD[]")
+        @test r isa TTensor
+        @test r.head.name == :RicciScalarTECD
+        @test isempty(r.indices)
+    end
+
+    @testset "_parse_to_texpr — contravariant index" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_tensor!(:TEV, ["tea"], :TE4)
+
+        r = _parse_to_texpr("TEV[tea]")
+        @test r isa TTensor
+        @test r.indices[1] isa Idx
+        @test r.indices[1].label == :tea
+    end
+
+    @testset "_parse_to_texpr — product with integer coefficient" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_tensor!(:TET, ["-tea", "-teb"], :TE4)
+
+        # Engine format (space)
+        r = _parse_to_texpr("2 TET[-tea,-teb]")
+        @test r isa TProd
+        @test r.coeff == 2//1
+        @test length(r.factors) == 1
+        @test r.factors[1] isa TTensor
+
+        r2 = _parse_to_texpr("-TET[-tea,-teb]")
+        @test r2 isa TProd
+        @test r2.coeff == -1//1
+    end
+
+    @testset "_parse_to_texpr — product with rational coefficient" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_tensor!(:TET, ["-tea", "-teb"], :TE4)
+
+        # Engine formats: "(1/2) Name" and "-(3/2)" pure scalar
+        r = _parse_to_texpr("(1/2) TET[-tea,-teb]")
+        @test r isa TProd
+        @test r.coeff == 1//2
+
+        r2 = _parse_to_texpr("(-3/2) TET[-tea,-teb]")
+        @test r2 isa TProd
+        @test r2.coeff == -3//2
+
+        # "-(n/d)" format (engine outputs this for negative rational scalars)
+        r3 = _parse_to_texpr("-(3/2)")
+        @test r3 isa TScalar
+        @test r3.value == -3//2
+    end
+
+    @testset "_parse_to_texpr — tensor product (no coefficient)" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_tensor!(:TET, ["-tea", "-teb"], :TE4)
+        def_tensor!(:TEV, ["tea"], :TE4)
+
+        # Engine format: space-separated
+        r = _parse_to_texpr("TET[-tea,-teb] TEV[tea]")
+        @test r isa TProd
+        @test r.coeff == 1//1
+        @test length(r.factors) == 2
+    end
+
+    @testset "_parse_to_texpr — sum" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_tensor!(:TET, ["-tea", "-teb"], :TE4)
+        def_tensor!(:TES, ["-tea", "-teb"], :TE4)
+
+        r = _parse_to_texpr("TET[-tea,-teb] + TES[-tea,-teb]")
+        @test r isa TSum
+        @test length(r.terms) == 2
+        @test r.terms[1] isa TTensor
+        @test r.terms[2] isa TTensor
+    end
+
+    @testset "_parse_to_texpr — difference" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_tensor!(:TET, ["-tea", "-teb"], :TE4)
+        def_tensor!(:TES, ["-tea", "-teb"], :TE4)
+
+        r = _parse_to_texpr("TET[-tea,-teb] - TES[-tea,-teb]")
+        @test r isa TSum
+        @test length(r.terms) == 2
+        # Second term should be negated
+        @test r.terms[2] isa TProd
+        @test (r.terms[2]::TProd).coeff == -1//1
+    end
+
+    @testset "_parse_to_texpr — multi-term sum with coefficients" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_tensor!(:TET, ["-tea", "-teb"], :TE4)
+        def_tensor!(:TES, ["-tea", "-teb"], :TE4)
+
+        # Engine format: space-separated coefficients
+        r = _parse_to_texpr("2 TET[-tea,-teb] + (1/2) TES[-tea,-teb]")
+        @test r isa TSum
+        @test length(r.terms) == 2
+        @test (r.terms[1]::TProd).coeff == 2//1
+        @test (r.terms[2]::TProd).coeff == 1//2
+    end
+
+    @testset "_parse_to_texpr — CovD expression" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_metric!(-1, "TEg[-tea,-teb]", :TECD)
+        def_tensor!(:TEphi, String[], :TE4)
+
+        r = _parse_to_texpr("TECD[-tea][TEphi[]]")
+        @test r isa TCovD
+        @test r.covd == :TECD
+        @test r.index isa DnIdx
+        @test r.index.parent.label == :tea
+        @test r.operand isa TTensor
+        @test (r.operand::TTensor).head.name == :TEphi
+    end
+
+    @testset "_parse_to_texpr — nested CovD" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_metric!(-1, "TEg[-tea,-teb]", :TECD)
+        def_tensor!(:TEphi, String[], :TE4)
+
+        r = _parse_to_texpr("TECD[-tea][TECD[-teb][TEphi[]]]")
+        @test r isa TCovD
+        @test r.operand isa TCovD
+        @test (r.operand::TCovD).index.parent.label == :teb
+    end
+
+    @testset "_to_string round-trip through _parse_to_texpr" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_tensor!(:TET, ["-tea", "-teb"], :TE4)
+        def_tensor!(:TES, ["-tea", "-teb"], :TE4)
+        def_tensor!(:TEV, ["tea"], :TE4)
+
+        # Strings in engine/space format (same format _to_string now produces)
+        exprs = [
+            "TET[-tea,-teb]",
+            "2 TET[-tea,-teb]",
+            "(1/2) TES[-tea,-teb]",
+            "-TET[-tea,-teb]",
+            "TET[-tea,-teb] + TES[-tea,-teb]",
+            "TET[-tea,-teb] - TES[-tea,-teb]",
+            "TET[-tea,-teb] TEV[tea]",
+        ]
+        for s in exprs
+            @test _to_string(_parse_to_texpr(s)) == s
+        end
+    end
+
+    @testset "_parse_to_texpr — bare name (TSymbol)" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+
+        r = _parse_to_texpr("SomeBareSymbol")
+        @test r isa TSymbol
+        @test r.name == :SomeBareSymbol
+        @test _to_string(r) == "SomeBareSymbol"
+        @test r == "SomeBareSymbol"
+    end
+
+    @testset "TExpr == String equality" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_tensor!(:TET, ["-tea", "-teb"], :TE4)
+
+        @indices TE4 tea teb
+        T = tensor(:TET)
+
+        @test T[-tea, -teb] == "TET[-tea,-teb]"
+        @test "TET[-tea,-teb]" == T[-tea, -teb]
+        @test TScalar(0//1) == "0"
+        @test TScalar(3//2) == "(3/2)"
+    end
+
+    @testset "ToCanonical — TExpr input returns TExpr" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_metric!(-1, "TEg[-tea,-teb]", :TECD)
+        def_tensor!(:TET, ["-tea", "-teb"], :TE4; symmetry_str="Symmetric[{-tea,-teb}]")
+
+        @indices TE4 tea teb tec ted
+        T = tensor(:TET)
+
+        zero_result = ToCanonical(T[-teb, -tea] - T[-tea, -teb])
+        @test zero_result isa TExpr
+        @test zero_result == "0"
+
+        # Unchanged tensor — result is still TExpr
+        canon = ToCanonical(T[-tea, -teb])
+        @test canon isa TExpr
+    end
+
+    @testset "Contract — TExpr input returns TExpr" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_metric!(-1, "TEg[-tea,-teb]", :TECD)
+        def_tensor!(:TEV, ["tea"], :TE4)
+
+        @indices TE4 tea teb
+        V = tensor(:TEV)
+        g = tensor(:TEg)
+
+        result = Contract(V[tea] * g[-tea, -teb])
+        @test result isa TExpr
+        # Result should match space-format string equivalent
+        @test result == Contract("TEV[tea] TEg[-tea,-teb]")
+    end
+
+    @testset "Simplify — TExpr input returns TExpr" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_metric!(-1, "TEg[-tea,-teb]", :TECD)
+
+        @indices TE4 tea teb
+        g = tensor(:TEg)
+
+        result = Simplify(g[-tea, -teb])
+        @test result isa TExpr
+        @test result == Simplify("TEg[-tea,-teb]")
+    end
+
+    @testset "TExpr chaining — result feeds next call" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_metric!(-1, "TEg[-tea,-teb]", :TECD)
+        def_tensor!(:TET, ["-tea", "-teb"], :TE4; symmetry_str="Symmetric[{-tea,-teb}]")
+
+        @indices TE4 tea teb
+        T = tensor(:TET)
+        g = tensor(:TEg)
+
+        # Chain: Contract result (TExpr) fed into ToCanonical
+        contracted = Contract(T[-tea, -teb] * g[-tea, -teb])
+        @test contracted isa TExpr
+        final = ToCanonical(contracted)
+        @test final isa TExpr
     end
 end # @testset "TExpr"

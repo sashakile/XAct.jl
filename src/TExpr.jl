@@ -15,11 +15,12 @@ import ..XTensor:
     IBP,
     TotalDerivativeQ,
     VarD
+import ..XInvar: RiemannSimplify
 
 export Idx, DnIdx, SlotIdx
-export TExpr, TScalar, TensorHead, TTensor, TProd, TSum, CovDHead, TCovD
+export TExpr, TScalar, TSymbol, TensorHead, TTensor, TProd, TSum, CovDHead, TCovD
 export @indices, tensor, covd
-export _to_string, _to_string_factor
+export _to_string, _to_string_factor, _parse_to_texpr
 
 # ---------------------------------------------------------------------------
 # Index types
@@ -101,6 +102,14 @@ Numeric scalar coefficient.
 struct TScalar <: TExpr
     value::Rational{Int}
     TScalar(value::Rational{Int}) = new(value)
+end
+
+"""
+Bare symbol returned by the engine (e.g. a perturbation tensor name without
+indices).  Serialises back to the bare name string.
+"""
+struct TSymbol <: TExpr
+    name::Symbol
 end
 
 """
@@ -313,16 +322,20 @@ end
 
 function _to_string(p::TProd)::String
     parts = [_to_string_factor(f) for f in p.factors]
-    body = join(parts, " * ")
+    body = join(parts, " ")
     if p.coeff == 1//1
         body
     elseif p.coeff == -1//1
         "-" * body
     elseif p.coeff.den == 1
-        "$(p.coeff.num) * $body"
+        "$(p.coeff.num) $body"
     else
-        "($(p.coeff.num)/$(p.coeff.den)) * $body"
+        "($(p.coeff.num)/$(p.coeff.den)) $body"
     end
+end
+
+function _to_string(s::TSymbol)::String
+    string(s.name)
 end
 
 function _to_string(s::TSum)::String
@@ -357,20 +370,265 @@ Base.show(io::IO, e::TExpr) = print(io, _to_string(e))
 Base.show(io::IO, i::Idx) = print(io, i.label)
 Base.show(io::IO, i::DnIdx) = print(io, "-", i.parent.label)
 Base.show(io::IO, t::TensorHead) = print(io, "TensorHead(:", t.name, ")")
+Base.show(io::IO, s::TSymbol) = print(io, s.name)
 
 # ---------------------------------------------------------------------------
-# Engine function overloads (TExpr -> String -> engine)
+# TExpr / String equality — compare by canonical string representation
 # ---------------------------------------------------------------------------
 
-# Engine function overloads: TExpr -> _to_string -> String method
-ToCanonical(expr::TExpr) = ToCanonical(_to_string(expr))
-Contract(expr::TExpr) = Contract(_to_string(expr))
-Simplify(expr::TExpr) = Simplify(_to_string(expr))
-perturb(expr::TExpr, order::Int) = perturb(_to_string(expr), order)
-CommuteCovDs(expr::TExpr, cd, i1, i2) = CommuteCovDs(_to_string(expr), cd, i1, i2)
-SortCovDs(expr::TExpr, cd) = SortCovDs(_to_string(expr), cd)
-IBP(expr::TExpr, cd) = IBP(_to_string(expr), cd)
-TotalDerivativeQ(expr::TExpr, cd) = TotalDerivativeQ(_to_string(expr), cd)
-VarD(expr::TExpr, field, cd) = VarD(_to_string(expr), field, cd)
+Base.:(==)(t::TExpr, s::AbstractString) = _to_string(t) == s
+Base.:(==)(s::AbstractString, t::TExpr) = _to_string(t) == s
+
+# ---------------------------------------------------------------------------
+# Parser: String → TExpr  (Stage 2)
+# ---------------------------------------------------------------------------
+
+"""
+    _parse_to_texpr(s::AbstractString) -> TExpr
+
+Parse an engine output string into a typed expression tree.
+
+Supported formats (same as `_to_string` output):
+
+  - `"0"` → `TScalar(0//1)`
+  - `"Name[i1,i2]"` → `TTensor`
+  - `"Name[-i][operand]"` → `TCovD`
+  - `"2 * Name[...]"`, `"(1/2) * Name[...]"`, `"-Name[...]"` → `TProd`
+  - `"A + B"`, `"A - B"` → `TSum`
+"""
+function _parse_to_texpr(s::AbstractString)::TExpr
+    _parse_texpr_sum(strip(s), _build_index_map())
+end
+
+# Build label→manifold map from all currently-defined manifolds.
+function _build_index_map()::Dict{Symbol,Symbol}
+    d = Dict{Symbol,Symbol}()
+    for (mname, mobj) in _manifolds
+        for lbl in mobj.index_labels
+            d[lbl] = mname
+        end
+    end
+    d
+end
+
+# Find the matching closing bracket starting at `open_pos` in `s`.
+function _texpr_find_close(s::AbstractString, open_pos::Int)::Int
+    depth = 0
+    i = open_pos
+    while i <= ncodeunits(s)
+        c = s[i]
+        if c == '[' || c == '('
+            depth += 1
+        elseif c == ']' || c == ')'
+            depth -= 1
+            depth == 0 && return i
+        end
+        i = nextind(s, i)
+    end
+    error("Unmatched bracket in TExpr string: $(repr(s))")
+end
+
+# Split `s` at depth-0 occurrences of `sep` (a literal string).
+# All strings here are ASCII so byte indices equal character indices.
+function _texpr_depth0_split(s::AbstractString, sep::String)::Vector{String}
+    parts = String[]
+    depth = 0
+    current_start = 1
+    n = ncodeunits(s)
+    seplen = ncodeunits(sep)
+    i = 1
+    while i <= n
+        c = s[i]
+        if c == '(' || c == '['
+            depth += 1
+            i += 1
+        elseif c == ')' || c == ']'
+            depth -= 1
+            i += 1
+        elseif depth == 0 && i + seplen - 1 <= n && s[i:(i + seplen - 1)] == sep
+            push!(parts, s[current_start:(i - 1)])
+            i += seplen
+            current_start = i
+        else
+            i += 1
+        end
+    end
+    push!(parts, s[current_start:n])
+    parts
+end
+
+# Parse sum: "A + B - C" → TSum([A, B, TProd(-1,[C])])
+function _parse_texpr_sum(s::AbstractString, imap::Dict{Symbol,Symbol})::TExpr
+    # Collect (sign, term_string) by scanning for depth-0 " + " and " - "
+    signs = Int[1]
+    term_strs = String[]
+    depth = 0
+    n = ncodeunits(s)
+    i = 1
+    seg_start = 1
+    while i <= n
+        c = s[i]
+        if c == '(' || c == '['
+            depth += 1;
+            i += 1
+        elseif c == ')' || c == ']'
+            depth -= 1;
+            i += 1
+        elseif depth == 0 &&
+            c == ' ' &&
+            i + 2 <= n &&
+            (s[i + 1] == '+' || s[i + 1] == '-') &&
+            s[i + 2] == ' '
+            push!(term_strs, strip(s[seg_start:(i - 1)]))
+            push!(signs, s[i + 1] == '+' ? 1 : -1)
+            i += 3
+            seg_start = i
+        else
+            i += 1
+        end
+    end
+    push!(term_strs, strip(s[seg_start:n]))
+
+    terms = TExpr[
+        let t = _parse_texpr_term(ts, imap)
+            signs[k] < 0 ? _make_prod(-1//1, TExpr[t]) : t
+        end for (k, ts) in enumerate(term_strs)
+    ]
+    length(terms) == 1 ? terms[1] : TSum(terms)
+end
+
+# Parse a single term: "coeff factor ..." or "-factor" or "-(n/d)" (pure scalar).
+# Engine output uses space for multiplication; _to_string uses " * ". Handle both.
+function _parse_texpr_term(s::AbstractString, imap::Dict{Symbol,Symbol})::TExpr
+    s = strip(s)
+    s == "0" && return TScalar(0//1)
+
+    # Try " * " split first (from _to_string format). Fall back to space split.
+    factors = _texpr_depth0_split(s, " * ")
+    if length(factors) == 1
+        factors = filter!(!isempty, _texpr_depth0_split(s, " "))
+    end
+    isempty(factors) && return TScalar(0//1)
+
+    first = factors[1]
+    coeff = 1//1
+    atom_start = 1
+
+    if _texpr_is_coeff(first)
+        coeff = _texpr_parse_rational(first)
+        atom_start = 2
+    elseif startswith(first, "-") && length(first) > 1 && !_texpr_is_coeff(first)
+        # Leading minus on a non-coefficient: "-T[-a,-b]" → coeff=-1, atom="T[-a,-b]"
+        coeff = -1//1
+        factors[1] = first[2:end]
+    end
+
+    # Pure scalar with no tensor factors
+    atom_start > length(factors) && return TScalar(coeff)
+
+    atoms = TExpr[
+        _parse_texpr_atom(strip(factors[k]), imap) for k in atom_start:length(factors)
+    ]
+    length(atoms) == 1 && coeff == 1//1 ? atoms[1] : _make_prod(coeff, atoms)
+end
+
+# Return true if s is a coefficient: integer, "(n/d)", "(-n/d)", or "-(n/d)".
+function _texpr_is_coeff(s::AbstractString)::Bool
+    isempty(s) && return false
+    # Integer: optional leading - then all digits
+    all(c -> isdigit(c) || c == '-', s) && s != "-" && return true
+    # Rational with optional outer negation: "(n/d)", "(-n/d)", "-(n/d)"
+    s_inner = startswith(s, "-") ? s[2:end] : s
+    startswith(s_inner, "(") &&
+        endswith(s_inner, ")") &&
+        occursin("/", s_inner) &&
+        return true
+    return false
+end
+
+function _texpr_parse_rational(s::AbstractString)::Rational{Int}
+    s = strip(s)
+    neg = startswith(s, "-(")
+    s_inner = neg ? s[2:end] : s
+    if startswith(s_inner, "(") && endswith(s_inner, ")")
+        inner = s_inner[2:(end - 1)]
+        slash = findfirst('/', inner)
+        slash === nothing && error("Bad rational: $(repr(s))")
+        r =
+            parse(Int, strip(inner[1:(slash - 1)])) //
+            parse(Int, strip(inner[(slash + 1):end]))
+        return neg ? -r : r
+    else
+        return parse(Int, s) // 1
+    end
+end
+
+# Parse a single atom: TTensor, TCovD, or TSymbol (bare name without brackets).
+function _parse_texpr_atom(s::AbstractString, imap::Dict{Symbol,Symbol})::TExpr
+    s = strip(s)
+    bracket1 = findfirst('[', s)
+    # Bare name (no brackets): e.g. perturb can return "TEh" without index spec
+    bracket1 === nothing && return TSymbol(Symbol(s))
+
+    name = Symbol(s[1:(bracket1 - 1)])
+    close1 = _texpr_find_close(s, bracket1)
+
+    # CovD: Name[-idx][operand]
+    if close1 < ncodeunits(s) && s[close1 + 1] == '['
+        idx_str = s[(bracket1 + 1):(close1 - 1)]
+        open2 = close1 + 1
+        close2 = _texpr_find_close(s, open2)
+        op_str = s[(open2 + 1):(close2 - 1)]
+        idx = _parse_texpr_idx(idx_str, imap)
+        operand = _parse_texpr_sum(op_str, imap)
+        return TCovD(name, idx, operand)
+    end
+
+    # Tensor: Name[i1,i2,...]
+    indices_str = s[(bracket1 + 1):(close1 - 1)]
+    indices = if isempty(strip(indices_str))
+        SlotIdx[]
+    else
+        SlotIdx[_parse_texpr_idx(strip(p), imap) for p in split(indices_str, ",")]
+    end
+    TTensor(TensorHead(name), indices)
+end
+
+function _parse_texpr_idx(s::AbstractString, imap::Dict{Symbol,Symbol})::SlotIdx
+    s = strip(s)
+    if startswith(s, "-")
+        lbl = Symbol(s[2:end])
+        mname = get(imap, lbl, nothing)
+        mname === nothing && error("Unknown index label in parser: $lbl")
+        return DnIdx(Idx(lbl, mname))
+    else
+        lbl = Symbol(s)
+        mname = get(imap, lbl, nothing)
+        mname === nothing && error("Unknown index label in parser: $lbl")
+        return Idx(lbl, mname)
+    end
+end
+
+# ---------------------------------------------------------------------------
+# Engine function overloads (TExpr -> String -> engine -> TExpr)
+# ---------------------------------------------------------------------------
+
+# Parse engine String output back to TExpr; return TScalar(0) for "0".
+_engine_out(s::String)::TExpr = _parse_to_texpr(s)
+
+ToCanonical(expr::TExpr) = _engine_out(ToCanonical(_to_string(expr)))
+Contract(expr::TExpr) = _engine_out(Contract(_to_string(expr)))
+Simplify(expr::TExpr) = _engine_out(Simplify(_to_string(expr)))
+perturb(expr::TExpr, order::Int) = _engine_out(perturb(_to_string(expr), order))
+function CommuteCovDs(expr::TExpr, cd, i1, i2)
+    _engine_out(CommuteCovDs(_to_string(expr), cd, i1, i2))
+end
+SortCovDs(expr::TExpr, cd) = _engine_out(SortCovDs(_to_string(expr), cd))
+IBP(expr::TExpr, cd) = _engine_out(IBP(_to_string(expr), cd))
+TotalDerivativeQ(expr::TExpr, cd) = TotalDerivativeQ(_to_string(expr), cd)  # returns Bool
+VarD(expr::TExpr, field, cd) = _engine_out(VarD(_to_string(expr), field, cd))
+function RiemannSimplify(expr::TExpr, metric; kwargs...)
+    _engine_out(RiemannSimplify(_to_string(expr), metric; kwargs...))
+end
 
 end # module TExprLayer
