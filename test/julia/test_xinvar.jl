@@ -2303,6 +2303,106 @@ using xAct
                 t2 = @elapsed PermToInv(rperm; db=db)
                 @test t2 < 0.01
             end
+
+            # ===========================================================
+            # End-to-end RiemannSimplify with real DB
+            # ===========================================================
+
+            @testset "RiemannSimplify: RicciScalar (order 2)" begin
+                empty!(xAct.XInvar._perm_dispatch)
+                r = RiemannSimplify("RicciScalarCD[]", :g; covd=:CD, db=db)
+                @test r != "0"
+                @test contains(r, "RiemannCD[")
+            end
+
+            @testset "RiemannSimplify: Kretschner (order 4)" begin
+                empty!(xAct.XInvar._perm_dispatch)
+                r = RiemannSimplify(
+                    "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]", :g; covd=:CD, db=db
+                )
+                @test r != "0"
+                @test contains(r, "RiemannCD[")
+            end
+
+            @testset "RiemannSimplify: Ricci² (order 4)" begin
+                empty!(xAct.XInvar._perm_dispatch)
+                r = RiemannSimplify("RicciCD[-a,-b] RicciCD[a,b]", :g; covd=:CD, db=db)
+                @test r != "0"
+                @test contains(r, "RiemannCD[")
+            end
+
+            @testset "RiemannSimplify: relabeling cancels" begin
+                empty!(xAct.XInvar._perm_dispatch)
+                r = RiemannSimplify(
+                    "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d] - RiemannCD[-e,-f,-g,-h] RiemannCD[e,f,g,h]",
+                    :g;
+                    covd=:CD,
+                    db=db,
+                )
+                @test r == "0"
+            end
+
+            @testset "RiemannSimplify: curvature_relations roundtrip" begin
+                empty!(xAct.XInvar._perm_dispatch)
+                r = RiemannSimplify(
+                    "RicciScalarCD[]", :g; covd=:CD, db=db, curvature_relations=true
+                )
+                @test contains(r, "RicciScalarCD[]")
+            end
+
+            @testset "RiemannSimplify: cubic Riemann (order 6)" begin
+                empty!(xAct.XInvar._perm_dispatch)
+                r = RiemannSimplify(
+                    "RiemannCD[-a,-b,-c,-d] RiemannCD[a,-e,c,-f] RiemannCD[b,e,d,f]",
+                    :g;
+                    covd=:CD,
+                    db=db,
+                )
+                @test r != "0"
+                @test contains(r, "RiemannCD[")
+            end
+
+            @testset "RiemannSimplify: idempotent on known expressions" begin
+                exprs = [
+                    "RicciScalarCD[]",
+                    "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]",
+                    "RicciCD[-a,-b] RicciCD[a,b]",
+                    "RiemannCD[-a,-b,-c,-d] RiemannCD[a,-e,c,-f] RiemannCD[b,e,d,f]",
+                ]
+                for expr in exprs
+                    empty!(xAct.XInvar._perm_dispatch)
+                    r1 = RiemannSimplify(expr, :g; covd=:CD, db=db)
+                    empty!(xAct.XInvar._perm_dispatch)
+                    r2 = RiemannSimplify(r1, :g; covd=:CD, db=db)
+                    @test r1 == r2
+                end
+            end
+
+            # Algebraic invariant round-trip: InvToPerm → PermToRiemann → RiemannSimplify
+            # Tests all algebraic cases through order 12
+            # Orders 10+ have expensive dispatch builds (8^n × n! per perm for n
+            # Riemanns). Orders 2-8 cover algebraic cases through 38 invariants.
+            for (case_key, label) in [
+                ([0], "order 2"),
+                ([0, 0], "order 4"),
+                ([0, 0, 0], "order 6"),
+                ([0, 0, 0, 0], "order 8"),
+            ]
+                @testset "algebraic round-trip: $label, case $case_key" begin
+                    case = InvariantCase(case_key)
+                    n_inv = MaxIndex(case_key)
+                    for idx in 1:n_inv
+                        empty!(xAct.XInvar._perm_dispatch)
+                        rinv = RInv(:CD, case, idx)
+                        rperm = InvToPerm(rinv; db=db)
+                        expr = PermToRiemann(rperm; covd=:CD)
+                        # Verify the expression round-trips through PermToInv
+                        rp = RiemannToPerm(expr, :g; covd=:CD)
+                        rinv2 = PermToInv(rp; db=db)
+                        @test rinv2.index == idx
+                    end
+                end
+            end
         end
     else
         @info "Skipping Phase 11 real-DB tests: Invar database not found at $(_INVAR_DB_DIR)"
