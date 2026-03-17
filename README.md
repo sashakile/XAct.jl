@@ -18,16 +18,12 @@ ToCanonical("T[-b,-a] - T[-a,-b]")  # returns "0"
 ### Python
 
 ```python
-from xact.xcore import get_julia
+import xact
 
-jl = get_julia()
-xAct = jl.xAct
-jlvec = jl.seval("collect")
-
-xAct.reset_state_b()
-xAct.def_manifold_b("M", 4, jlvec(["a", "b", "c", "d"]))
-xAct.def_tensor_b("T", jlvec(["-a", "-b"]), "M", symmetry_str="Symmetric[{-a,-b}]")
-xAct.ToCanonical("T[-b,-a] - T[-a,-b]")  # returns "0"
+xact.reset()
+M = xact.Manifold("M", 4, ["a", "b", "c", "d"])
+T = xact.Tensor("T", ["-a", "-b"], M, symmetry="Symmetric[{-a,-b}]")
+xact.canonicalize("T[-b,-a] - T[-a,-b]")  # returns "0"
 ```
 
 ## Try It

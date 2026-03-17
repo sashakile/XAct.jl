@@ -11,7 +11,7 @@ jupyter: python3
 
 This notebook walks through the same workflow as the Julia version,
 using the `xact` Python package. Under the hood, all computation
-is performed by the Julia engine via `juliacall`.
+is performed by the Julia engine — but the API is fully Pythonic.
 
 **Requirements:** Python 3.10+, Julia 1.12+.
 
@@ -21,13 +21,9 @@ is performed by the Julia engine via `juliacall`.
 # Uncomment if running on Google Colab:
 # !pip install xact-py
 
-from xact.xcore import get_julia
+import xact
 
-jl = get_julia()
-xAct = jl.xAct
-
-# Helper: juliacall needs Julia Vector, not Python list
-jlvec = jl.seval("collect")
+xact.reset()
 ```
 
 ## 2. Define a Manifold
@@ -35,8 +31,7 @@ jlvec = jl.seval("collect")
 A 4-dimensional spacetime manifold with abstract indices.
 
 ```{python}
-xAct.reset_state_b()
-M = xAct.def_manifold_b("M", 4, jlvec(["a", "b", "c", "d", "e", "f"]))
+M = xact.Manifold("M", 4, ["a", "b", "c", "d", "e", "f"])
 ```
 
 ## 3. Define a Metric
@@ -45,7 +40,7 @@ Lorentzian signature, covariant derivative CD.
 Automatically creates Riemann, Ricci, Weyl, Einstein, Christoffel.
 
 ```{python}
-g = xAct.def_metric_b(-1, "g[-a,-b]", "CD")
+g = xact.Metric(M, "g", signature=-1, covd="CD")
 ```
 
 ## 4. Canonicalization
@@ -53,14 +48,14 @@ g = xAct.def_metric_b(-1, "g[-a,-b]", "CD")
 Symmetric metric: $g_{ba} - g_{ab} = 0$.
 
 ```{python}
-xAct.ToCanonical("g[-b,-a] - g[-a,-b]")
+xact.canonicalize("g[-b,-a] - g[-a,-b]")
 ```
 
 Define a symmetric tensor and canonicalize:
 
 ```{python}
-xAct.def_tensor_b("T", jlvec(["-a", "-b"]), "M", symmetry_str="Symmetric[{-a,-b}]")
-xAct.ToCanonical("T[-b,-a] - T[-a,-b]")
+T = xact.Tensor("T", ["-a", "-b"], M, symmetry="Symmetric[{-a,-b}]")
+xact.canonicalize("T[-b,-a] - T[-a,-b]")
 ```
 
 ## 5. Contraction
@@ -68,8 +63,8 @@ xAct.ToCanonical("T[-b,-a] - T[-a,-b]")
 Lower an index with the metric:
 
 ```{python}
-xAct.def_tensor_b("V", jlvec(["a"]), "M")
-xAct.Contract("V[a] * g[-a,-b]")
+V = xact.Tensor("V", ["a"], M)
+xact.contract("V[a] * g[-a,-b]")
 ```
 
 ## 6. Riemann Identities
@@ -77,7 +72,7 @@ xAct.Contract("V[a] * g[-a,-b]")
 First Bianchi identity:
 
 ```{python}
-xAct.ToCanonical(
+xact.canonicalize(
     "RiemannCD[-a,-b,-c,-d] + RiemannCD[-a,-c,-d,-b] + RiemannCD[-a,-d,-b,-c]"
 )
 ```
@@ -85,15 +80,15 @@ xAct.ToCanonical(
 Pair symmetry — $R_{abcd} = R_{cdab}$:
 
 ```{python}
-xAct.ToCanonical("RiemannCD[-a,-b,-c,-d] - RiemannCD[-c,-d,-a,-b]")
+xact.canonicalize("RiemannCD[-a,-b,-c,-d] - RiemannCD[-c,-d,-a,-b]")
 ```
 
 ## 7. Perturbation Theory
 
 ```{python}
-xAct.def_tensor_b("h", jlvec(["-a", "-b"]), "M", symmetry_str="Symmetric[{-a,-b}]")
-xAct.def_perturbation_b("h", "g", 1)
-xAct.perturb("g[-a,-b]", 1)
+h = xact.Tensor("h", ["-a", "-b"], M, symmetry="Symmetric[{-a,-b}]")
+xact.Perturbation(h, g, order=1)
+xact.perturb("g[-a,-b]", order=1)
 ```
 
 ## Next Steps

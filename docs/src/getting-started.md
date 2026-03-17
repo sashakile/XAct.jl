@@ -32,25 +32,18 @@ For a more detailed, step-by-step walkthrough, see the [Basics Tutorial](example
 
 ### Python Quick Start
 
-All Julia functions are accessible from Python via the `xact` package:
+The same workflow is available from Python via `import xact`:
 
 ```python
-from xact.xcore import get_julia
+import xact
 
-jl = get_julia()
-xAct = jl.xAct
-jlvec = jl.seval("collect")   # convert Python lists to Julia vectors
+xact.reset()
+M = xact.Manifold("M", 4, ["a", "b", "c", "d"])
+T = xact.Tensor("T", ["-a", "-b"], M, symmetry="Symmetric[{-a,-b}]")
 
-xAct.reset_state_b()
-xAct.def_manifold_b("M", 4, jlvec(["a", "b", "c", "d"]))
-xAct.def_tensor_b("T", jlvec(["-a", "-b"]), "M", symmetry_str="Symmetric[{-a,-b}]")
-
-result = xAct.ToCanonical("T[-b,-a] - T[-a,-b]")
+result = xact.canonicalize("T[-b,-a] - T[-a,-b]")
 print(result)  # "0"
 ```
-
-!!! note "Naming convention"
-    Julia functions with `!` (mutating) are accessed with a `_b` suffix in Python: `def_manifold!` becomes `def_manifold_b`. Non-mutating functions like `ToCanonical` and `Contract` keep their original names.
 
 For a full walkthrough, see the [Python notebook](https://github.com/sashakile/sxAct/blob/main/notebooks/python/basics.ipynb).
 

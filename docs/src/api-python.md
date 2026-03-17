@@ -85,64 +85,72 @@ All exported functions (see `xact.xcore.__all__`):
 
 ## 2. Using xAct from Python
 
-The full Julia tensor algebra engine is accessible from Python via `juliacall`.
-This is the recommended way to use xAct from Python notebooks or scripts.
+The `xact` package provides a Pythonic API for tensor algebra. Julia
+internals are completely hidden.
 
 ### Setup
 
 ```python
-from xact.xcore import get_julia
+import xact
 
-jl = get_julia()       # initializes Julia + loads xAct (once per process)
-xAct = jl.xAct         # the xAct Julia module
-
-# Helper: Python lists don't auto-convert to Julia Vector
-jlvec = jl.seval("collect")
+xact.reset()  # clear all state (optional, for clean sessions)
 ```
 
-### Naming Convention
+### Definitions
 
-Julia functions with `!` (mutating) are accessed with a `_b` suffix:
+```python
+# Manifold
+M = xact.Manifold("M", 4, ["a", "b", "c", "d", "e", "f"])
 
-| Julia | Python |
+# Metric (automatically creates Riemann, Ricci, Weyl, Einstein, Christoffel)
+g = xact.Metric(M, "g", signature=-1, covd="CD")
+
+# Tensor
+T = xact.Tensor("T", ["-a", "-b"], M, symmetry="Symmetric[{-a,-b}]")
+
+# Perturbation
+h = xact.Tensor("h", ["-a", "-b"], M, symmetry="Symmetric[{-a,-b}]")
+xact.Perturbation(h, g, order=1)
+```
+
+### Operations
+
+| Function | Description |
 | :--- | :--- |
-| `def_manifold!(:M, 4, [:a, :b])` | `xAct.def_manifold_b("M", 4, jlvec(["a", "b"]))` |
-| `def_metric!(-1, "g[-a,-b]", :CD)` | `xAct.def_metric_b(-1, "g[-a,-b]", "CD")` |
-| `def_tensor!(:T, ["-a", "-b"], :M)` | `xAct.def_tensor_b("T", jlvec(["-a", "-b"]), "M")` |
-| `ToCanonical("expr")` | `xAct.ToCanonical("expr")` |
-| `Contract("expr")` | `xAct.Contract("expr")` |
-| `Simplify("expr")` | `xAct.Simplify("expr")` |
-| `perturb("expr", 1)` | `xAct.perturb("expr", 1)` |
+| `xact.canonicalize(expr)` | Butler-Portugal canonicalization |
+| `xact.contract(expr)` | Evaluate metric contractions |
+| `xact.simplify(expr)` | Iterative contract + canonicalize |
+| `xact.perturb(expr, order)` | Perturbation expansion |
+| `xact.commute_covds(expr, covd, i, j)` | Commute covariant derivatives |
+| `xact.sort_covds(expr, covd)` | Sort covariant derivatives |
+| `xact.ibp(expr, covd)` | Integration by parts |
+| `xact.var_d(expr, field, covd)` | Variational derivative |
+| `xact.riemann_simplify(expr, covd)` | Scalar Riemann simplification |
+| `xact.dimension(M)` | Manifold dimension |
+| `xact.reset()` | Clear all state |
 
 ### Complete Example
 
 ```python
-from xact.xcore import get_julia
+import xact
 
-jl = get_julia()
-xAct = jl.xAct
-jlvec = jl.seval("collect")
-
-# Define spacetime
-xAct.reset_state_b()
-xAct.def_manifold_b("M", 4, jlvec(["a", "b", "c", "d", "e", "f"]))
-xAct.def_metric_b(-1, "g[-a,-b]", "CD")
+xact.reset()
+M = xact.Manifold("M", 4, ["a", "b", "c", "d", "e", "f"])
+g = xact.Metric(M, "g", signature=-1, covd="CD")
 
 # Canonicalize — Riemann first Bianchi identity
-result = xAct.ToCanonical(
+xact.canonicalize(
     "RiemannCD[-a,-b,-c,-d] + RiemannCD[-a,-c,-d,-b] + RiemannCD[-a,-d,-b,-c]"
-)
-print(result)  # "0"
+)  # "0"
 
 # Contract — lower a vector index
-xAct.def_tensor_b("V", jlvec(["a"]), "M")
-print(xAct.Contract("V[a] * g[-a,-b]"))  # "V[-b]"
+V = xact.Tensor("V", ["a"], M)
+xact.contract("V[a] * g[-a,-b]")  # "V[-b]"
 
 # Perturbation theory
-xAct.def_tensor_b("h", jlvec(["-a", "-b"]), "M",
-                   symmetry_str="Symmetric[{-a,-b}]")
-xAct.def_perturbation_b("h", "g", 1)
-print(xAct.perturb("g[-a,-b]", 1))  # "h[-a,-b]"
+h = xact.Tensor("h", ["-a", "-b"], M, symmetry="Symmetric[{-a,-b}]")
+xact.Perturbation(h, g, order=1)
+xact.perturb("g[-a,-b]", order=1)  # "h[-a,-b]"
 ```
 
 ### Interactive Notebooks
