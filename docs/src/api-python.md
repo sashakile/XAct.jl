@@ -138,19 +138,21 @@ xact.reset()
 M = xact.Manifold("M", 4, ["a", "b", "c", "d", "e", "f"])
 g = xact.Metric(M, "g", signature=-1, covd="CD")
 
+a, b, c, d, e, f = xact.indices(M)
+Riem = xact.tensor("RiemannCD")
+
 # Canonicalize — Riemann first Bianchi identity
-xact.canonicalize(
-    "RiemannCD[-a,-b,-c,-d] + RiemannCD[-a,-c,-d,-b] + RiemannCD[-a,-d,-b,-c]"
-)  # "0"
+xact.canonicalize(Riem[-a,-b,-c,-d] + Riem[-a,-c,-d,-b] + Riem[-a,-d,-b,-c])  # "0"
 
 # Contract — lower a vector index
 V = xact.Tensor("V", ["a"], M)
-xact.contract("V[a] * g[-a,-b]")  # "V[-b]"
+V_h = xact.tensor("V")
+xact.contract(V_h[a] * g[-a,-b])  # "V[-b]"
 
 # Perturbation theory
 h = xact.Tensor("h", ["-a", "-b"], M, symmetry="Symmetric[{-a,-b}]")
 xact.Perturbation(h, g, order=1)
-xact.perturb("g[-a,-b]", order=1)  # "h[-a,-b]"
+xact.perturb(g[-a,-b], order=1)  # "h[-a,-b]"
 ```
 
 ### Typed Expression API

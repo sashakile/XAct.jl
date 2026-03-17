@@ -10,29 +10,28 @@ This page covers quick start usage, a Wolfram-to-Julia migration reference, key 
 ## 1. Quick Start
 
 The primary interface for tensor calculus is the Julia REPL or a Jupyter notebook.
+Expressions are built with the **typed API** — index objects and operator overloading
+that validate slot counts and manifold membership at construction time.
 
 ```julia
 using xAct
 
-# 1. Define a manifold
-# In Julia, we use symbols (e.g., :M) for object names.
+reset_state!()
 M = def_manifold!(:M, 4, [:a, :b, :c, :d])
+def_tensor!(:T, ["-a", "-b"], :M; symmetry_str="Symmetric[{-a,-b}]")
 
-# 2. Define a symmetric tensor
-# Syntax: def_tensor!(name, indices, manifold; options...)
-T = def_tensor!(:T, ["-a", "-b"], :M; symmetry_str="Symmetric[{-a,-b}]")
+@indices M a b c d       # declare typed index variables
+T_h = tensor(:T)         # look up registered tensor handle
 
-# 3. Canonicalize an expression
-# Since T is symmetric, T_{ba} - T_{ab} should be zero.
-result = ToCanonical("T[-b, -a] - T[-a, -b]")
-println(result)  # "0"
+# T is symmetric — T_{ba} - T_{ab} = 0
+ToCanonical(T_h[-b,-a] - T_h[-a,-b])   # "0"
 ```
 
-For a more detailed, step-by-step walkthrough, see the [Basics Tutorial](examples/basics.md).
+> **String API:** `ToCanonical("T[-b,-a] - T[-a,-b]")` is equivalent and still works everywhere.
+
+For a more detailed walkthrough, see the [Basics Tutorial](examples/basics.md).
 
 ### Python Quick Start
-
-The same workflow is available from Python via `import xact`:
 
 ```python
 import xact
@@ -41,51 +40,26 @@ xact.reset()
 M = xact.Manifold("M", 4, ["a", "b", "c", "d"])
 T = xact.Tensor("T", ["-a", "-b"], M, symmetry="Symmetric[{-a,-b}]")
 
-result = xact.canonicalize("T[-b,-a] - T[-a,-b]")
-print(result)  # "0"
+a, b, c, d = xact.indices(M)    # typed index objects
+T_h = xact.tensor("T")          # tensor handle
+
+xact.canonicalize(T_h[-b,-a] - T_h[-a,-b])   # "0"
 ```
 
 For a full walkthrough, see the [Python notebook](https://github.com/sashakile/sxAct/blob/main/notebooks/python/basics.ipynb).
 
-### Typed Expression API
-
-Both Julia and Python support a typed expression layer that validates
-expressions at construction time rather than inside the engine.
-
-**Julia — `@indices` macro and `tensor()` lookup:**
+### With a Metric
 
 ```julia
-using xAct
-
-reset_state!()
-M = def_manifold!(:M, 4, [:a, :b, :c, :d, :e, :f])
-g = def_metric!(-1, "g[-a,-b]", :CD)
-
-@indices M a b c d       # a, b, c, d become Idx objects
+g = def_metric!(-1, "g[-a,-b]", :CD)   # creates Riemann, Ricci, Weyl, ...
+@indices M a b c d e f
 Riem = tensor(:RiemannCD)
 
-# Build typed expression — slot count and manifold validated immediately
-expr = Riem[-a,-b,-c,-d] + Riem[-a,-c,-d,-b]
-ToCanonical(expr)        # "0"  (still returns String in Stage 1)
+# First Bianchi identity
+ToCanonical(Riem[-a,-b,-c,-d] + Riem[-a,-c,-d,-b] + Riem[-a,-d,-b,-c])   # "0"
 ```
 
-**Python — `xact.indices()` and `xact.tensor()`:**
-
-```python
-import xact
-
-xact.reset()
-M = xact.Manifold("M", 4, ["a", "b", "c", "d", "e", "f"])
-g = xact.Metric(M, "g", signature=-1, covd="CD")
-
-a, b, c, d, e, f = xact.indices(M)   # Idx objects
-Riem = xact.tensor("RiemannCD")
-
-expr = Riem[-a,-b,-c,-d] + Riem[-a,-c,-d,-b]
-xact.canonicalize(expr)   # "0"
-```
-
-For a full reference, see the [Typed Expression API](api-python.md#typed-expression-api) section.
+For the full API reference, see the [Typed Expression API](api-python.md#typed-expression-api) section.
 
 ---
 
