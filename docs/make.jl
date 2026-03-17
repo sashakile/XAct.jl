@@ -16,26 +16,22 @@ for file in readdir(example_dir)
     end
 end
 
-# Export Pluto notebooks to HTML fragments for inclusion in docs
+# Export Pluto notebooks as Documenter-compatible Markdown
 pluto_dir = joinpath(@__DIR__, "..", "notebooks", "pluto")
 pluto_output = joinpath(@__DIR__, "src", "notebooks")
 isdir(pluto_output) || mkdir(pluto_output)
 
-if isdir(pluto_dir) && !isempty(readdir(pluto_dir))
+if isdir(pluto_dir) && !isempty(filter(f -> endswith(f, ".jl"), readdir(pluto_dir)))
     using PlutoStaticHTML
     pluto_files = filter(f -> endswith(f, ".jl"), readdir(pluto_dir))
+    bopts = BuildOptions(pluto_dir; write_files=false, output_format=documenter_output)
+    results = build_notebooks(bopts, pluto_files)
     for file in pluto_files
         name = replace(file, ".jl" => "")
-        @info "Exporting Pluto notebook: $file"
-        html = PlutoStaticHTML.notebook_to_html(joinpath(pluto_dir, file))
-        # Wrap in Documenter-compatible Markdown with raw HTML
-        open(joinpath(pluto_output, "$name.md"), "w") do io
-            println(io, "# $(titlecase(name)) (Pluto Notebook)")
-            println(io)
-            println(io, "```@raw html")
-            println(io, html)
-            println(io, "```")
-        end
+        outpath = joinpath(pluto_output, "$name.md")
+        content = join(results[file], "\n")
+        @info "Writing Pluto output: $outpath ($(length(content)) bytes)"
+        write(outpath, content)
     end
 end
 

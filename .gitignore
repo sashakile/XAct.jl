@@ -24,6 +24,9 @@ resources/xAct/
 *.swo
 *~
 
+# Jupyter
+.ipynb_checkpoints/
+
 # OS
 .DS_Store
 Thumbs.db

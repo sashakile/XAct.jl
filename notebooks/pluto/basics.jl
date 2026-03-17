@@ -4,14 +4,14 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 8a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+# ╔═╡ a1000001-0000-0000-0000-000000000001
 begin
-    # If running outside the sxAct project, uncomment:
-    # using Pkg; Pkg.add(url="https://github.com/sashakile/sxAct.git")
+    import Pkg
+    Pkg.activate(joinpath(@__DIR__, "..", ".."))
     using xAct
 end
 
-# ╔═╡ 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+# ╔═╡ a1000002-0000-0000-0000-000000000002
 md"""
 # sxAct.jl — Interactive Tutorial
 
@@ -22,16 +22,16 @@ Each cell is **reactive** — editing a definition automatically re-evaluates
 all dependent cells.
 """
 
-# ╔═╡ 2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d
+# ╔═╡ a1000003-0000-0000-0000-000000000003
 md"## 1. Define a Manifold"
 
-# ╔═╡ 3a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d
+# ╔═╡ a1000004-0000-0000-0000-000000000004
 begin
     reset_state!()
     M = def_manifold!(:M, 4, [:a, :b, :c, :d, :e, :f])
 end
 
-# ╔═╡ 4a5b6c7d-8e9f-0a1b-2c3d-4e5f6a7b8c9d
+# ╔═╡ a1000005-0000-0000-0000-000000000005
 md"""
 ## 2. Define a Metric
 
@@ -39,56 +39,56 @@ Lorentzian signature ``(-,+,+,+)``. This automatically creates
 Riemann, Ricci, RicciScalar, Weyl, Einstein, and Christoffel tensors.
 """
 
-# ╔═╡ 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
+# ╔═╡ a1000006-0000-0000-0000-000000000006
 g = def_metric!(-1, "g[-a,-b]", :CD)
 
-# ╔═╡ 6a7b8c9d-0e1f-2a3b-4c5d-6e7f8a9b0c1d
+# ╔═╡ a1000007-0000-0000-0000-000000000007
 md"""
 ## 3. Canonicalization
 
 The Butler-Portugal algorithm brings tensor expressions to canonical form.
 """
 
-# ╔═╡ 7a8b9c0d-1e2f-3a4b-5c6d-7e8f9a0b1c2d
+# ╔═╡ a1000008-0000-0000-0000-000000000008
 ToCanonical("g[-b,-a] - g[-a,-b]")
 
-# ╔═╡ 8b9c0d1e-2f3a-4b5c-6d7e-8f9a0b1c2d3e
+# ╔═╡ a1000009-0000-0000-0000-000000000009
 begin
     def_tensor!(:T, ["-a", "-b"], :M; symmetry_str="Symmetric[{-a,-b}]")
     ToCanonical("T[-b,-a] - T[-a,-b]")
 end
 
-# ╔═╡ 9c0d1e2f-3a4b-5c6d-7e8f-9a0b1c2d3e4f
+# ╔═╡ a100000a-0000-0000-0000-000000000001
 md"""
 ## 4. Contraction
 
 Lower an index with the metric — ``V_b = V^a g_{ab}``:
 """
 
-# ╔═╡ 0d1e2f3a-4b5c-6d7e-8f9a-0b1c2d3e4f5a
+# ╔═╡ a100000b-0000-0000-0000-000000000001
 begin
     def_tensor!(:V, ["a"], :M)
     Contract("V[a] * g[-a,-b]")
 end
 
-# ╔═╡ 1e2f3a4b-5c6d-7e8f-9a0b-1c2d3e4f5a6b
+# ╔═╡ a100000c-0000-0000-0000-000000000001
 md"""
 ## 5. Riemann Tensor Identities
 
 First Bianchi identity — should vanish:
 """
 
-# ╔═╡ 2f3a4b5c-6d7e-8f9a-0b1c-2d3e4f5a6b7c
+# ╔═╡ a100000d-0000-0000-0000-000000000001
 ToCanonical("RiemannCD[-a,-b,-c,-d] + RiemannCD[-a,-c,-d,-b] + RiemannCD[-a,-d,-b,-c]")
 
-# ╔═╡ 3a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d
+# ╔═╡ a100000e-0000-0000-0000-000000000001
 md"""
 ## 6. Perturbation Theory
 
 Perturb the metric to first order:
 """
 
-# ╔═╡ 4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
+# ╔═╡ a100000f-0000-0000-0000-000000000001
 begin
     def_tensor!(:h, ["-a", "-b"], :M; symmetry_str="Symmetric[{-a,-b}]")
     def_perturbation!(:h, :g, 1)
@@ -96,18 +96,18 @@ begin
 end
 
 # ╔═╡ Cell order:
-# ╟─1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
-# ╠═8a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
-# ╟─2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d
-# ╠═3a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d
-# ╟─4a5b6c7d-8e9f-0a1b-2c3d-4e5f6a7b8c9d
-# ╠═5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
-# ╟─6a7b8c9d-0e1f-2a3b-4c5d-6e7f8a9b0c1d
-# ╠═7a8b9c0d-1e2f-3a4b-5c6d-7e8f9a0b1c2d
-# ╠═8b9c0d1e-2f3a-4b5c-6d7e-8f9a0b1c2d3e
-# ╟─9c0d1e2f-3a4b-5c6d-7e8f-9a0b1c2d3e4f
-# ╠═0d1e2f3a-4b5c-6d7e-8f9a-0b1c2d3e4f5a
-# ╟─1e2f3a4b-5c6d-7e8f-9a0b-1c2d3e4f5a6b
-# ╠═2f3a4b5c-6d7e-8f9a-0b1c-2d3e4f5a6b7c
-# ╟─3a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d
-# ╠═4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
+# ╟─a1000002-0000-0000-0000-000000000002
+# ╠═a1000001-0000-0000-0000-000000000001
+# ╟─a1000003-0000-0000-0000-000000000003
+# ╠═a1000004-0000-0000-0000-000000000004
+# ╟─a1000005-0000-0000-0000-000000000005
+# ╠═a1000006-0000-0000-0000-000000000006
+# ╟─a1000007-0000-0000-0000-000000000007
+# ╠═a1000008-0000-0000-0000-000000000008
+# ╠═a1000009-0000-0000-0000-000000000009
+# ╟─a100000a-0000-0000-0000-000000000001
+# ╠═a100000b-0000-0000-0000-000000000001
+# ╟─a100000c-0000-0000-0000-000000000001
+# ╠═a100000d-0000-0000-0000-000000000001
+# ╟─a100000e-0000-0000-0000-000000000001
+# ╠═a100000f-0000-0000-0000-000000000001
