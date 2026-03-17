@@ -615,6 +615,7 @@ end
 
 # Parse engine String output back to TExpr; return TScalar(0) for "0".
 _engine_out(s::String)::TExpr = _parse_to_texpr(s)
+_engine_out(e::TExpr)::TExpr = e
 
 ToCanonical(expr::TExpr) = _engine_out(ToCanonical(_to_string(expr)))
 Contract(expr::TExpr) = _engine_out(Contract(_to_string(expr)))

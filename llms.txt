@@ -1,0 +1,40 @@
+# xAct.jl (sxAct)
+
+High-performance Julia implementation of the xAct tensor algebra suite for General Relativity.
+
+## Core Assertion
+sxAct provides a modern, open-source, and verified alternative to the Wolfram Language xAct suite, enabling high-performance tensor calculus in both Julia and Python.
+
+## Technical Stack
+- **Core**: Julia (XCore, XPerm, XTensor, XInvar)
+- **Engine**: Butler-Portugal canonicalization algorithm
+- **Python Wrapper**: `xact-py` (via `PythonCall.jl`)
+- **Verification**: `sxact` (Python parity testing framework)
+- **Oracle**: Dockerized Wolfram Engine (for parity checks)
+
+## Key Patterns
+- **Stateful Registry**: Manifolds and Tensors are registered globally in a session.
+- **TExpr Layer**: A typed expression layer for Julia/Python that validates slot counts and manifold membership at construction time.
+- **Rosetta Stone**: Direct mapping from Wolfram `xAct` syntax to Julia/Python.
+- **Verification-First**: Every core operation is parity-tested against the Wolfram Oracle.
+
+## Repository Structure
+- `src/`: Julia core implementation.
+- `packages/sxact-py/`: Python wrapper.
+- `tests/`: Multi-tier test suite (TOML-based parity tests).
+- `docs/`: Julia-centric documentation using `Documenter.jl` and `Literate.jl`.
+- `oracle/`: Docker and server configuration for the Wolfram Engine bridge.
+
+## Documentation Map
+- `index.md`: Overview and Rosetta Stone.
+- `getting-started.md`: Quick start for Julia and Python.
+- `concepts.md`: Symbol registry, TExpr, and architecture.
+- `theory/STATUS.md`: Feature completion matrix.
+- `api-julia.md` / `api-python.md`: API References.
+- `verification-tools.md`: How the parity testing works.
+
+## LLM Guidance
+- Prefer the **Typed Expression API** (`TExpr`) for new examples.
+- Use `reset_state!()` in Julia and `xact.reset()` in Python for clean session starts.
+- Refer to `theory/STATUS.md` for implemented vs. planned features.
+- Verification tests use TOML files in `tests/` which are processed by `uv run xact-test`.

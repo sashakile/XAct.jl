@@ -1,8 +1,5 @@
 # xAct.jl
 
-!!! warning "AI-Assisted Codebase"
-    This codebase was primarily developed with AI assistance. See [details below](#AI-Attribution).
-
 !!! info "Project Profile for AI Agents (LLM TL;DR)"
     - **Name**: xAct.jl (Repository: `sxAct`)
     - **Primary Language**: Julia (Computational Core)
@@ -39,7 +36,7 @@ For the full table, see [Getting Started](getting-started.md#2-reference-migrati
 | Operation | Wolfram (xAct) | Julia (xAct.jl) | Status |
 | :--- | :--- | :--- | :--- |
 | **DefManifold** | `DefManifold[M, 4, {a,b}]` | `def_manifold!(:M, 4, [:a, :b])` | ✅ Verified |
-| **DefMetric** | `DefMetric[-1, g[-a,-b], CD]` | `def_metric!(-1, "g[-a,-b]", :CD)` | ✅ Verified |
+| **DefMetric** | `DefMetric[-1, g[-a,-b], CD]` | `def_metric!(-1, "g[-a,-b]", :CD) ` | ✅ Verified |
 | **ToCanonical** | `ToCanonical[expr]` | `ToCanonical(expr)` | ✅ Verified |
 | **Contract** | `ContractMetric[expr]` | `Contract(expr)` | ✅ Verified |
 | **RiemannSimplify** | `RiemannSimplify[expr, CD]` | `RiemannSimplify(expr, :CD)` | ✅ Verified |
@@ -56,5 +53,4 @@ The implementation follows a layered approach, described in the [Architecture](a
 
 ## AI Attribution
 
-!!! warning "AI-Assisted Codebase"
-    The majority of this codebase was developed with AI assistance using [Claude Code](https://claude.ai/claude-code), [Gemini](https://gemini.google.com/), and [Amp Code](https://ampcode.com/). All code is human-reviewed and tested against the Wolfram Engine oracle for mathematical correctness. We believe AI-assisted development, when paired with rigorous verification, produces higher-quality scientific software.
+The majority of this codebase was developed with AI assistance using [Claude Code](https://claude.ai/claude-code), [Gemini](https://gemini.google.com/), and [Amp Code](https://ampcode.com/). All code is human-reviewed and tested against the Wolfram Engine oracle for mathematical correctness. We believe AI-assisted development, when paired with rigorous verification, produces higher-quality scientific software.

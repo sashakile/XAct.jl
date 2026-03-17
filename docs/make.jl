@@ -75,6 +75,7 @@ makedocs(;
         "Status" => "theory/STATUS.md",
         "Installation" => "installation.md",
         "Getting Started" => "getting-started.md",
+        "Key Concepts" => "concepts.md",
         "Migrating from Wolfram" => "wolfram-migration.md",
         "Tutorials" =>
             ["Basics" => "examples/basics.md", "Riemann Invariants" => "examples/invar.md"],
@@ -87,7 +88,7 @@ makedocs(;
         "Advanced" => ["Oracle Quirks" => "theory/oracle-quirks.md"],
         "Architecture" => "architecture.md",
         "Reference" => [
-            "Julia API" => "api.md",
+            "Julia API" => "api-julia.md",
             "Python API" => "api-python.md",
             "Verification API" => "api-verification.md",
             "Verification Tools" => "verification-tools.md",

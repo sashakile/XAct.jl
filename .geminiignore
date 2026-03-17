@@ -1,0 +1,20 @@
+# Ignore large build artifacts and caches
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.julia_env/
+docs/build/
+docs/.CondaPkg/
+**/__pycache__/
+
+# Ignore temporary and lock files
+*.lock
+*.tmp
+.DS_Store
+
+# Ignore large oracle snapshots if they get too big
+oracle/snapshots/
+
+# Ignore external dependencies
+resources/xAct/
