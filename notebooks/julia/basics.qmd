@@ -108,6 +108,66 @@ def_perturbation!(:h, :g, 1)
 perturb("g[-a,-b]", 1)
 ```
 
+## 8. Typed Expression API
+
+The string API works well but mistakes — wrong index count, wrong manifold — only
+surface inside the engine. The `TExprLayer` module adds typed index objects and
+operator overloading that catch these errors at construction time.
+
+> **Stage 1 note:** engine functions still return `String`. Full typed round-trip
+> is planned for Stage 2.
+
+### Index declarations
+
+```{julia}
+# @indices binds typed Idx variables to manifold M.
+@indices M a b c d e f
+# a = Idx(:a, :M), -a produces DnIdx(:a, :M)
+```
+
+### Tensor handles
+
+```{julia}
+# tensor() looks up a registered name and returns a TensorHead.
+Riem = tensor(:RiemannCD)
+T_h  = tensor(:T)
+```
+
+### Building expressions
+
+```{julia}
+# Typed API — Riemann first Bianchi identity
+expr = Riem[-a,-b,-c,-d] + Riem[-a,-c,-d,-b] + Riem[-a,-d,-b,-c]
+ToCanonical(expr)    # "0"
+```
+
+```{julia}
+# Arithmetic: subtraction and scalar multiplication
+pair_sym = Riem[-a,-b,-c,-d] - Riem[-c,-d,-a,-b]
+ToCanonical(pair_sym)   # "0"
+```
+
+### Validation errors
+
+```{julia}
+# Wrong slot count — raised immediately, not inside the engine
+try
+    Riem[-a,-b]     # ERROR: RiemannCD has 4 slots, got 2
+catch e
+    println(e)
+end
+```
+
+### Covariant derivatives
+
+```{julia}
+CD_h = covd(:CD)
+phi  = tensor(:phi)   # scalar field, if registered
+
+deriv = CD_h[-a](phi[])
+println(deriv)   # "CD[-a][phi[]]"
+```
+
 ## Next Steps
 
 - **Coordinate components (xCoba):** assign a basis, compute Christoffel symbols numerically

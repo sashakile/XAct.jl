@@ -91,6 +91,68 @@ xact.Perturbation(h, g, order=1)
 xact.perturb("g[-a,-b]", order=1)
 ```
 
+## 8. Typed Expression API
+
+String arguments work well but mistakes (wrong index count, wrong manifold) only
+surface inside the engine. The `xact.expr` module adds typed index objects and
+operator overloading to catch these errors at construction time.
+
+> **Stage 1 note:** engine functions still return `str`. Full typed round-trip is
+> planned for Stage 2.
+
+### Index objects
+
+```{python}
+# indices() returns one Idx per registered label, in definition order.
+a, b, c, d, e, f = xact.indices(M)
+
+# -a produces a DnIdx (covariant / down)
+print(-a)   # "-a"
+```
+
+### Tensor handles
+
+```{python}
+# tensor() validates the name and caches slot count.
+Riem = xact.tensor("RiemannCD")
+T_h  = xact.tensor("T")
+```
+
+### Building expressions
+
+```{python}
+# Typed API — Riemann first Bianchi identity
+expr = Riem[-a,-b,-c,-d] + Riem[-a,-c,-d,-b] + Riem[-a,-d,-b,-c]
+xact.canonicalize(expr)    # "0"
+```
+
+```{python}
+# Arithmetic: subtraction and scalar multiplication
+pair_sym = Riem[-a,-b,-c,-d] - Riem[-c,-d,-a,-b]
+xact.canonicalize(pair_sym)   # "0"
+
+two_ricci = 2 * xact.tensor("RicciCD")[-a,-b]
+print(two_ricci)   # "2 * RicciCD[-a,-b]"
+```
+
+### Validation errors
+
+```{python}
+# Wrong slot count — raised at construction, not inside the engine
+try:
+    Riem[-a,-b]     # IndexError: RiemannCD has 4 slots, got 2
+except IndexError as err:
+    print(err)
+```
+
+### Tensor and Metric objects support `[]` directly
+
+```{python}
+# g[-a,-b] is shorthand for xact.tensor("g")[-a,-b]
+print(g[-a,-b])                              # "g[-a,-b]"
+xact.contract(g[-a,-b] * xact.tensor("V")[a])   # "V[-b]"
+```
+
 ## Next Steps
 
 - Full Julia API for more advanced workflows
