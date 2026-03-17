@@ -237,30 +237,74 @@ class TestAdapter(abc.ABC, Generic[ContextT]):
 
         The default implementation returns the full vocabulary.  Override to
         report a subset if the adapter does not yet implement all actions.
+
+        Action classification
+        --------------------
+        **Test-runner-only** — handled by the runner layer, intentionally absent
+        from the public ``xact`` Python API (``xact.api``):
+          - ``Evaluate``  — bind an expression to a variable in the session
+          - ``Assert``    — check a symbolic condition
+          - ``store_as``  — runner-level result binding (not an adapter action)
+
+        **Public API equivalent exists** in ``xact.api``:
+          - DefManifold → ``xact.Manifold``
+          - DefMetric   → ``xact.Metric``
+          - DefTensor   → ``xact.Tensor``
+          - DefPerturbation → ``xact.Perturbation``
+          - ToCanonical → ``xact.canonicalize``
+          - Contract    → ``xact.contract``
+          - Simplify    → ``xact.simplify``
+          - CommuteCovDs → ``xact.commute_covds``
+          - SortCovDs   → ``xact.sort_covds``
+          - IntegrateByParts → ``xact.ibp``
+          - TotalDerivativeQ → ``xact.total_derivative_q``
+          - VarD        → ``xact.var_d``
+          - Perturb     → ``xact.perturb``
+          - RiemannSimplify → ``xact.riemann_simplify``
+
+        **Gap: in julia_stub / api but not both** (see sxAct-4nzv):
+          - RiemannSimplify: in api.py, now also added here (was missing)
+
+        **Gap: missing from xact.api** — tracked in downstream issues:
+          - xCoba ops (DefBasis, DefChart, SetBasisChange, ChangeBasis,
+            GetJacobian, BasisChangeQ, SetComponents, GetComponents,
+            ComponentValue, CTensorQ, ToBasis, FromBasis, TraceBasisDummy,
+            Christoffel) → sxAct-45e3
+          - xTras ops (CollectTensors, AllContractions, SymmetryOf,
+            MakeTraceFree) → sxAct-salq
+          - Perturbation ops (PerturbCurvature, PerturbationOrder,
+            PerturbationAtOrder) → no issue yet
+          - CheckMetricConsistency → diagnostic utility, low priority
         """
         return frozenset(
             {
+                # --- Definition actions ---
                 "DefManifold",
                 "DefMetric",
                 "DefTensor",
                 "DefBasis",
                 "DefChart",
+                "DefPerturbation",
+                # --- Test-runner-only actions ---
                 "Evaluate",
+                "Assert",
+                # --- Core algebra (api.py equivalents exist) ---
                 "ToCanonical",
                 "Simplify",
                 "Contract",
                 "CommuteCovDs",
                 "SortCovDs",
-                "Assert",
-                "DefPerturbation",
-                "CheckMetricConsistency",
-                "Perturb",
-                "PerturbCurvature",
-                "PerturbationOrder",
-                "PerturbationAtOrder",
                 "IntegrateByParts",
                 "TotalDerivativeQ",
                 "VarD",
+                "Perturb",
+                "RiemannSimplify",
+                # --- Perturbation utilities (no api.py equivalent yet) ---
+                "CheckMetricConsistency",
+                "PerturbCurvature",
+                "PerturbationOrder",
+                "PerturbationAtOrder",
+                # --- xCoba coordinate ops (sxAct-45e3) ---
                 "SetBasisChange",
                 "ChangeBasis",
                 "GetJacobian",
@@ -273,6 +317,7 @@ class TestAdapter(abc.ABC, Generic[ContextT]):
                 "FromBasis",
                 "TraceBasisDummy",
                 "Christoffel",
+                # --- xTras utilities (sxAct-salq) ---
                 "CollectTensors",
                 "AllContractions",
                 "SymmetryOf",

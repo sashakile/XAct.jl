@@ -172,6 +172,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             "AllContractions",
             "SymmetryOf",
             "MakeTraceFree",
+            "RiemannSimplify",
         }
     )
 
@@ -355,6 +356,8 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 return self._symmetry_of(args)
             if action == "MakeTraceFree":
                 return self._make_trace_free(args)
+            if action == "RiemannSimplify":
+                return self._riemann_simplify(args)
         except Exception as exc:
             return Result(
                 status="error", type="", repr="", normalized="", error=str(exc)
@@ -810,6 +813,16 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         result = self._jl.seval(f'XTensor.MakeTraceFree("{expr}", :{metric})')
         s = str(result)
         return Result(status="ok", type="String", repr=s, normalized=s)
+
+    def _riemann_simplify(self, args: dict[str, Any]) -> Result:
+        expr = _jl_escape(str(args["expression"]))
+        covd = str(args["covd"])
+        level = int(args.get("level", 6))
+        result = self._jl.seval(
+            f'XInvar.RiemannSimplify("{expr}", :{covd}; level={level})'
+        )
+        s = str(result)
+        return Result(status="ok", type="String", repr=s, normalized=_normalize(s))
 
     def _execute_expr(self, wolfram_expr: str) -> Result:
         julia_expr = _wl_to_jl(wolfram_expr)
