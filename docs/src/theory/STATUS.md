@@ -1,7 +1,7 @@
 # xAct.jl Feature Completion Matrix
 
 !!! info "Status TL;DR for AI Agents"
-    All core features DONE: XPerm (canonicalization), XTensor (algebra, CovD, perturbation, IBP, VarD), xCoba (coordinates, Christoffel), xTras (utilities). 1216+ tests passing. Gaps: Invar (multi-term symmetry), spinors, exterior calculus, LaTeX rendering.
+    All core features DONE: XPerm (canonicalization), XTensor (algebra, CovD, perturbation, IBP, VarD, TExpr typed expressions), xCoba (coordinates, Christoffel), xTras (utilities), XInvar (Riemann invariant engine, all 11 phases). 1200+ Julia unit tests + 700+ Python tests passing. Gaps: spinors, exterior calculus, LaTeX rendering.
 
 This page tracks the implementation status of xAct features in the Julia core (`xAct.jl`) and their verification status against the Wolfram Language implementation.
 
@@ -49,6 +49,7 @@ Foundational tensor algebra and curvature operators.
 | Curvature Tensors (Riemann, Ricci, Weyl, etc.) | DONE | Auto-created by `DefMetric` |
 | `reset_state!()` | DONE | Clean session state for testing |
 | `ValidateSymbolInSession` | DONE | Checks all registries for name collisions |
+| **TExpr typed expression layer** | **DONE** | `@indices`, `tensor()`, `T[-a,-b]` syntax; 128 Julia + 24 Python tests |
 
 ---
 
@@ -66,7 +67,27 @@ Coordinate bases, component arrays, and Christoffel symbols.
 
 ---
 
-## 4. xTras — Utilities
+## 4. XInvar.jl — Riemann Invariant Engine
+
+Classification and simplification of Riemann invariants using the Invar database. All 11 phases complete.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| `RPerm` / `RInv` / `DualRInv` types | DONE | Core invariant representations |
+| `InvarCases()` / `InvarDualCases()` | DONE | 48 non-dual + 15 dual cases through order 10-14 |
+| `MaxIndex` / `MaxDualIndex` | DONE | 50 + 17 entries |
+| `RiemannToPerm` / `PermToRiemann` | DONE | Conversion with optional curvature relations |
+| `PermToInv` / `InvToPerm` | DONE | DB lookup with dispatch cache |
+| Database parser (`InvarDB.jl`) | DONE | Maple + Mathematica format parsing |
+| `InvSimplify` | DONE | 6-level pipeline: cyclic, Bianchi, CovD, dim-dep, dual |
+| `RiemannSimplify` | DONE | End-to-end user-facing simplification |
+| `SortCovDs` | DONE | Canonical CovD chain ordering with Riemann corrections |
+| Dimension-dependent identities | DONE | Phase 9 |
+| Dual invariants / Levi-Civita | DONE | Phase 10 |
+
+---
+
+## 5. xTras — Utilities
 
 Extended tensor manipulation utilities.
 
@@ -79,7 +100,7 @@ Extended tensor manipulation utilities.
 
 ---
 
-## 5. Verification Layer
+## 6. Verification Layer
 
 The `sxact` Python package provides a multi-tier verification suite.
 
@@ -95,23 +116,24 @@ The `sxact` Python package provides a multi-tier verification suite.
 
 ---
 
-## 6. Test Suites
+## 7. Test Suites
 
 | Suite | Count | Status | Notes |
 |-------|-------|--------|-------|
-| XPerm TOML (Layer 1) | 64 | PASS | Symmetries, Young tableaux, multi-index |
-| XTensor TOML (Layer 1) | 213 | PASS | All xTensor/xCoba/xTras operations |
-| Julia Unit Tests | 372 | PASS | XTensor module tests |
-| Python Runner Tests | 567 | PASS | Adapter, normalization, CLI |
+| XPerm Julia Unit Tests | 91 | PASS | Permutation group, Schreier-Sims, Young tableaux |
+| XTensor Julia Unit Tests | 417 | PASS | Tensor algebra, xCoba, xTras, perturbation |
+| TExpr Julia Unit Tests | 128 | PASS | Typed expression layer |
+| XInvar Julia Unit Tests | 648,784 | PASS | Riemann invariant phases 2-11 |
+| Python Runner Tests | 709 | PASS | Adapter, normalization, CLI, TExpr |
 | Property Tests (Layer 2) | 29 | PARTIAL | Riemann symmetries, tensor algebra, xCore laws |
 
 ---
 
 ## Roadmap & Known Gaps
 
-- **Invar / Multi-term Symmetry**: Riemann invariant engine — requires multi-term symmetry solver.
 - **Spinors / NP / GHP**: Spinor index type not yet implemented.
 - **xTerior**: Exterior calculus (differential forms, wedge, Hodge, d).
 - **Harmonics**: Spherical harmonic decomposition for perturbation theory.
 - **TexAct**: LaTeX rendering of tensor expressions.
 - **DifferentialEquations.jl**: Geodesic equations and ODE integration.
+- **TExpr Stage 2**: Typed output from engine functions (`ToCanonical`, `Contract`, etc. returning `TExpr` values).
