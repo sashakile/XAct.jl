@@ -5,6 +5,81 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-03-17
+
+### Highlights
+
+- **Complete Invar pipeline (Phases 1–11)** — Riemann invariant classification and simplification, matching Wolfram xAct's Invar module
+- **Wolfram Expression Translator** — parse Wolfram Language surface syntax, translate to Julia/TOML/JSON/Python, interactive REPL
+- **782 XInvar Julia tests passing** — invariant types, permutation conversion, database parser, multi-level simplification, validation benchmarks
+- **709 Python tests passing** — full adapter, translator, and runner coverage
+- **441 XTensor Julia tests passing** — including SortCovDs, multi-term identities, xTras utilities
+
+### Added
+
+#### XInvar — Riemann Invariant Engine (11 Phases)
+- **Multi-term identity framework** — `RegisterIdentity!`, `_apply_identities!`, auto-Bianchi registration
+- **RPerm/RInv types** — canonical permutation and invariant label representations
+- **InvariantCase catalog** — 48 non-dual cases (order ≤14), 15 dual cases (order ≤10), `MaxIndex`/`MaxDualIndex` tables
+- **RiemannToPerm** — tensor string → canonical permutation, with Ricci/RicciScalar expansion, CovD wrapping
+- **PermToRiemann** — inverse conversion with optional `curvature_relations`
+- **InvarDB parser** — Maple (cycle notation) and Mathematica (substitution rules) format parsers
+- **PermToInv/InvToPerm** — database lookup with dispatch cache
+- **InvSimplify** — 6-level pipeline: identity, cyclic, Bianchi, CovD commutation, dimension-dependent, dual
+- **RiemannSimplify** — end-to-end `expr → RPerm → InvSimplify → tensor string` pipeline
+- **SortCovDs** — canonical CovD chain ordering with Riemann correction generation
+- **Dimension-dependent identities** — level 5 simplification for integer dimensions
+- **Dual invariants** — level 6 simplification for 4D spacetimes
+- **Backtracking canonicalization** — bounds-based pruning + block-perm dedup for n≥5 Riemann products
+
+#### Wolfram Expression Translator
+- `wl_to_action` — WL surface-syntax parser, serializer, and action recognizer
+- Output renderers: JSON, Julia, TOML, Python
+- `xact-test translate` CLI with `--to` format selection
+- Interactive REPL with `--no-eval` mode and session export
+
+#### xCoba Extensions
+- `ToBasis`, `FromBasis`, `TraceBasisDummy`
+- Christoffel symbols from metric CTensor components
+
+#### xTras Utilities
+- `CollectTensors`, `AllContractions`, `SymmetryOf`, `MakeTraceFree`
+
+#### Infrastructure
+- `juliapkg` — automated Julia/xAct dependency management
+- Package split: `xact-py` (Julia wrapper) and `sxact` (validation framework)
+- Live-reload docs server via LiveServer.jl
+- Yachay identity context specification
+
+### Fixed
+- juliacall/PythonCall SIGSEGV on process teardown (os._exit workaround)
+- Wolfram Invar permutation convention bridged with internal involution convention
+- Invar tutorial gracefully handles missing database in CI
+- Literate doc tests available in CI (`[deps]` not just `[extras]`)
+- Benchmark test ID collisions resolved
+- Wolfram adapter flaky tests
+- Performance test threshold relaxed for CI stability
+
+### Documentation
+- Wolfram xAct migration guide with translator CLI walkthrough
+- Polyglot tutorials (Julia + Python) for basics and Invar
+- Architecture, API, and verification docs fully rewritten for current state
+- Docs-as-Tests: Literate tutorials execute during test suite
+
+---
+
+## [0.3.0] - 2026-03-11
+
+### Highlights
+
+- **xCoba coordinate components & basis changes**
+- **Perturbation theory (xPert)**
+- **IBP, VarD, CommuteCovDs** for variational calculus
+
+See [v0.3.0 release](https://github.com/sashakile/sxAct/releases/tag/v0.3.0) for details.
+
+---
+
 ## [0.2.0] - 2026-03-09
 
 ### Highlights

@@ -56,18 +56,15 @@ end
 # ## 4. RiemannSimplify
 # `RiemannSimplify` is the high-level entry point for simplifying Riemann
 # invariants. It uses a pre-computed database of multi-term identities.
-
-# **Julia**
+#
 # Consider the Kretschmann scalar. Different dummy index labelings should
 # simplify to the same canonical form.
-if _has_invar_db #hide
-    expr1 = "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]"
-    expr2 = "RiemannCD[-c,-d,-a,-b] RiemannCD[c,d,a,b]"
-    diff = "$expr1 - $expr2"
 
-    result = RiemannSimplify(diff, :CD)
-    println("Difference simplified: ", result)  # "0"
-end #hide
+# **Julia**
+expr1 = "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]"
+expr2 = "RiemannCD[-c,-d,-a,-b] RiemannCD[c,d,a,b]"
+diff = "$expr1 - $expr2"
+_has_invar_db && println("Difference simplified: ", RiemannSimplify(diff, :CD))
 
 # **Python**
 # ```python
@@ -92,16 +89,9 @@ end #hide
 # 6. Dual invariants (4D only)
 
 # **Julia**
-if _has_invar_db #hide
-    expr = "2 RiemannCD[-a,-b,-c,-d] RiemannCD[a,c,b,d] + RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]"
-    # Level 2 (Cyclic)
-    s2 = RiemannSimplify(expr, :CD; level=2)
-    println("Level 2: ", s2)
-
-    # Level 3 (Bianchi)
-    s3 = RiemannSimplify(expr, :CD; level=3)
-    println("Level 3: ", s3)
-end #hide
+expr = "2 RiemannCD[-a,-b,-c,-d] RiemannCD[a,c,b,d] + RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]"
+_has_invar_db && println("Level 2: ", RiemannSimplify(expr, :CD; level=2))
+_has_invar_db && println("Level 3: ", RiemannSimplify(expr, :CD; level=3))
 
 # ## 6. Dual Invariants (4D)
 # In 4 dimensions, we can simplify invariants involving the Levi-Civita
@@ -110,10 +100,10 @@ end #hide
 
 # **Julia**
 # Dual invariants are only supported if dim=4.
-if _has_invar_db #hide
-    result = RiemannSimplify("RiemannCD[-a, -b, b, a]", :CD; level=6, dim=4)
-    println("Level 6 (4D) result: ", result)
-end #hide
+_has_invar_db && println(
+    "Level 6 (4D) result: ",
+    RiemannSimplify("RiemannCD[-a, -b, b, a]", :CD; level=6, dim=4),
+)
 
 # ## 7. Summary
 # The `Invar` module provides:

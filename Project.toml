@@ -1,6 +1,6 @@
 name = "xAct"
 uuid = "61ed89dc-cc38-478d-be53-e1ee1d7160f1"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["sxAct contributors"]
 
 [deps]
