@@ -576,7 +576,17 @@ def main() -> None:
     repl.set_defaults(func=_cmd_repl)
 
     args = parser.parse_args()
-    sys.exit(args.func(args))
+    rc = args.func(args)
+
+    # Flush before os._exit (which skips normal shutdown buffering).
+    sys.stdout.flush()
+    sys.stderr.flush()
+
+    # Use os._exit to avoid juliacall/PythonCall SIGSEGV during Python
+    # interpreter shutdown (Julia finalizer crashes on process teardown).
+    import os
+
+    os._exit(rc)
 
 
 if __name__ == "__main__":

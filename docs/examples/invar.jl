@@ -39,19 +39,35 @@ println("Permutation form: ", rperm.perm)
 # print(f"Permutation: {rperm.perm}")
 # ```
 
-# ## 3. RiemannSimplify
+# ## 3. Loading the Invar Database
+# `RiemannSimplify` requires the pre-computed Invar database. The database
+# ships with Wolfram xAct and must be available at `resources/xAct/Invar/`.
+
+invar_db_dir = joinpath(@__DIR__, "..", "..", "resources", "xAct", "Invar")
+_has_invar_db = isdir(invar_db_dir) && isdir(joinpath(invar_db_dir, "Riemann"))
+
+if _has_invar_db
+    LoadInvarDB(invar_db_dir)
+    println("Invar database loaded")
+else
+    @warn "Invar database not found at $invar_db_dir — skipping RiemannSimplify examples"
+end
+
+# ## 4. RiemannSimplify
 # `RiemannSimplify` is the high-level entry point for simplifying Riemann
 # invariants. It uses a pre-computed database of multi-term identities.
 
 # **Julia**
 # Consider the Kretschmann scalar. Different dummy index labelings should
 # simplify to the same canonical form.
-expr1 = "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]"
-expr2 = "RiemannCD[-c,-d,-a,-b] RiemannCD[c,d,a,b]"
-diff = "$expr1 - $expr2"
+if _has_invar_db #hide
+    expr1 = "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]"
+    expr2 = "RiemannCD[-c,-d,-a,-b] RiemannCD[c,d,a,b]"
+    diff = "$expr1 - $expr2"
 
-result = RiemannSimplify(diff, :CD)
-println("Difference simplified: ", result)  # "0"
+    result = RiemannSimplify(diff, :CD)
+    println("Difference simplified: ", result)  # "0"
+end #hide
 
 # **Python**
 # ```python
@@ -66,7 +82,7 @@ println("Difference simplified: ", result)  # "0"
 # (* returns 0 *)
 # ```
 
-# ## 4. Simplification Levels
+# ## 5. Simplification Levels
 # You can control the depth of simplification using the `level` parameter:
 # 1. Identity only
 # 2. Monoterm (cyclic)
@@ -76,26 +92,30 @@ println("Difference simplified: ", result)  # "0"
 # 6. Dual invariants (4D only)
 
 # **Julia**
-expr = "2 RiemannCD[-a,-b,-c,-d] RiemannCD[a,c,b,d] + RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]"
-# Level 2 (Cyclic)
-s2 = RiemannSimplify(expr, :CD; level=2)
-println("Level 2: ", s2)
+if _has_invar_db #hide
+    expr = "2 RiemannCD[-a,-b,-c,-d] RiemannCD[a,c,b,d] + RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]"
+    # Level 2 (Cyclic)
+    s2 = RiemannSimplify(expr, :CD; level=2)
+    println("Level 2: ", s2)
 
-# Level 3 (Bianchi)
-s3 = RiemannSimplify(expr, :CD; level=3)
-println("Level 3: ", s3)
+    # Level 3 (Bianchi)
+    s3 = RiemannSimplify(expr, :CD; level=3)
+    println("Level 3: ", s3)
+end #hide
 
-# ## 5. Dual Invariants (4D)
+# ## 6. Dual Invariants (4D)
 # In 4 dimensions, we can simplify invariants involving the Levi-Civita
 # epsilon tensor (represented as `DualRiemann` in Wolfram, or via
 # `n_epsilon=1` cases in `Invar`).
 
 # **Julia**
 # Dual invariants are only supported if dim=4.
-result = RiemannSimplify("RiemannCD[-a, -b, b, a]", :CD; level=6, dim=4)
-println("Level 6 (4D) result: ", result)
+if _has_invar_db #hide
+    result = RiemannSimplify("RiemannCD[-a, -b, b, a]", :CD; level=6, dim=4)
+    println("Level 6 (4D) result: ", result)
+end #hide
 
-# ## 6. Summary
+# ## 7. Summary
 # The `Invar` module provides:
 # - `RiemannToPerm`: Tensor string → Canonical Permutation
 # - `PermToRiemann`: Canonical Permutation → Tensor string
