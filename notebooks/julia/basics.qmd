@@ -86,8 +86,8 @@ ToCanonical("RiemannCD[-a,-b,-c,-d] + RiemannCD[-a,-c,-d,-b] + RiemannCD[-a,-d,-
 Perturb the metric to first order and expand the Ricci tensor:
 
 ```{julia}
-def_perturbation!(:h, "g[-a,-b]")
-Perturb("RicciCD[-a,-b]", 1)
+def_perturbation!(:h, :g, 1)
+perturb("RicciCD[-a,-b]", 1)
 ```
 
 ## Next Steps
