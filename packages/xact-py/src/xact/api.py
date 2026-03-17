@@ -131,6 +131,13 @@ class Metric:
     def __repr__(self) -> str:
         return f"Metric({self.name!r}, covd={self.covd!r})"
 
+    def __getitem__(self, indices: object) -> Any:
+        from xact.expr import AppliedTensor, TensorHead  # noqa: PLC0415
+
+        if not isinstance(indices, tuple):
+            indices = (indices,)
+        return AppliedTensor(TensorHead(self.name), list(indices))
+
 
 class Tensor:
     """An abstract tensor.
@@ -168,6 +175,16 @@ class Tensor:
         self.name = name
         self.indices = indices
         self.manifold = manifold
+
+    def __getitem__(self, indices: object) -> Any:
+        from xact.expr import AppliedTensor, TensorHead  # noqa: PLC0415
+
+        if not isinstance(indices, tuple):
+            indices = (indices,)
+        nslots = len(self.indices)
+        if len(indices) != nslots:
+            raise IndexError(f"{self.name} has {nslots} slots, got {len(indices)}")
+        return AppliedTensor(TensorHead(self.name), list(indices))
 
     def __repr__(self) -> str:
         return f"Tensor({self.name!r}, {self.indices})"
@@ -218,82 +235,118 @@ class Perturbation:
 # ---------------------------------------------------------------------------
 
 
-def canonicalize(expr: str) -> str:
+def canonicalize(expr: str | Any) -> str:
     """Bring a tensor expression into canonical form.
 
     Uses the Butler-Portugal algorithm to find the lexicographically
     smallest representative under index permutation symmetries.
+
+    Accepts either a string expression or a typed expression object
+    (from :mod:`xact.expr`).
 
     Example
     -------
     >>> xact.canonicalize("T[-b,-a] - T[-a,-b]")
     '0'
     """
+    from xact.expr import TExpr  # noqa: PLC0415
+
+    if isinstance(expr, TExpr):
+        expr = str(expr)
     _, mod = _ensure_init()
     return str(mod.ToCanonical(expr))
 
 
-def contract(expr: str) -> str:
+def contract(expr: str | Any) -> str:
     """Evaluate metric contractions in a tensor expression.
+
+    Accepts either a string expression or a typed expression object.
 
     Example
     -------
     >>> xact.contract("V[a] * g[-a,-b]")
     'V[-b]'
     """
+    from xact.expr import TExpr  # noqa: PLC0415
+
+    if isinstance(expr, TExpr):
+        expr = str(expr)
     _, mod = _ensure_init()
     return str(mod.Contract(expr))
 
 
-def simplify(expr: str) -> str:
+def simplify(expr: str | Any) -> str:
     """Iteratively contract and canonicalize until stable.
+
+    Accepts either a string expression or a typed expression object.
 
     Example
     -------
     >>> xact.simplify("T[-a,-b] * g[a,b]")
     """
+    from xact.expr import TExpr  # noqa: PLC0415
+
+    if isinstance(expr, TExpr):
+        expr = str(expr)
     _, mod = _ensure_init()
     return str(mod.Simplify(expr))
 
 
-def perturb(expr: str, order: int = 1) -> str:
+def perturb(expr: str | Any, order: int = 1) -> str:
     """Perturb a tensor expression to the given order.
 
     Applies the multinomial Leibniz expansion.
+    Accepts either a string expression or a typed expression object.
 
     Example
     -------
     >>> xact.perturb("g[-a,-b]", order=1)
     'h[-a,-b]'
     """
+    from xact.expr import TExpr  # noqa: PLC0415
+
+    if isinstance(expr, TExpr):
+        expr = str(expr)
     _, mod = _ensure_init()
     return str(mod.perturb(expr, order))
 
 
-def commute_covds(expr: str, covd: str, index1: str, index2: str) -> str:
+def commute_covds(expr: str | Any, covd: str, index1: str, index2: str) -> str:
     """Commute two covariant derivative indices, producing curvature terms.
 
     Parameters
     ----------
-    expr : str
+    expr : str or TExpr
         Expression containing covariant derivatives.
     covd : str
         Name of the covariant derivative (e.g. ``"CD"``).
     index1, index2 : str
         The two derivative indices to commute.
     """
+    from xact.expr import TExpr  # noqa: PLC0415
+
+    if isinstance(expr, TExpr):
+        expr = str(expr)
     _, mod = _ensure_init()
     return str(mod.CommuteCovDs(expr, covd, index1, index2))
 
 
-def sort_covds(expr: str, covd: str) -> str:
+def sort_covds(expr: str | Any, covd: str) -> str:
     """Sort all covariant derivatives into canonical order."""
+    from xact.expr import TExpr  # noqa: PLC0415
+
+    if isinstance(expr, TExpr):
+        expr = str(expr)
     _, mod = _ensure_init()
     return str(mod.SortCovDs(expr, covd))
 
 
-def ibp(expr: str, covd: str) -> str:
+def ibp(expr: str | Any, covd: str) -> str:
     """Integration by parts — move a covariant derivative off a field."""
+    from xact.expr import TExpr  # noqa: PLC0415
+
+    if isinstance(expr, TExpr):
+        expr = str(expr)
     _, mod = _ensure_init()
     return str(mod.IBP(expr, covd))
 

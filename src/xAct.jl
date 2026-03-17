@@ -27,6 +27,7 @@ using Reexport
 include("XCore.jl")
 include("XTensor.jl") # XTensor includes XPerm
 include("XInvar.jl")
+include("TExpr.jl")
 
 export XCore, XTensor, XPerm, XInvar, reset_state!
 
@@ -34,6 +35,7 @@ export XCore, XTensor, XPerm, XInvar, reset_state!
 @reexport using .XTensor
 @reexport using .XTensor.XPerm
 @reexport using .XInvar
+@reexport using .TExprLayer
 
 # Wire XCore symbol validation into XTensor's def_*! functions
 XTensor.set_symbol_hooks!(XCore.ValidateSymbol, XCore.register_symbol)

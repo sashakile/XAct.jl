@@ -35,6 +35,30 @@ if isdir(pluto_dir) && !isempty(filter(f -> endswith(f, ".jl"), readdir(pluto_di
     end
 end
 
+# Convert Quarto (.qmd) notebooks to Documenter-compatible Markdown
+# Strips YAML frontmatter and converts ```{lang} fences to ```lang
+for (subdir, lang_label) in [("julia", "Julia"), ("python", "Python")]
+    qmd_dir = joinpath(@__DIR__, "..", "notebooks", subdir)
+    isdir(qmd_dir) || continue
+    for file in filter(f -> endswith(f, ".qmd"), readdir(qmd_dir))
+        name = replace(file, ".qmd" => "")
+        src = read(joinpath(qmd_dir, file), String)
+        # Strip YAML frontmatter
+        md = replace(src, r"^---\n.*?^---\n*"ms => "")
+        # Convert ```{julia} / ```{python} to plain fenced blocks
+        md = replace(md, r"```\{(\w+)\}" => s"```\1")
+        # Add a note linking to the .ipynb
+        header = """
+!!! tip "Run this notebook"
+    Download the [Jupyter notebook](https://github.com/sashakile/sxAct/blob/main/notebooks/$subdir/$name.ipynb) or open it in Google Colab.
+
+"""
+        outpath = joinpath(pluto_output, "$(name)_$(lowercase(lang_label)).md")
+        @info "Writing Quarto notebook: $outpath"
+        write(outpath, header * md)
+    end
+end
+
 makedocs(;
     sitename="xAct.jl",
     format=Documenter.HTML(;
@@ -54,7 +78,11 @@ makedocs(;
         "Migrating from Wolfram" => "wolfram-migration.md",
         "Tutorials" =>
             ["Basics" => "examples/basics.md", "Riemann Invariants" => "examples/invar.md"],
-        "Notebooks" => ["Interactive Basics (Pluto)" => "notebooks/basics.md"],
+        "Notebooks" => [
+            "Julia (Jupyter)" => "notebooks/basics_julia.md",
+            "Python (Jupyter)" => "notebooks/basics_python.md",
+            "Interactive (Pluto)" => "notebooks/basics.md",
+        ],
         "Theory" => ["Differential Geometry Primer" => "differential-geometry-primer.md"],
         "Advanced" => ["Oracle Quirks" => "theory/oracle-quirks.md"],
         "Architecture" => "architecture.md",

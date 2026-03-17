@@ -47,6 +47,14 @@ from xact.api import (  # noqa: E402, F401
     total_derivative_q,
     var_d,
 )
+from xact.expr import (  # noqa: E402, F401
+    AppliedTensor,
+    DnIdx,
+    Idx,
+    TensorHead,
+    indices,
+    tensor,
+)
 
 __all__ = [
     "Manifold",
@@ -65,4 +73,11 @@ __all__ = [
     "riemann_simplify",
     "reset",
     "dimension",
+    # Typed expression layer
+    "Idx",
+    "DnIdx",
+    "TensorHead",
+    "AppliedTensor",
+    "indices",
+    "tensor",
 ]
