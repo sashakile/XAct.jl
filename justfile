@@ -23,3 +23,7 @@ test-regression:
 
 # Run all quality gates (unit, quality, regression)
 test: test-julia test-python test-regression
+
+# Launch JupyterLab with Julia + Python kernels, opening the notebooks directory
+lab:
+    uv run jupyter lab --notebook-dir=notebooks
