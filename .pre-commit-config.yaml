@@ -45,8 +45,7 @@ repos:
       - id: quarto-sync
         name: quarto-sync
         language: system
-        entry: bash -c 'for f in "$@"; do out="${f%.qmd}.ipynb"; quarto convert "$f" 2>&1; [ -f "$out" ] && python3 -c "import pathlib; p=pathlib.Path(\"$out\"); t=p.read_text(); t.endswith(chr(10)) or p.write_text(t+chr(10))"; done'
-        args: ["--"]
+        entry: uv run python scripts/qmd2ipynb.py
         files: ^notebooks/.*\.qmd$
         pass_filenames: true
       - id: nbstripout

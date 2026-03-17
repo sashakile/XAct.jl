@@ -1,15 +1,11 @@
 ---
-title: "sxAct.jl — Getting Started"
 jupyter: julia-1.12
-format:
-  ipynb:
-    output-file: basics.ipynb
 ---
 
-::: {.callout-note}
-Auto-generated from `notebooks/julia/basics.qmd` via Quarto.
-Edit the source `.qmd` file, not the `.ipynb`.
-:::
+# sxAct.jl — Getting Started
+
+> **Note:** Auto-generated from `notebooks/julia/basics.qmd` via Quarto.
+> Edit the source `.qmd` file, not the `.ipynb`.
 
 ## Overview
 

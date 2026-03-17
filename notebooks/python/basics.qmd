@@ -1,15 +1,11 @@
 ---
-title: "sxAct — Getting Started (Python)"
 jupyter: python3
-format:
-  ipynb:
-    output-file: basics.ipynb
 ---
 
-::: {.callout-note}
-Auto-generated from `notebooks/python/basics.qmd` via Quarto.
-Edit the source `.qmd` file, not the `.ipynb`.
-:::
+# sxAct — Getting Started (Python)
+
+> **Note:** Auto-generated from `notebooks/python/basics.qmd` via Quarto.
+> Edit the source `.qmd` file, not the `.ipynb`.
 
 ## Overview
 
