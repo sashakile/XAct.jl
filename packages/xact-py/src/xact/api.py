@@ -379,7 +379,7 @@ def riemann_simplify(expr: str, covd: str, *, level: int = 6) -> str:
         Simplification level (1-6). Default 6 (all identities).
     """
     _, mod = _ensure_init()
-    return str(mod.RiemannSimplify(expr, covd, level))
+    return str(mod.RiemannSimplify(expr, covd, level=level))
 
 
 # ---------------------------------------------------------------------------
@@ -401,3 +401,264 @@ def dimension(manifold: Manifold | str) -> int:
     _, mod = _ensure_init()
     name = manifold.name if isinstance(manifold, Manifold) else manifold
     return int(mod.Dimension(name))
+
+
+# ---------------------------------------------------------------------------
+# Private seval helpers (for ops that need Julia array literals)
+# ---------------------------------------------------------------------------
+
+
+def _jl_escape(s: str) -> str:
+    """Escape backslashes and double-quotes for Julia string literals."""
+    return s.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _nested_list_to_julia(data: object) -> str:
+    """Convert a nested Python list to a Julia array literal string for seval."""
+    if not isinstance(data, list):
+        return f"fill({data})"
+    if not data:
+        return "Any[]"
+    if not isinstance(data[0], list):
+        return "Any[" + ", ".join(str(x) for x in data) + "]"
+    if not isinstance(data[0][0], list):
+        rows = [" ".join(str(x) for x in row) for row in data]
+        return "Any[" + "; ".join(rows) + "]"
+
+    def _flatten(lst: object) -> list[object]:
+        if not isinstance(lst, list):
+            return [lst]
+        result: list[object] = []
+        for item in lst:
+            result.extend(_flatten(item))
+        return result
+
+    def _shape(lst: object) -> list[int]:
+        dims: list[int] = []
+        cur: object = lst
+        while isinstance(cur, list):
+            dims.append(len(cur))
+            cur = cur[0]
+        return dims
+
+    flat = _flatten(data)
+    dims = _shape(data)
+    flat_jl = "Any[" + ", ".join(str(x) for x in flat) + "]"
+    dims_jl = ", ".join(str(d) for d in reversed(dims))
+    return f"permutedims(reshape({flat_jl}, {dims_jl}), {len(dims)}:-1:1)"
+
+
+# ---------------------------------------------------------------------------
+# xCoba — coordinate basis and component operations
+# ---------------------------------------------------------------------------
+
+
+def def_basis(name: str, vbundle: str, cnumbers: list[int]) -> None:
+    """Define a coordinate basis."""
+    jl, _ = _ensure_init()
+    cn_jl = "[" + ", ".join(str(c) for c in cnumbers) + "]"
+    jl.seval(f"XTensor.def_basis!(:{name}, :{vbundle}, {cn_jl})")
+
+
+def def_chart(
+    name: str, manifold: str, cnumbers: list[int], scalars: list[str]
+) -> None:
+    """Define a coordinate chart with scalar coordinate symbols."""
+    jl, _ = _ensure_init()
+    cn_jl = "[" + ", ".join(str(c) for c in cnumbers) + "]"
+    sc_jl = "[" + ", ".join(f":{s}" for s in scalars) + "]"
+    jl.seval(f"XTensor.def_chart!(:{name}, :{manifold}, {cn_jl}, {sc_jl})")
+
+
+def set_basis_change(
+    from_basis: str, to_basis: str, matrix: list[list[object]]
+) -> None:
+    """Register the Jacobian matrix between two bases."""
+    jl, _ = _ensure_init()
+    mat_jl = _nested_list_to_julia(matrix)
+    jl.seval(f"XTensor.set_basis_change!(:{from_basis}, :{to_basis}, {mat_jl})")
+
+
+def change_basis(expr: str, slot: int, from_basis: str, to_basis: str) -> str:
+    """Change the basis of one index slot in an expression."""
+    jl, _ = _ensure_init()
+    result = jl.seval(
+        f"XTensor.change_basis({expr}, Symbol[], {slot}, :{from_basis}, :{to_basis})"
+    )
+    return str(result)
+
+
+def get_jacobian(basis1: str, basis2: str) -> str:
+    """Return the Jacobian scalar between two bases."""
+    jl, _ = _ensure_init()
+    result = jl.seval(f"XTensor.Jacobian(:{basis1}, :{basis2})")
+    return str(result)
+
+
+def basis_change_q(from_basis: str, to_basis: str) -> bool:
+    """Return True if a basis change between two bases is registered."""
+    jl, _ = _ensure_init()
+    result = jl.seval(f"XTensor.BasisChangeQ(:{from_basis}, :{to_basis})")
+    return result is True or str(result).lower() == "true"
+
+
+def set_components(
+    tensor: str, array: list[object], bases: list[str], *, weight: int = 0
+) -> None:
+    """Set coordinate components of a tensor."""
+    jl, _ = _ensure_init()
+    arr_jl = _nested_list_to_julia(array)
+    bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
+    jl.seval(
+        f"XTensor.set_components!(:{tensor}, {arr_jl}, {bases_jl}; weight={weight})"
+    )
+
+
+def get_components(tensor: str, bases: list[str]) -> str:
+    """Return the component array of a tensor as a string."""
+    jl, _ = _ensure_init()
+    bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
+    result = jl.seval(f"string(XTensor.get_components(:{tensor}, {bases_jl}).array)")
+    return str(result)
+
+
+def component_value(tensor: str, indices: list[int], bases: list[str]) -> str:
+    """Return a single component value of a tensor."""
+    jl, _ = _ensure_init()
+    idx_jl = "[" + ", ".join(str(i) for i in indices) + "]"
+    bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
+    result = jl.seval(f"XTensor.component_value(:{tensor}, {idx_jl}, {bases_jl})")
+    return str(result)
+
+
+def ctensor_q(tensor: str, *bases: str) -> bool:
+    """Return True if tensor has components registered for the given bases."""
+    jl, _ = _ensure_init()
+    bases_args = ", ".join(f":{b}" for b in bases)
+    result = jl.seval(f"XTensor.CTensorQ(:{tensor}, {bases_args})")
+    return result is True or str(result).lower() == "true"
+
+
+def to_basis(expr: str, basis: str) -> str:
+    """Project an abstract expression into a coordinate basis."""
+    jl, _ = _ensure_init()
+    result = jl.seval(f'string(XTensor.ToBasis("{_jl_escape(expr)}", :{basis}).array)')
+    return str(result)
+
+
+def from_basis(tensor: str, bases: list[str]) -> str:
+    """Convert component tensor back to abstract index notation."""
+    jl, _ = _ensure_init()
+    bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
+    result = jl.seval(f"XTensor.FromBasis(:{tensor}, {bases_jl})")
+    return str(result)
+
+
+def trace_basis_dummy(tensor: str, bases: list[str]) -> str:
+    """Trace dummy indices in component tensor."""
+    jl, _ = _ensure_init()
+    bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
+    result = jl.seval(f"string(XTensor.TraceBasisDummy(:{tensor}, {bases_jl}).array)")
+    return str(result)
+
+
+def christoffel(
+    metric: str, basis: str, *, metric_derivs: list[object] | None = None
+) -> str:
+    """Compute Christoffel symbols from metric components.
+
+    Returns the component array of the Christoffel tensor as a string.
+    """
+    jl, _ = _ensure_init()
+    if metric_derivs is not None:
+        dg_jl = _nested_list_to_julia(metric_derivs)
+        jl.seval(f"XTensor.christoffel!(:{metric}, :{basis}; metric_derivs={dg_jl})")
+    else:
+        jl.seval(f"XTensor.christoffel!(:{metric}, :{basis})")
+    christoffel_name = jl.seval(
+        f"""begin
+            local _cd = nothing
+            for (cd, m) in XTensor._metrics
+                if m.name == :{metric}
+                    _cd = cd
+                    break
+                end
+            end
+            string(Symbol("Christoffel" * string(_cd)))
+        end"""
+    )
+    cname = str(christoffel_name)
+    bases_jl = f"Symbol[:{basis}, :{basis}, :{basis}]"
+    result = jl.seval(f"string(XTensor.get_components(:{cname}, {bases_jl}).array)")
+    return str(result)
+
+
+# ---------------------------------------------------------------------------
+# xTras — extended tensor utilities
+# ---------------------------------------------------------------------------
+
+
+def collect_tensors(expr: str) -> str:
+    """Group like tensor terms."""
+    _, mod = _ensure_init()
+    return str(mod.CollectTensors(expr))
+
+
+def all_contractions(expr: str, metric: str) -> list[str]:
+    """Enumerate all possible contractions of an expression."""
+    jl, _ = _ensure_init()
+    result = jl.seval(f'XTensor.AllContractions("{_jl_escape(expr)}", :{metric})')
+    return [str(x) for x in result]
+
+
+def symmetry_of(expr: str) -> str:
+    """Return the symmetry type of a tensor expression."""
+    _, mod = _ensure_init()
+    return str(mod.SymmetryOf(expr))
+
+
+def make_trace_free(expr: str, metric: str) -> str:
+    """Project an expression to its trace-free part."""
+    jl, _ = _ensure_init()
+    return str(jl.seval(f'XTensor.MakeTraceFree("{_jl_escape(expr)}", :{metric})'))
+
+
+# ---------------------------------------------------------------------------
+# Perturbation utilities
+# ---------------------------------------------------------------------------
+
+
+def check_metric_consistency(metric: str) -> bool:
+    """Check that a metric tensor is self-consistent."""
+    jl, _ = _ensure_init()
+    result = jl.seval(f"XTensor.check_metric_consistency(:{metric})")
+    return result is True or str(result).lower() == "true"
+
+
+def perturb_curvature(
+    covd: str, perturbation: str, *, order: int = 1
+) -> dict[str, str]:
+    """Return first-order perturbations of curvature tensors.
+
+    Returns a dict with keys ``"Christoffel1"``, ``"Riemann1"``,
+    ``"Ricci1"``, ``"RicciScalar1"``.
+    """
+    jl, _ = _ensure_init()
+    result = jl.seval(
+        f"XTensor.perturb_curvature(:{covd}, :{perturbation}; order={order})"
+    )
+    return {str(k): str(v) for k, v in result.items()}
+
+
+def perturbation_order(tensor: str) -> int:
+    """Return the perturbation order of a tensor."""
+    jl, _ = _ensure_init()
+    return int(jl.seval(f"XTensor.PerturbationOrder(:{tensor})"))
+
+
+def perturbation_at_order(background: str, order: int) -> str:
+    """Return the name of the perturbation tensor at the given order."""
+    jl, _ = _ensure_init()
+    result = jl.seval(f"XTensor.PerturbationAtOrder(:{background}, {order})")
+    name = str(result)
+    return name[1:] if name.startswith(":") else name

@@ -37,53 +37,6 @@ def _jl_escape(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
-def _nested_list_to_julia(data: object) -> str:
-    """Convert a nested Python list to a Julia array literal.
-
-    - Scalar → ``fill(value)`` (0-dim array)
-    - 1D list → ``Any[1, 2, 3]``
-    - 2D list of lists → ``Any[1 2 3; 4 5 6]`` (matrix literal)
-    - 3D+ → ``reshape(Any[...], dims...)`` (flattened + reshape)
-    """
-    if not isinstance(data, list):
-        return f"fill({data})"
-    if not data:
-        return "Any[]"
-    # Check nesting depth
-    if not isinstance(data[0], list):
-        # 1D: vector literal
-        return "Any[" + ", ".join(str(x) for x in data) + "]"
-    if not isinstance(data[0][0], list):
-        # 2D: matrix literal  Any[row1; row2; ...]
-        rows = []
-        for row in data:
-            rows.append(" ".join(str(x) for x in row))
-        return "Any[" + "; ".join(rows) + "]"
-
-    # 3D+: flatten to 1D, then reshape with Julia column-major order
-    def _flatten(lst: object) -> list[object]:
-        if not isinstance(lst, list):
-            return [lst]
-        result: list[object] = []
-        for item in lst:
-            result.extend(_flatten(item))
-        return result
-
-    def _shape(lst: object) -> list[int]:
-        dims: list[int] = []
-        cur: object = lst
-        while isinstance(cur, list):
-            dims.append(len(cur))
-            cur = cur[0]
-        return dims
-
-    flat = _flatten(data)
-    dims = _shape(data)
-    flat_jl = "Any[" + ", ".join(str(x) for x in flat) + "]"
-    dims_jl = ", ".join(str(d) for d in reversed(dims))
-    return f"permutedims(reshape({flat_jl}, {dims_jl}), {len(dims)}:-1:1)"
-
-
 _Symmetry = _Literal["Symmetric", "Antisymmetric"]
 
 
@@ -471,42 +424,39 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         return Result(status="ok", type="Handle", repr=repr_str, normalized=repr_str)
 
     def _def_basis(self, args: dict[str, Any]) -> Result:
+        import xact.api as _api  # noqa: PLC0415
+
         name = str(args["name"])
-        vbundle = str(args["vbundle"])
-        cnumbers = list(args["cnumbers"])
-        cn_jl = "[" + ", ".join(str(c) for c in cnumbers) + "]"
-        self._jl.seval(f"XTensor.def_basis!(:{name}, :{vbundle}, {cn_jl})")
+        _api.def_basis(name, str(args["vbundle"]), list(args["cnumbers"]))
         self._jl.seval(f"Main.eval(:(global {name} = :{name}))")
         return Result(status="ok", type="Handle", repr=name, normalized=name)
 
     def _def_chart(self, args: dict[str, Any]) -> Result:
+        import xact.api as _api  # noqa: PLC0415
+
         name = str(args["name"])
-        manifold = str(args["manifold"])
-        cnumbers = list(args["cnumbers"])
         scalars = list(args["scalars"])
-        cn_jl = "[" + ", ".join(str(c) for c in cnumbers) + "]"
-        sc_jl = "[" + ", ".join(f":{s}" for s in scalars) + "]"
-        self._jl.seval(f"XTensor.def_chart!(:{name}, :{manifold}, {cn_jl}, {sc_jl})")
+        _api.def_chart(name, str(args["manifold"]), list(args["cnumbers"]), scalars)
         self._jl.seval(f"Main.eval(:(global {name} = :{name}))")
         for sc in scalars:
             self._jl.seval(f"Main.eval(:(global {sc} = :{sc}))")
         return Result(status="ok", type="Handle", repr=name, normalized=name)
 
     def _to_canonical(self, args: dict[str, Any]) -> Result:
-        expr = _jl_escape(str(args["expression"]))
-        result = self._jl.seval(f'XTensor.ToCanonical("{expr}")')
-        raw = str(result)
+        import xact.api as _api  # noqa: PLC0415
+
+        raw = _api.canonicalize(str(args["expression"]))
         return Result(status="ok", type="Expr", repr=raw, normalized=_normalize(raw))
 
     def _contract(self, args: dict[str, Any]) -> Result:
-        expr = _jl_escape(str(args["expression"]))
-        result = self._jl.seval(f'XTensor.Contract("{expr}")')
-        raw = str(result)
+        import xact.api as _api  # noqa: PLC0415
+
+        raw = _api.contract(str(args["expression"]))
         return Result(status="ok", type="Expr", repr=raw, normalized=_normalize(raw))
 
     def _commute_covds(self, args: dict[str, Any]) -> Result:
-        expr = _jl_escape(str(args["expression"]))
-        covd = str(args["covd"])
+        import xact.api as _api  # noqa: PLC0415
+
         indices = list(args["indices"])
         if len(indices) != 2:
             return Result(
@@ -516,18 +466,15 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 normalized="",
                 error=f"CommuteCovDs: expected 2 indices, got {len(indices)}",
             )
-        idx1, idx2 = _jl_escape(indices[0]), _jl_escape(indices[1])
-        result = self._jl.seval(
-            f'XTensor.CommuteCovDs("{expr}", :{covd}, "{idx1}", "{idx2}")'
+        raw = _api.commute_covds(
+            str(args["expression"]), str(args["covd"]), str(indices[0]), str(indices[1])
         )
-        raw = str(result)
         return Result(status="ok", type="Expr", repr=raw, normalized=_normalize(raw))
 
     def _sort_covds(self, args: dict[str, Any]) -> Result:
-        expr = _jl_escape(str(args["expression"]))
-        covd = str(args["covd"])
-        result = self._jl.seval(f'XTensor.SortCovDs("{expr}", :{covd})')
-        raw = str(result)
+        import xact.api as _api  # noqa: PLC0415
+
+        raw = _api.sort_covds(str(args["expression"]), str(args["covd"]))
         return Result(status="ok", type="Expr", repr=raw, normalized=_normalize(raw))
 
     def _def_perturbation(self, ctx: _JuliaContext, args: dict[str, Any]) -> Result:
@@ -540,247 +487,168 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         return Result(status="ok", type="Handle", repr=tensor, normalized=tensor)
 
     def _perturb(self, args: dict[str, Any]) -> Result:
-        expr = str(args["expr"])
-        order = int(args["order"])
-        result = self._jl.seval(f'XTensor.perturb("{_jl_escape(expr)}", {order})')
-        s = str(result)
+        import xact.api as _api  # noqa: PLC0415
+
+        s = _api.perturb(str(args["expr"]), int(args["order"]))
         return Result(status="ok", type="String", repr=s, normalized=s)
 
     def _check_metric_consistency(self, args: dict[str, Any]) -> Result:
-        metric = str(args["metric"])
-        result = self._jl.seval(f"XTensor.check_metric_consistency(:{metric})")
-        raw = "True" if result is True or str(result).lower() == "true" else "False"
+        import xact.api as _api  # noqa: PLC0415
+
+        ok = _api.check_metric_consistency(str(args["metric"]))
+        raw = "True" if ok else "False"
         return Result(status="ok", type="Bool", repr=raw, normalized=raw)
 
     def _perturbation_order(self, args: dict[str, Any]) -> Result:
-        tensor = str(args["tensor"])
-        result = self._jl.seval(f"XTensor.PerturbationOrder(:{tensor})")
-        order = int(result)
+        import xact.api as _api  # noqa: PLC0415
+
+        order = _api.perturbation_order(str(args["tensor"]))
         return Result(status="ok", type="Int", repr=str(order), normalized=str(order))
 
     def _perturbation_at_order(self, args: dict[str, Any]) -> Result:
-        background = str(args["background"])
-        order = int(args["order"])
-        result = self._jl.seval(f"XTensor.PerturbationAtOrder(:{background}, {order})")
-        name = str(result)
-        # Strip leading colon that Julia Symbol.show() sometimes includes
-        if name.startswith(":"):
-            name = name[1:]
+        import xact.api as _api  # noqa: PLC0415
+
+        name = _api.perturbation_at_order(str(args["background"]), int(args["order"]))
         return Result(status="ok", type="String", repr=name, normalized=name)
 
     def _simplify(self, args: dict[str, Any]) -> Result:
-        expr = _jl_escape(str(args["expression"]))
-        result = self._jl.seval(f'XTensor.Simplify("{expr}")')
-        s = str(result)
+        import xact.api as _api  # noqa: PLC0415
+
+        s = _api.simplify(str(args["expression"]))
         return Result(status="ok", type="String", repr=s, normalized=s)
 
     def _perturb_curvature(self, args: dict[str, Any]) -> Result:
-        """Dispatch PerturbCurvature to Julia XTensor.perturb_curvature().
+        import xact.api as _api  # noqa: PLC0415
 
-        Args:
-            covd        — name of the covariant derivative (identifies the metric)
-            perturbation — name of the first-order metric perturbation tensor
-            order       — perturbation order (default: 1)
-            key         — which formula to return: "Christoffel1", "Riemann1",
-                          "Ricci1", or "RicciScalar1" (default: all as JSON)
-
-        Returns a Result whose repr is the requested formula string (or a
-        JSON-like dict repr when no key is specified).
-        """
-        covd = str(args["covd"])
-        perturbation = str(args["perturbation"])
-        order = int(args.get("order", 1))
         key = args.get("key")
-
-        result = self._jl.seval(
-            f"XTensor.perturb_curvature(:{covd}, :{perturbation}; order={order})"
+        jl_dict = _api.perturb_curvature(
+            str(args["covd"]),
+            str(args["perturbation"]),
+            order=int(args.get("order", 1)),
         )
-        # result is a Julia Dict{String,String}; convert to Python dict
-        jl_dict: dict[str, str] = {str(k): str(v) for k, v in result.items()}
-
         if key is not None:
-            key = str(key)
-            formula = jl_dict.get(key, "")
+            formula = jl_dict.get(str(key), "")
             return Result(
                 status="ok", type="Expr", repr=formula, normalized=_normalize(formula)
             )
-
-        # Return all formulas sorted by key, one per line (deterministic repr)
         lines = [f"{k}: {v}" for k, v in sorted(jl_dict.items())]
         raw = "\n".join(lines)
         return Result(status="ok", type="Dict", repr=raw, normalized=raw)
 
     def _integrate_by_parts(self, args: dict[str, Any]) -> Result:
-        expr = str(args["expression"])
-        covd = str(args["covd"])
-        expr_jl = _jl_escape(expr)
-        covd_jl = _jl_escape(covd)
-        raw = self._jl.seval(f'XTensor.IBP("{expr_jl}", "{covd_jl}")')
-        s = str(raw).strip()
+        import xact.api as _api  # noqa: PLC0415
+
+        s = _api.ibp(str(args["expression"]), str(args["covd"]))
         return Result(status="ok", type="Expr", repr=s, normalized=_normalize(s))
 
     def _total_derivative_q(self, args: dict[str, Any]) -> Result:
-        expr = str(args["expression"])
-        covd = str(args["covd"])
-        expr_jl = _jl_escape(expr)
-        covd_jl = _jl_escape(covd)
-        raw = self._jl.seval(f'XTensor.TotalDerivativeQ("{expr_jl}", "{covd_jl}")')
-        val = str(raw).strip()
-        is_true = val.lower() == "true"
+        import xact.api as _api  # noqa: PLC0415
+
+        is_true = _api.total_derivative_q(str(args["expression"]), str(args["covd"]))
         s = "True" if is_true else "False"
         return Result(status="ok", type="Bool", repr=s, normalized=s)
 
     def _vard(self, args: dict[str, Any]) -> Result:
-        expr = str(args["expression"])
-        field = str(args["field"])
-        covd = str(args["covd"])
-        expr_jl = _jl_escape(expr)
-        field_jl = _jl_escape(field)
-        covd_jl = _jl_escape(covd)
-        raw = self._jl.seval(f'XTensor.VarD("{expr_jl}", "{field_jl}", "{covd_jl}")')
-        s = str(raw).strip()
+        import xact.api as _api  # noqa: PLC0415
+
+        s = _api.var_d(str(args["expression"]), str(args["field"]), str(args["covd"]))
         return Result(status="ok", type="Expr", repr=s, normalized=_normalize(s))
 
     def _set_basis_change(self, args: dict[str, Any]) -> Result:
+        import xact.api as _api  # noqa: PLC0415
+
         from_basis = str(args["from_basis"])
         to_basis = str(args["to_basis"])
-        matrix = args["matrix"]  # list of lists
-        # Build Julia matrix literal
-        rows = []
-        for row in matrix:
-            rows.append(" ".join(str(x) for x in row))
-        mat_jl = "Any[" + "; ".join(rows) + "]"
-        self._jl.seval(
-            f"XTensor.set_basis_change!(:{from_basis}, :{to_basis}, {mat_jl})"
-        )
+        _api.set_basis_change(from_basis, to_basis, list(args["matrix"]))
         repr_str = f"BasisChange({from_basis}, {to_basis})"
         return Result(status="ok", type="Handle", repr=repr_str, normalized=repr_str)
 
     def _change_basis(self, args: dict[str, Any]) -> Result:
-        expr = str(args["expr"])
-        slot = int(args["slot"])
-        from_basis = str(args["from_basis"])
-        to_basis = str(args["to_basis"])
-        result = self._jl.seval(
-            f"XTensor.change_basis({expr}, Symbol[], {slot}, :{from_basis}, :{to_basis})"
+        import xact.api as _api  # noqa: PLC0415
+
+        raw = _api.change_basis(
+            str(args["expr"]),
+            int(args["slot"]),
+            str(args["from_basis"]),
+            str(args["to_basis"]),
         )
-        raw = str(result)
         return Result(status="ok", type="Expr", repr=raw, normalized=_normalize(raw))
 
     def _get_jacobian(self, args: dict[str, Any]) -> Result:
-        basis1 = str(args["basis1"])
-        basis2 = str(args["basis2"])
-        result = self._jl.seval(f"XTensor.Jacobian(:{basis1}, :{basis2})")
-        raw = str(result)
+        import xact.api as _api  # noqa: PLC0415
+
+        raw = _api.get_jacobian(str(args["basis1"]), str(args["basis2"]))
         return Result(status="ok", type="Scalar", repr=raw, normalized=raw)
 
     def _basis_change_q(self, args: dict[str, Any]) -> Result:
-        from_basis = str(args["from_basis"])
-        to_basis = str(args["to_basis"])
-        result = self._jl.seval(f"XTensor.BasisChangeQ(:{from_basis}, :{to_basis})")
-        raw = "True" if result is True or str(result).lower() == "true" else "False"
+        import xact.api as _api  # noqa: PLC0415
+
+        ok = _api.basis_change_q(str(args["from_basis"]), str(args["to_basis"]))
+        raw = "True" if ok else "False"
         return Result(status="ok", type="Bool", repr=raw, normalized=raw)
 
     def _set_components(self, args: dict[str, Any]) -> Result:
+        import xact.api as _api  # noqa: PLC0415
+
         tensor = str(args["tensor"])
-        array = args["array"]  # nested list
         bases = [str(b) for b in args["bases"]]
-        weight = int(args.get("weight", 0))
-        # Build Julia array literal
-        arr_jl = _nested_list_to_julia(array)
-        bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
-        self._jl.seval(
-            f"XTensor.set_components!(:{tensor}, {arr_jl}, {bases_jl}; weight={weight})"
+        _api.set_components(
+            tensor, list(args["array"]), bases, weight=int(args.get("weight", 0))
         )
         repr_str = f"CTensor({tensor}, {bases})"
         return Result(status="ok", type="Handle", repr=repr_str, normalized=repr_str)
 
     def _get_components(self, args: dict[str, Any]) -> Result:
-        tensor = str(args["tensor"])
-        bases = [str(b) for b in args["bases"]]
-        bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
-        result = self._jl.seval(
-            f"string(XTensor.get_components(:{tensor}, {bases_jl}).array)"
-        )
-        raw = str(result)
+        import xact.api as _api  # noqa: PLC0415
+
+        raw = _api.get_components(str(args["tensor"]), [str(b) for b in args["bases"]])
         return Result(status="ok", type="Expr", repr=raw, normalized=raw)
 
     def _component_value(self, args: dict[str, Any]) -> Result:
-        tensor = str(args["tensor"])
-        indices = [int(i) for i in args["indices"]]
-        bases = [str(b) for b in args["bases"]]
-        idx_jl = "[" + ", ".join(str(i) for i in indices) + "]"
-        bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
-        result = self._jl.seval(
-            f"XTensor.component_value(:{tensor}, {idx_jl}, {bases_jl})"
+        import xact.api as _api  # noqa: PLC0415
+
+        raw = _api.component_value(
+            str(args["tensor"]),
+            [int(i) for i in args["indices"]],
+            [str(b) for b in args["bases"]],
         )
-        raw = str(result)
         return Result(status="ok", type="Scalar", repr=raw, normalized=raw)
 
     def _ctensor_q(self, args: dict[str, Any]) -> Result:
-        tensor = str(args["tensor"])
-        bases = [str(b) for b in args["bases"]]
-        bases_args = ", ".join(f":{b}" for b in bases)
-        result = self._jl.seval(f"XTensor.CTensorQ(:{tensor}, {bases_args})")
-        raw = "True" if result is True or str(result).lower() == "true" else "False"
+        import xact.api as _api  # noqa: PLC0415
+
+        ok = _api.ctensor_q(str(args["tensor"]), *[str(b) for b in args["bases"]])
+        raw = "True" if ok else "False"
         return Result(status="ok", type="Bool", repr=raw, normalized=raw)
 
     def _to_basis(self, args: dict[str, Any]) -> Result:
-        expr = str(args["expression"])
-        basis = str(args["basis"])
-        jl_expr = _jl_escape(expr)
-        result = self._jl.seval(f'string(XTensor.ToBasis("{jl_expr}", :{basis}).array)')
-        raw = str(result)
+        import xact.api as _api  # noqa: PLC0415
+
+        raw = _api.to_basis(str(args["expression"]), str(args["basis"]))
         return Result(status="ok", type="Expr", repr=raw, normalized=raw)
 
     def _from_basis(self, args: dict[str, Any]) -> Result:
-        tensor = str(args["tensor"])
-        bases = [str(b) for b in args["bases"]]
-        bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
-        result = self._jl.seval(f"XTensor.FromBasis(:{tensor}, {bases_jl})")
-        raw = str(result)
+        import xact.api as _api  # noqa: PLC0415
+
+        raw = _api.from_basis(str(args["tensor"]), [str(b) for b in args["bases"]])
         return Result(status="ok", type="Expr", repr=raw, normalized=raw)
 
     def _trace_basis_dummy(self, args: dict[str, Any]) -> Result:
-        tensor = str(args["tensor"])
-        bases = [str(b) for b in args["bases"]]
-        bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
-        result = self._jl.seval(
-            f"string(XTensor.TraceBasisDummy(:{tensor}, {bases_jl}).array)"
+        import xact.api as _api  # noqa: PLC0415
+
+        raw = _api.trace_basis_dummy(
+            str(args["tensor"]), [str(b) for b in args["bases"]]
         )
-        raw = str(result)
         return Result(status="ok", type="Expr", repr=raw, normalized=raw)
 
     def _christoffel(self, args: dict[str, Any]) -> Result:
-        metric = str(args["metric"])
-        basis = str(args["basis"])
-        metric_derivs = args.get("metric_derivs")
-        if metric_derivs is not None:
-            dg_jl = _nested_list_to_julia(metric_derivs)
-            self._jl.seval(
-                f"XTensor.christoffel!(:{metric}, :{basis}; metric_derivs={dg_jl})"
-            )
-        else:
-            self._jl.seval(f"XTensor.christoffel!(:{metric}, :{basis})")
-        # Find Christoffel tensor name and return its components
-        christoffel_name = self._jl.seval(
-            f"""begin
-                local _cd = nothing
-                for (cd, m) in XTensor._metrics
-                    if m.name == :{metric}
-                        _cd = cd
-                        break
-                    end
-                end
-                string(Symbol("Christoffel" * string(_cd)))
-            end"""
+        import xact.api as _api  # noqa: PLC0415
+
+        raw = _api.christoffel(
+            str(args["metric"]),
+            str(args["basis"]),
+            metric_derivs=args.get("metric_derivs"),
         )
-        cname = str(christoffel_name)
-        bases_jl = f"Symbol[:{basis}, :{basis}, :{basis}]"
-        result = self._jl.seval(
-            f"string(XTensor.get_components(:{cname}, {bases_jl}).array)"
-        )
-        raw = str(result)
         return Result(status="ok", type="Expr", repr=raw, normalized=raw)
 
     # ------------------------------------------------------------------
@@ -788,40 +656,36 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
     # ------------------------------------------------------------------
 
     def _collect_tensors(self, args: dict[str, Any]) -> Result:
-        expr = _jl_escape(str(args["expression"]))
-        result = self._jl.seval(f'XTensor.CollectTensors("{expr}")')
-        s = str(result)
+        import xact.api as _api  # noqa: PLC0415
+
+        s = _api.collect_tensors(str(args["expression"]))
         return Result(status="ok", type="String", repr=s, normalized=s)
 
     def _all_contractions(self, args: dict[str, Any]) -> Result:
-        expr = _jl_escape(str(args["expression"]))
-        metric = str(args["metric"])
-        result = self._jl.seval(f'XTensor.AllContractions("{expr}", :{metric})')
-        items = [str(x) for x in result]
-        s = ", ".join(items) if len(items) > 1 else items[0]
+        import xact.api as _api  # noqa: PLC0415
+
+        items = _api.all_contractions(str(args["expression"]), str(args["metric"]))
+        s = ", ".join(items) if len(items) > 1 else (items[0] if items else "")
         return Result(status="ok", type="String", repr=s, normalized=s)
 
     def _symmetry_of(self, args: dict[str, Any]) -> Result:
-        expr = _jl_escape(str(args["expression"]))
-        result = self._jl.seval(f'XTensor.SymmetryOf("{expr}")')
-        s = str(result)
+        import xact.api as _api  # noqa: PLC0415
+
+        s = _api.symmetry_of(str(args["expression"]))
         return Result(status="ok", type="String", repr=s, normalized=s)
 
     def _make_trace_free(self, args: dict[str, Any]) -> Result:
-        expr = _jl_escape(str(args["expression"]))
-        metric = str(args["metric"])
-        result = self._jl.seval(f'XTensor.MakeTraceFree("{expr}", :{metric})')
-        s = str(result)
+        import xact.api as _api  # noqa: PLC0415
+
+        s = _api.make_trace_free(str(args["expression"]), str(args["metric"]))
         return Result(status="ok", type="String", repr=s, normalized=s)
 
     def _riemann_simplify(self, args: dict[str, Any]) -> Result:
-        expr = _jl_escape(str(args["expression"]))
-        covd = str(args["covd"])
-        level = int(args.get("level", 6))
-        result = self._jl.seval(
-            f'XInvar.RiemannSimplify("{expr}", :{covd}; level={level})'
+        import xact.api as _api  # noqa: PLC0415
+
+        s = _api.riemann_simplify(
+            str(args["expression"]), str(args["covd"]), level=int(args.get("level", 6))
         )
-        s = str(result)
         return Result(status="ok", type="String", repr=s, normalized=_normalize(s))
 
     def _execute_expr(self, wolfram_expr: str) -> Result:
