@@ -628,11 +628,13 @@ class CTensor:
         array: list[object],
         bases: list[str],
         weight: int = 0,
+        julia_str: str | None = None,
     ) -> None:
         self.tensor = tensor
         self.array = array
         self.bases = bases
         self.weight = weight
+        self._julia_str = julia_str
 
     def __repr__(self) -> str:
         return f"CTensor({self.tensor!r}, bases={self.bases!r})"
@@ -646,7 +648,8 @@ def _ct_from_julia(ct_jl: Any) -> "CTensor":
     array = _np.array(ct_jl.array).tolist()
     bases = [str(b).lstrip(":") for b in ct_jl.bases]
     weight = int(ct_jl.weight)
-    return CTensor(tensor_name, array, bases, weight)
+    julia_str = str(ct_jl.array)
+    return CTensor(tensor_name, array, bases, weight, julia_str=julia_str)
 
 
 def set_components(
@@ -679,7 +682,9 @@ def component_value(tensor: str, indices: list[int], bases: list[str]) -> Any:
     idx_jl = "[" + ", ".join(str(i) for i in indices) + "]"
     bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
     result = jl.seval(f"XTensor.component_value(:{tensor}, {idx_jl}, {bases_jl})")
-    # Try to return as a number; fall back to str
+    # Preserve the Julia type: juliacall maps Int64→int, Float64→float
+    if isinstance(result, (int, float)):
+        return result
     try:
         return float(result)
     except (TypeError, ValueError):

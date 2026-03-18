@@ -602,7 +602,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         import xact.api as _api  # noqa: PLC0415
 
         ct = _api.get_components(str(args["tensor"]), [str(b) for b in args["bases"]])
-        raw = repr(ct)
+        raw = ct._julia_str or repr(ct)
         return Result(status="ok", type="Expr", repr=raw, normalized=raw)
 
     def _component_value(self, args: dict[str, Any]) -> Result:
@@ -627,7 +627,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         import xact.api as _api  # noqa: PLC0415
 
         ct = _api.to_basis(str(args["expression"]), str(args["basis"]))
-        raw = repr(ct)
+        raw = ct._julia_str or repr(ct)
         return Result(status="ok", type="Expr", repr=raw, normalized=raw)
 
     def _from_basis(self, args: dict[str, Any]) -> Result:
@@ -642,7 +642,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         ct = _api.trace_basis_dummy(
             str(args["tensor"]), [str(b) for b in args["bases"]]
         )
-        raw = repr(ct)
+        raw = ct._julia_str or repr(ct)
         return Result(status="ok", type="Expr", repr=raw, normalized=raw)
 
     def _christoffel(self, args: dict[str, Any]) -> Result:
