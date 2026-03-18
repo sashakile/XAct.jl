@@ -485,6 +485,76 @@ def _nested_list_to_julia(data: object) -> str:
 # ---------------------------------------------------------------------------
 
 
+class Basis:
+    """A coordinate basis on a vector bundle.
+
+    Parameters
+    ----------
+    name : str
+        Basis identifier (e.g. ``"Bcart"``).
+    vbundle : str
+        Vector bundle the basis is defined on (e.g. ``"TangentM"``).
+    cnumbers : list[int]
+        Coordinate numbers identifying the basis slots.
+
+    Example
+    -------
+    >>> B = xact.Basis("Bcart", "TangentM", [1, 2, 3, 4])
+    """
+
+    def __init__(self, name: str, vbundle: str, cnumbers: list[int]) -> None:
+        def_basis(name, vbundle, cnumbers)
+        self.name = name
+        self.vbundle = vbundle
+        self.cnumbers = cnumbers
+
+    def __repr__(self) -> str:
+        return f"Basis({self.name!r}, {self.vbundle!r})"
+
+
+class Chart:
+    """A coordinate chart on a manifold.
+
+    Internally creates a coordinate basis and registers the coordinate
+    scalar fields as tensors.
+
+    Parameters
+    ----------
+    name : str
+        Chart identifier (e.g. ``"SchC"``).
+    manifold : Manifold | str
+        The manifold this chart covers.
+    cnumbers : list[int]
+        Coordinate numbers identifying the chart slots.
+    scalars : list[str]
+        Coordinate scalar field names (e.g. ``["t", "r", "th", "ph"]``).
+
+    Example
+    -------
+    >>> C = xact.Chart("SchC", M, [1, 2, 3, 4], ["t", "r", "th", "ph"])
+    """
+
+    def __init__(
+        self,
+        name: str,
+        manifold: "Manifold | str",
+        cnumbers: list[int],
+        scalars: list[str],
+    ) -> None:
+        manifold_name = manifold.name if isinstance(manifold, Manifold) else manifold
+        def_chart(name, manifold_name, cnumbers, scalars)
+        self.name = name
+        self.manifold = manifold
+        self.cnumbers = cnumbers
+        self.scalars = scalars
+
+    def __repr__(self) -> str:
+        mname = (
+            self.manifold.name if isinstance(self.manifold, Manifold) else self.manifold
+        )
+        return f"Chart({self.name!r}, {mname!r})"
+
+
 def def_basis(name: str, vbundle: str, cnumbers: list[int]) -> None:
     """Define a coordinate basis."""
     jl, _ = _ensure_init()
