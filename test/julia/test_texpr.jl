@@ -869,4 +869,124 @@ using .xAct
         final = ToCanonical(contracted)
         @test final isa TExpr
     end
+
+    # ---------------------------------------------------------------------------
+    # Batch 11: xTras + xCoba TExpr overloads
+    # ---------------------------------------------------------------------------
+
+    @testset "CollectTensors — TExpr input returns TExpr" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_metric!(-1, "TEg[-tea,-teb]", :TECD)
+        def_tensor!(:TETs, ["-tea", "-teb"], :TE4; symmetry_str="Symmetric[{-tea,-teb}]")
+
+        @indices TE4 tea teb
+        T = tensor(:TETs)
+
+        # Two identical terms → collected to coefficient 2
+        result = CollectTensors(T[-tea, -teb] + T[-tea, -teb])
+        @test result isa TExpr
+        @test result == CollectTensors("TETs[-tea,-teb] + TETs[-tea,-teb]")
+
+        # Same as string: symmetric T so T[-teb,-tea] == T[-tea,-teb]
+        result2 = CollectTensors(T[-tea, -teb] + T[-teb, -tea])
+        @test result2 isa TExpr
+        @test result2 == "2 TETs[-tea,-teb]"
+
+        # Single term unchanged
+        result3 = CollectTensors(T[-tea, -teb])
+        @test result3 isa TExpr
+    end
+
+    @testset "AllContractions — TExpr input returns Vector{TExpr}" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_metric!(-1, "TEg[-tea,-teb]", :TECD)
+
+        @indices TE4 tea teb
+        g = tensor(:TEg)
+
+        results = AllContractions(g[-tea, -teb], :TEg)
+        @test results isa Vector{TExpr}
+        @test all(r -> r isa TExpr, results)
+
+        # Must match string version element-by-element
+        string_results = AllContractions("TEg[-tea,-teb]", :TEg)
+        @test length(results) == length(string_results)
+        for (r, s) in zip(results, string_results)
+            @test r == s
+        end
+    end
+
+    @testset "MakeTraceFree — TExpr input returns TExpr" begin
+        reset_state!()
+        def_manifold!(:TE4, 4, [:tea, :teb, :tec, :ted])
+        def_metric!(-1, "TEg[-tea,-teb]", :TECD)
+        def_tensor!(:TETs, ["-tea", "-teb"], :TE4; symmetry_str="Symmetric[{-tea,-teb}]")
+
+        @indices TE4 tea teb
+        g = tensor(:TEg)
+
+        # Metric itself is pure trace → trace-free part is 0
+        result = MakeTraceFree(g[-tea, -teb], :TEg)
+        @test result isa TExpr
+        @test result == MakeTraceFree("TEg[-tea,-teb]", :TEg)
+        @test result == "0"
+    end
+
+    @testset "ToBasis — TExpr input returns CTensorObj" begin
+        reset_state!()
+        def_manifold!(:TB2, 2, [:tba, :tbb])
+        def_chart!(:TBc, :TB2, [1, 2], [:tbx, :tby])
+        def_tensor!(:TBt, ["-tba", "-tbb"], :TB2)
+
+        set_components!(:TBt, Any[1 0; 0 2], [:TBc, :TBc])
+
+        @indices TB2 tba tbb
+        T = tensor(:TBt)
+
+        ct = ToBasis(T[-tba, -tbb], :TBc)
+        @test ct isa CTensorObj
+        # Must match the string-argument version
+        ct_str = ToBasis("TBt[-tba,-tbb]", :TBc)
+        @test ct.array == ct_str.array
+        @test ct.bases == ct_str.bases
+    end
+
+    @testset "FromBasis — TensorHead input returns TExpr" begin
+        reset_state!()
+        def_manifold!(:TB2, 2, [:tba, :tbb])
+        def_chart!(:TBc, :TB2, [1, 2], [:tbx, :tby])
+        def_tensor!(:TBft, ["-tba", "-tbb"], :TB2)
+
+        set_components!(:TBft, Any[1 0; 0 1], [:TBc, :TBc])
+
+        result = FromBasis(tensor(:TBft), [:TBc, :TBc])
+        @test result isa TExpr
+        # Must match the Symbol-argument string version parsed to TExpr
+        @test result == FromBasis(:TBft, [:TBc, :TBc])
+    end
+
+    @testset "TraceBasisDummy — TensorHead input returns CTensorObj" begin
+        reset_state!()
+        def_manifold!(:TB2, 2, [:tba, :tbb])
+        def_chart!(:TBc, :TB2, [1, 2], [:tbx, :tby])
+        # Mixed-variance tensor: T^a_{b}
+        def_tensor!(:TBmix, ["tba", "-tbb"], :TB2)
+
+        set_components!(:TBmix, Any[3 0; 0 5], [:TBc, :TBc])
+
+        ct = TraceBasisDummy(tensor(:TBmix), [:TBc, :TBc])
+        @test ct isa CTensorObj
+        @test ct.array[] ≈ 8.0  # trace = 3 + 5
+        @test ct.bases == Symbol[]
+
+        # Must match Symbol-argument version
+        ct_sym = TraceBasisDummy(:TBmix, [:TBc, :TBc])
+        @test ct.array[] ≈ ct_sym.array[]
+    end
+
+    # Note: RiemannSimplify(expr::TExpr, metric; kwargs...) is pre-existing in TExpr.jl
+    # and tested via XInvar integration tests. Testing here would require a fully
+    # contracted Riemann scalar which is complex to construct in isolation.
 end # @testset "TExpr"

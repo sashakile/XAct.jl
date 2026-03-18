@@ -14,7 +14,13 @@ import ..XTensor:
     SortCovDs,
     IBP,
     TotalDerivativeQ,
-    VarD
+    VarD,
+    CollectTensors,
+    AllContractions,
+    MakeTraceFree,
+    ToBasis,
+    FromBasis,
+    TraceBasisDummy
 import ..XInvar: RiemannSimplify
 
 export Idx, DnIdx, SlotIdx
@@ -630,6 +636,24 @@ TotalDerivativeQ(expr::TExpr, cd) = TotalDerivativeQ(_to_string(expr), cd)  # re
 VarD(expr::TExpr, field, cd) = _engine_out(VarD(_to_string(expr), field, cd))
 function RiemannSimplify(expr::TExpr, metric; kwargs...)
     _engine_out(RiemannSimplify(_to_string(expr), metric; kwargs...))
+end
+
+# xTras overloads
+CollectTensors(expr::TExpr) = _engine_out(CollectTensors(_to_string(expr)))
+function AllContractions(expr::TExpr, metric::Symbol)
+    TExpr[_engine_out(r) for r in AllContractions(_to_string(expr), metric)]
+end
+function MakeTraceFree(expr::TExpr, metric::Symbol)
+    _engine_out(MakeTraceFree(_to_string(expr), metric))
+end
+
+# xCoba overloads
+ToBasis(expr::TExpr, basis::Symbol) = ToBasis(_to_string(expr), basis)
+function FromBasis(tensor::TensorHead, bases::Vector{Symbol})
+    _engine_out(FromBasis(tensor.name, bases))
+end
+function TraceBasisDummy(tensor::TensorHead, bases::Vector{Symbol})
+    TraceBasisDummy(tensor.name, bases)
 end
 
 end # module TExprLayer
