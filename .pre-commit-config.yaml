@@ -96,9 +96,9 @@ repos:
         stages: [pre-push]
       - id: python-tests
         name: python-tests
-        description: Run Python unit tests on push if Python source or tests changed.
+        description: Run Python unit tests on push if Python or Julia source/tests changed.
         language: system
         entry: bash -c "uv run pytest tests/unit -q --ignore=tests/integration --ignore=tests/properties --ignore=tests/xperm --ignore=tests/xtensor && uv run pytest tests/test_julia_adapter.py -q"
         pass_filenames: false
-        files: ^(packages/.*\.py|tests/.*\.py|pyproject\.toml)$
+        files: ^(packages/.*\.py|tests/.*\.py|pyproject\.toml|src/.*\.jl|Project\.toml)$
         stages: [pre-push]
