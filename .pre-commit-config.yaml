@@ -88,15 +88,17 @@ repos:
     hooks:
       - id: julia-tests
         name: julia-tests
+        description: Run Julia tests on push if Julia source or tests changed.
         language: system
         entry: bash -c "julia --project=. test/runtests.jl && julia --project=. test/julia/test_xperm.jl && julia --project=. test/julia/test_xtensor.jl"
         pass_filenames: false
-        always_run: true
+        files: ^(src/.*\.jl|test/.*\.jl|Project\.toml)$
         stages: [pre-push]
       - id: python-tests
         name: python-tests
+        description: Run Python unit tests on push if Python source or tests changed.
         language: system
         entry: bash -c "uv run pytest tests/unit -q --ignore=tests/integration --ignore=tests/properties --ignore=tests/xperm --ignore=tests/xtensor && uv run pytest tests/test_julia_adapter.py -q"
         pass_filenames: false
-        always_run: true
+        files: ^(packages/.*\.py|tests/.*\.py|pyproject\.toml)$
         stages: [pre-push]
