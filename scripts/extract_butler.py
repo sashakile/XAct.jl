@@ -12,6 +12,7 @@ Usage:
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 NOTEBOOK = Path("resources/xAct/Documentation/English/ButlerExamples.nb")
 OUTPUT_DIR = Path("tests/xperm/butler_examples")
@@ -383,7 +384,7 @@ def parse_section(section_text: str) -> tuple[list[str], list[tuple[str, str]]]:
     return setup, test_pairs
 
 
-def parse_notebook(text: str) -> list[dict]:
+def parse_notebook(text: str) -> list[dict[str, Any]]:
     """
     Parse the notebook into sections with setup and test pairs.
     Returns list of {name, setup, tests}.
@@ -520,7 +521,7 @@ def generate_toml(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def main():
+def main() -> None:
     dry_run = "--dry-run" in sys.argv
     verbose = "--verbose" in sys.argv
 

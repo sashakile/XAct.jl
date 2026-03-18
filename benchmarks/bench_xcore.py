@@ -34,7 +34,7 @@ BASELINE_PATH = Path(__file__).parent / "xcore_baseline.json"
 
 def _bench(
     func: Callable[[], Any], n_warmup: int = N_WARMUP, n_measure: int = N_MEASURE
-) -> dict:
+) -> dict[str, Any]:
     """Run func and return timing statistics (ms)."""
     # First call: JIT
     t0 = time.perf_counter()
@@ -73,7 +73,7 @@ def _fresh() -> str:
     return "Bench" + uuid.uuid4().hex[:12]
 
 
-def bench_validate_symbol(xcore_mod: Any) -> dict:
+def bench_validate_symbol(xcore_mod: Any) -> dict[str, Any]:
     """Throughput of ValidateSymbol (single call on a fresh name, no registry hit)."""
     # Each call uses a different name so ValidateSymbol never throws.
     names = [_fresh() for _ in range(N_WARMUP + N_MEASURE + 1)]
@@ -86,7 +86,7 @@ def bench_validate_symbol(xcore_mod: Any) -> dict:
     return _bench(_call)
 
 
-def bench_register_symbol(jl: Any, xcore_mod: Any) -> dict:
+def bench_register_symbol(jl: Any, xcore_mod: Any) -> dict[str, Any]:
     """Throughput of register_symbol (fresh name each call)."""
     names = [_fresh() for _ in range(N_WARMUP + N_MEASURE + 1)]
     idx = [0]
@@ -101,7 +101,7 @@ def bench_register_symbol(jl: Any, xcore_mod: Any) -> dict:
     return result
 
 
-def bench_xtension_dispatch(jl: Any, xcore_mod: Any) -> dict:
+def bench_xtension_dispatch(jl: Any, xcore_mod: Any) -> dict[str, Any]:
     """Latency of MakexTensions with 10 registered hooks."""
     # Register 10 hooks
     jl.seval("empty!(XCore._xtensions)")
@@ -118,7 +118,7 @@ def bench_xtension_dispatch(jl: Any, xcore_mod: Any) -> dict:
     return result
 
 
-def bench_symbol_join(xcore_mod: Any) -> dict:
+def bench_symbol_join(xcore_mod: Any) -> dict[str, Any]:
     """Throughput of SymbolJoin with 3 components."""
 
     def _call() -> None:
@@ -127,7 +127,7 @@ def bench_symbol_join(xcore_mod: Any) -> dict:
     return _bench(_call)
 
 
-def bench_has_dagger(xcore_mod: Any) -> dict:
+def bench_has_dagger(xcore_mod: Any) -> dict[str, Any]:
     """Throughput of HasDaggerCharacterQ on a plain symbol."""
     s = xcore_mod.Symbol("MyTensor")
 
@@ -160,7 +160,7 @@ def main() -> None:
     jl = get_julia()
     xc = get_xcore()
 
-    suites: list[tuple[str, Callable[[], dict]]] = [
+    suites: list[tuple[str, Callable[[], dict[str, Any]]]] = [
         ("validate_symbol", lambda: bench_validate_symbol(xc)),
         ("register_symbol", lambda: bench_register_symbol(jl, xc)),
         ("xtension_dispatch_10hooks", lambda: bench_xtension_dispatch(jl, xc)),
@@ -194,7 +194,7 @@ def main() -> None:
         _check_regression(results, Path(args.compare))
 
 
-def _check_regression(current: dict, baseline_path: Path) -> None:
+def _check_regression(current: dict[str, Any], baseline_path: Path) -> None:
     if not baseline_path.exists():
         print(f"Baseline not found at {baseline_path}; skipping regression check.")
         return

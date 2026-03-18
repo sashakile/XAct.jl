@@ -4,6 +4,7 @@ import shutil
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
+from typing import Any
 
 from wolframclient.evaluation import WolframLanguageSession
 from wolframclient.language import wlexpr
@@ -14,14 +15,14 @@ INIT_SCRIPT = "/oracle/init.wl"
 class KernelManager:
     """Manages a persistent Wolfram kernel with xAct pre-loaded."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._lock = threading.RLock()
         self._session: WolframLanguageSession | None = None
         self._executor = ThreadPoolExecutor(max_workers=1)
         self._kernel_path = shutil.which("WolframKernel")
         self._xact_loaded = False
 
-    def start(self):
+    def start(self) -> None:
         """Start the kernel and load xAct."""
         if not self._kernel_path:
             raise RuntimeError(
@@ -31,18 +32,18 @@ class KernelManager:
         self._session.start()
         self._xact_loaded = False
 
-    def _ensure_xact(self):
+    def _ensure_xact(self) -> None:
         """Load xAct if not already loaded."""
         if not self._xact_loaded and self._session is not None:
             self._session.evaluate(wlexpr(f'Get["{INIT_SCRIPT}"]'))
             self._xact_loaded = True
 
-    def ensure(self):
+    def ensure(self) -> None:
         """Ensure kernel is running."""
         if self._session is None:
             self.start()
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the kernel."""
         if self._session is not None:
             try:
@@ -53,7 +54,7 @@ class KernelManager:
                 self._session = None
                 self._xact_loaded = False
 
-    def restart(self):
+    def restart(self) -> None:
         """Restart the kernel."""
         self.stop()
         self.start()
@@ -80,7 +81,8 @@ class KernelManager:
             self.ensure()
             self._ensure_xact()
 
-            def _do_eval():
+            def _do_eval() -> Any:
+                assert self._session is not None
                 return self._session.evaluate(wlexpr(cleanup_wl))
 
             fut = self._executor.submit(_do_eval)
@@ -110,7 +112,8 @@ class KernelManager:
             self.ensure()
             self._ensure_xact()
 
-            def _do_eval():
+            def _do_eval() -> Any:
+                assert self._session is not None
                 return self._session.evaluate(wlexpr(check_wl))
 
             fut = self._executor.submit(_do_eval)
@@ -166,9 +169,10 @@ class KernelManager:
             else:
                 wrapped_expr = expr
 
-            def _do_eval():
+            def _do_eval() -> Any:
                 if with_xact:
                     self._ensure_xact()
+                assert self._session is not None
                 return self._session.evaluate(wlexpr(wrapped_expr))
 
             fut = self._executor.submit(_do_eval)

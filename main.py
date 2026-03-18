@@ -21,7 +21,7 @@ Main entry point for Python-based experiments with Wolfram/xAct interoperability
 """
 
 
-def main():
+def main() -> None:
     print("sxAct - xAct Migration Experiments")
     print("=" * 50)
     print("\nAvailable commands:")
