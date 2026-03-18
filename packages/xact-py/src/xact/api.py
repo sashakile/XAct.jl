@@ -341,8 +341,12 @@ def commute_covds(expr: str | Any, covd: str, index1: str, index2: str) -> str:
 
     if isinstance(expr, TExpr):
         expr = str(expr)
-    _, mod = _ensure_init()
-    return str(mod.CommuteCovDs(expr, covd, index1, index2))
+    jl, _ = _ensure_init()
+    return str(
+        jl.seval(
+            f'XTensor.CommuteCovDs("{_jl_escape(expr)}", :{covd}, "{_jl_escape(index1)}", "{_jl_escape(index2)}")'
+        )
+    )
 
 
 def sort_covds(expr: str | Any, covd: str) -> str:
@@ -351,8 +355,8 @@ def sort_covds(expr: str | Any, covd: str) -> str:
 
     if isinstance(expr, TExpr):
         expr = str(expr)
-    _, mod = _ensure_init()
-    return str(mod.SortCovDs(expr, covd))
+    jl, _ = _ensure_init()
+    return str(jl.seval(f'XTensor.SortCovDs("{_jl_escape(expr)}", :{covd})'))
 
 
 def ibp(expr: str | Any, covd: str) -> str | Any:
