@@ -11,7 +11,7 @@ on:
 jobs:
   record:
     name: Record baseline on CI hardware
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: write
     steps:
@@ -63,7 +63,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
-            MSG="ci(benchmarks): record CI baseline on ubuntu-latest / Julia 1.12"
+            MSG="ci(benchmarks): record CI baseline on self-hosted / Julia 1.12"
             if [ -n "${{ github.event.inputs.commit_message }}" ]; then
               MSG="$MSG — ${{ github.event.inputs.commit_message }}"
             fi
