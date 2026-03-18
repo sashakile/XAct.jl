@@ -601,17 +601,19 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
     def _get_components(self, args: dict[str, Any]) -> Result:
         import xact.api as _api  # noqa: PLC0415
 
-        raw = _api.get_components(str(args["tensor"]), [str(b) for b in args["bases"]])
+        ct = _api.get_components(str(args["tensor"]), [str(b) for b in args["bases"]])
+        raw = repr(ct)
         return Result(status="ok", type="Expr", repr=raw, normalized=raw)
 
     def _component_value(self, args: dict[str, Any]) -> Result:
         import xact.api as _api  # noqa: PLC0415
 
-        raw = _api.component_value(
+        val = _api.component_value(
             str(args["tensor"]),
             [int(i) for i in args["indices"]],
             [str(b) for b in args["bases"]],
         )
+        raw = str(val)
         return Result(status="ok", type="Scalar", repr=raw, normalized=raw)
 
     def _ctensor_q(self, args: dict[str, Any]) -> Result:
@@ -624,7 +626,8 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
     def _to_basis(self, args: dict[str, Any]) -> Result:
         import xact.api as _api  # noqa: PLC0415
 
-        raw = _api.to_basis(str(args["expression"]), str(args["basis"]))
+        ct = _api.to_basis(str(args["expression"]), str(args["basis"]))
+        raw = repr(ct)
         return Result(status="ok", type="Expr", repr=raw, normalized=raw)
 
     def _from_basis(self, args: dict[str, Any]) -> Result:
@@ -636,19 +639,21 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
     def _trace_basis_dummy(self, args: dict[str, Any]) -> Result:
         import xact.api as _api  # noqa: PLC0415
 
-        raw = _api.trace_basis_dummy(
+        ct = _api.trace_basis_dummy(
             str(args["tensor"]), [str(b) for b in args["bases"]]
         )
+        raw = repr(ct)
         return Result(status="ok", type="Expr", repr=raw, normalized=raw)
 
     def _christoffel(self, args: dict[str, Any]) -> Result:
         import xact.api as _api  # noqa: PLC0415
 
-        raw = _api.christoffel(
+        ct = _api.christoffel(
             str(args["metric"]),
             str(args["basis"]),
             metric_derivs=args.get("metric_derivs"),
         )
+        raw = repr(ct)
         return Result(status="ok", type="Expr", repr=raw, normalized=raw)
 
     # ------------------------------------------------------------------

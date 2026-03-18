@@ -135,6 +135,198 @@ class TestBasisChange:
 
 
 # ---------------------------------------------------------------------------
+# 2D flat-space fixture used by component / ToBasis / christoffel tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture()
+def flat2d():
+    """2D flat (Euclidean) manifold with a chart and identity metric."""
+    M = xact.Manifold("Mf2", 2, ["fa", "fb", "fc"])
+    g = xact.Metric(M, "gf2", signature=1, covd="Df2")
+    C = xact.Chart("Cf2", M, [1, 2], ["fx", "fy"])
+    # identity metric g_{ab} = [[1,0],[0,1]]
+    xact.set_components("gf2", [[1, 0], [0, 1]], ["Cf2", "Cf2"])
+    return M, g, C
+
+
+# ---------------------------------------------------------------------------
+# CTensor class
+# ---------------------------------------------------------------------------
+
+
+class TestCTensor:
+    def test_create(self):
+        ct = xact.CTensor("T", [[1, 0], [0, 1]], ["B1", "B2"])
+        assert ct.tensor == "T"
+        assert ct.array == [[1, 0], [0, 1]]
+        assert ct.bases == ["B1", "B2"]
+        assert ct.weight == 0
+
+    def test_repr(self):
+        ct = xact.CTensor("T", [], ["B"])
+        assert "CTensor" in repr(ct)
+        assert "T" in repr(ct)
+
+
+# ---------------------------------------------------------------------------
+# set_components / get_components
+# ---------------------------------------------------------------------------
+
+
+class TestSetGetComponents:
+    def test_set_returns_ctensor(self, flat2d):
+        ct = xact.set_components("gf2", [[1, 0], [0, 1]], ["Cf2", "Cf2"])
+        assert isinstance(ct, xact.CTensor)
+        assert ct.tensor == "gf2"
+        assert ct.bases == ["Cf2", "Cf2"]
+
+    def test_set_get_roundtrip(self, flat2d):
+        arr = [[1, 2], [3, 4]]
+        M, g, C = flat2d
+        xact.Tensor("Tf2", ["-fa", "-fb"], M)
+        xact.set_components("Tf2", arr, ["Cf2", "Cf2"])
+        ct = xact.get_components("Tf2", ["Cf2", "Cf2"])
+        assert isinstance(ct, xact.CTensor)
+        assert ct.array == [[1.0, 2.0], [3.0, 4.0]]
+        assert ct.bases == ["Cf2", "Cf2"]
+
+    def test_get_components_vector(self, flat2d):
+        M, g, C = flat2d
+        xact.Tensor("Vf2", ["fa"], M)
+        xact.set_components("Vf2", [3, 7], ["Cf2"])
+        ct = xact.get_components("Vf2", ["Cf2"])
+        assert ct.array == [3.0, 7.0]
+        assert ct.bases == ["Cf2"]
+
+
+# ---------------------------------------------------------------------------
+# component_value
+# ---------------------------------------------------------------------------
+
+
+class TestComponentValue:
+    def test_diagonal_element(self, flat2d):
+        assert xact.component_value("gf2", [1, 1], ["Cf2", "Cf2"]) == pytest.approx(1.0)
+        assert xact.component_value("gf2", [1, 2], ["Cf2", "Cf2"]) == pytest.approx(0.0)
+
+    def test_off_diagonal(self, flat2d):
+        M, g, C = flat2d
+        xact.Tensor("Af2", ["-fa", "-fb"], M)
+        xact.set_components("Af2", [[1, 2], [3, 4]], ["Cf2", "Cf2"])
+        # Julia uses 1-based indexing: [2,1] = row 2 col 1 = 3.0
+        assert xact.component_value("Af2", [2, 1], ["Cf2", "Cf2"]) == pytest.approx(3.0)
+
+
+# ---------------------------------------------------------------------------
+# ctensor_q
+# ---------------------------------------------------------------------------
+
+
+class TestCTensorQ:
+    def test_true_after_set(self, flat2d):
+        assert xact.ctensor_q("gf2", "Cf2", "Cf2") is True
+
+    def test_false_before_set(self, manifold_4d):
+        xact.Tensor("Utest", ["-a", "-b"], manifold_4d)
+        assert xact.ctensor_q("Utest", "B_notset") is False
+
+    def test_exported(self):
+        assert hasattr(xact, "ctensor_q")
+
+
+# ---------------------------------------------------------------------------
+# to_basis / from_basis / trace_basis_dummy
+# ---------------------------------------------------------------------------
+
+
+class TestToBasis:
+    def test_returns_ctensor(self, flat2d):
+        ct = xact.to_basis("gf2[-fa,-fb]", "Cf2")
+        assert isinstance(ct, xact.CTensor)
+        assert ct.bases == ["Cf2", "Cf2"]
+
+    def test_identity_metric(self, flat2d):
+        ct = xact.to_basis("gf2[-fa,-fb]", "Cf2")
+        import math
+
+        # Diagonal [[1,0],[0,1]] — off-diagonals near zero
+        assert math.isclose(ct.array[0][0], 1.0)
+        assert math.isclose(ct.array[0][1], 0.0)
+
+    def test_vector_projection(self, flat2d):
+        M, g, C = flat2d
+        xact.Tensor("Wf2", ["fa"], M)
+        xact.set_components("Wf2", [5, 11], ["Cf2"])
+        ct = xact.to_basis("Wf2[fa]", "Cf2")
+        assert ct.array == pytest.approx([5.0, 11.0])
+
+    def test_texpr_input(self, flat2d):
+        M, g, C = flat2d
+        a, b, *_ = xact.indices(M)
+        gf2 = xact.tensor("gf2")
+        # AppliedTensor with down indices: gf2[-fa,-fb]
+        expr = gf2[-a, -b]
+        ct = xact.to_basis(expr, "Cf2")
+        assert isinstance(ct, xact.CTensor)
+
+
+class TestFromBasis:
+    def test_returns_string(self, flat2d):
+        M, g, C = flat2d
+        xact.Tensor("Pf2", ["-fa"], M)
+        xact.set_components("Pf2", [1, 0], ["Cf2"])
+        result = xact.from_basis("Pf2", ["Cf2"])
+        assert isinstance(result, str)
+        assert len(result) > 0
+
+    def test_exported(self):
+        assert hasattr(xact, "from_basis")
+
+
+class TestTraceBasisDummy:
+    def test_trace_identity(self, flat2d):
+        # Trace of 2x2 identity = 2
+        M, g, C = flat2d
+        xact.Tensor("Qf2", ["-fa", "fa"], M)
+        xact.set_components("Qf2", [[1, 0], [0, 1]], ["Cf2", "Cf2"])
+        ct = xact.trace_basis_dummy("Qf2", ["Cf2", "Cf2"])
+        assert isinstance(ct, xact.CTensor)
+        import math
+
+        assert math.isclose(float(ct.array), 2.0)
+
+    def test_exported(self):
+        assert hasattr(xact, "trace_basis_dummy")
+
+
+# ---------------------------------------------------------------------------
+# christoffel
+# ---------------------------------------------------------------------------
+
+
+class TestChristoffel:
+    def test_flat_metric_zero(self, flat2d):
+        ct = xact.christoffel("gf2", "Cf2")
+        assert isinstance(ct, xact.CTensor)
+        # All Christoffel symbols of a flat metric are zero
+        import numpy as np
+
+        gamma = np.array(ct.array)
+        assert np.allclose(gamma, 0.0)
+
+    def test_shape(self, flat2d):
+        ct = xact.christoffel("gf2", "Cf2")
+        import numpy as np
+
+        gamma = np.array(ct.array)
+        assert gamma.shape == (2, 2, 2)
+
+    def test_exported(self):
+        assert hasattr(xact, "christoffel")
+
+
+# ---------------------------------------------------------------------------
 # Exported symbols
 # ---------------------------------------------------------------------------
 
@@ -163,3 +355,30 @@ class TestExports:
 
     def test_basis_change_q_exported(self):
         assert hasattr(xact, "basis_change_q")
+
+    def test_ctensor_exported(self):
+        assert hasattr(xact, "CTensor")
+
+    def test_set_components_exported(self):
+        assert hasattr(xact, "set_components")
+
+    def test_get_components_exported(self):
+        assert hasattr(xact, "get_components")
+
+    def test_component_value_exported(self):
+        assert hasattr(xact, "component_value")
+
+    def test_ctensor_q_exported(self):
+        assert hasattr(xact, "ctensor_q")
+
+    def test_to_basis_exported(self):
+        assert hasattr(xact, "to_basis")
+
+    def test_from_basis_exported(self):
+        assert hasattr(xact, "from_basis")
+
+    def test_trace_basis_dummy_exported(self):
+        assert hasattr(xact, "trace_basis_dummy")
+
+    def test_christoffel_exported(self):
+        assert hasattr(xact, "christoffel")

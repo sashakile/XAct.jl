@@ -604,33 +604,86 @@ def basis_change_q(from_basis: str, to_basis: str) -> bool:
     return result is True or str(result).lower() == "true"
 
 
+class CTensor:
+    """A coordinate component tensor — array of component values in a given basis.
+
+    Returned by :func:`get_components`, :func:`to_basis`,
+    :func:`trace_basis_dummy`, and :func:`christoffel`.
+
+    Attributes
+    ----------
+    tensor : str
+        Name of the abstract tensor (e.g. ``"g"``).
+    array : list
+        Component values as a (nested) Python list.
+    bases : list[str]
+        Basis names for each slot.
+    weight : int
+        Tensor density weight (usually 0).
+    """
+
+    def __init__(
+        self,
+        tensor: str,
+        array: list[object],
+        bases: list[str],
+        weight: int = 0,
+    ) -> None:
+        self.tensor = tensor
+        self.array = array
+        self.bases = bases
+        self.weight = weight
+
+    def __repr__(self) -> str:
+        return f"CTensor({self.tensor!r}, bases={self.bases!r})"
+
+
+def _ct_from_julia(ct_jl: Any) -> "CTensor":
+    """Convert a Julia CTensorObj to a Python CTensor."""
+    import numpy as _np  # noqa: PLC0415
+
+    tensor_name = str(ct_jl.tensor).lstrip(":")
+    array = _np.array(ct_jl.array).tolist()
+    bases = [str(b).lstrip(":") for b in ct_jl.bases]
+    weight = int(ct_jl.weight)
+    return CTensor(tensor_name, array, bases, weight)
+
+
 def set_components(
     tensor: str, array: list[object], bases: list[str], *, weight: int = 0
-) -> None:
-    """Set coordinate components of a tensor."""
+) -> "CTensor":
+    """Set coordinate components of a tensor.
+
+    Returns the resulting :class:`CTensor`.
+    """
     jl, _ = _ensure_init()
     arr_jl = _nested_list_to_julia(array)
     bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
-    jl.seval(
+    ct_jl = jl.seval(
         f"XTensor.set_components!(:{tensor}, {arr_jl}, {bases_jl}; weight={weight})"
     )
+    return _ct_from_julia(ct_jl)
 
 
-def get_components(tensor: str, bases: list[str]) -> str:
-    """Return the component array of a tensor as a string."""
+def get_components(tensor: str, bases: list[str]) -> "CTensor":
+    """Return the component array of a tensor as a :class:`CTensor`."""
     jl, _ = _ensure_init()
     bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
-    result = jl.seval(f"string(XTensor.get_components(:{tensor}, {bases_jl}).array)")
-    return str(result)
+    ct_jl = jl.seval(f"XTensor.get_components(:{tensor}, {bases_jl})")
+    return _ct_from_julia(ct_jl)
 
 
-def component_value(tensor: str, indices: list[int], bases: list[str]) -> str:
+def component_value(tensor: str, indices: list[int], bases: list[str]) -> Any:
     """Return a single component value of a tensor."""
     jl, _ = _ensure_init()
     idx_jl = "[" + ", ".join(str(i) for i in indices) + "]"
     bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
     result = jl.seval(f"XTensor.component_value(:{tensor}, {idx_jl}, {bases_jl})")
-    return str(result)
+    # Try to return as a number; fall back to str
+    try:
+        return float(result)
+    except (TypeError, ValueError):
+        return str(result)
 
 
 def ctensor_q(tensor: str, *bases: str) -> bool:
@@ -641,58 +694,60 @@ def ctensor_q(tensor: str, *bases: str) -> bool:
     return result is True or str(result).lower() == "true"
 
 
-def to_basis(expr: str, basis: str) -> str:
-    """Project an abstract expression into a coordinate basis."""
+def to_basis(expr: str | Any, basis: str) -> "CTensor":
+    """Project an abstract expression into a coordinate basis.
+
+    Accepts a string expression or a typed :class:`~xact.expr.TExpr`.
+    Returns a :class:`CTensor` with the component array.
+    """
+    from xact.expr import TExpr  # noqa: PLC0415
+
+    if isinstance(expr, TExpr):
+        expr = str(expr)
     jl, _ = _ensure_init()
-    result = jl.seval(f'string(XTensor.ToBasis("{_jl_escape(expr)}", :{basis}).array)')
-    return str(result)
+    ct_jl = jl.seval(f'XTensor.ToBasis("{_jl_escape(expr)}", :{basis})')
+    return _ct_from_julia(ct_jl)
 
 
 def from_basis(tensor: str, bases: list[str]) -> str:
-    """Convert component tensor back to abstract index notation."""
+    """Convert component tensor back to abstract index notation.
+
+    Returns the abstract tensor expression as a string.
+    """
     jl, _ = _ensure_init()
     bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
     result = jl.seval(f"XTensor.FromBasis(:{tensor}, {bases_jl})")
     return str(result)
 
 
-def trace_basis_dummy(tensor: str, bases: list[str]) -> str:
-    """Trace dummy indices in component tensor."""
+def trace_basis_dummy(tensor: str, bases: list[str]) -> "CTensor":
+    """Trace dummy indices in component tensor.
+
+    Returns a :class:`CTensor` with the traced component array.
+    """
     jl, _ = _ensure_init()
     bases_jl = "Symbol[" + ", ".join(f":{b}" for b in bases) + "]"
-    result = jl.seval(f"string(XTensor.TraceBasisDummy(:{tensor}, {bases_jl}).array)")
-    return str(result)
+    ct_jl = jl.seval(f"XTensor.TraceBasisDummy(:{tensor}, {bases_jl})")
+    return _ct_from_julia(ct_jl)
 
 
 def christoffel(
     metric: str, basis: str, *, metric_derivs: list[object] | None = None
-) -> str:
+) -> "CTensor":
     """Compute Christoffel symbols from metric components.
 
-    Returns the component array of the Christoffel tensor as a string.
+    Returns a :class:`CTensor` of shape ``(dim, dim, dim)`` representing
+    Γ^a_{bc}.
     """
     jl, _ = _ensure_init()
     if metric_derivs is not None:
         dg_jl = _nested_list_to_julia(metric_derivs)
-        jl.seval(f"XTensor.christoffel!(:{metric}, :{basis}; metric_derivs={dg_jl})")
+        ct_jl = jl.seval(
+            f"XTensor.christoffel!(:{metric}, :{basis}; metric_derivs={dg_jl})"
+        )
     else:
-        jl.seval(f"XTensor.christoffel!(:{metric}, :{basis})")
-    christoffel_name = jl.seval(
-        f"""begin
-            local _cd = nothing
-            for (cd, m) in XTensor._metrics
-                if m.name == :{metric}
-                    _cd = cd
-                    break
-                end
-            end
-            string(Symbol("Christoffel" * string(_cd)))
-        end"""
-    )
-    cname = str(christoffel_name)
-    bases_jl = f"Symbol[:{basis}, :{basis}, :{basis}]"
-    result = jl.seval(f"string(XTensor.get_components(:{cname}, {bases_jl}).array)")
-    return str(result)
+        ct_jl = jl.seval(f"XTensor.christoffel!(:{metric}, :{basis})")
+    return _ct_from_julia(ct_jl)
 
 
 # ---------------------------------------------------------------------------
