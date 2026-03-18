@@ -45,6 +45,8 @@ def _ensure_init() -> tuple[Any, Any]:
 def _to_jl_vec(lst: list[str]) -> Any:
     """Convert a Python list of strings to a Julia Vector{String}."""
     jl, _ = _ensure_init()
+    if not lst:
+        return jl.seval("String[]")
     return jl.seval("collect")(lst)
 
 
@@ -235,80 +237,92 @@ class Perturbation:
 # ---------------------------------------------------------------------------
 
 
-def canonicalize(expr: str | Any) -> str:
+def canonicalize(expr: str | Any) -> str | Any:
     """Bring a tensor expression into canonical form.
 
     Uses the Butler-Portugal algorithm to find the lexicographically
     smallest representative under index permutation symmetries.
 
     Accepts either a string expression or a typed expression object
-    (from :mod:`xact.expr`).
+    (from :mod:`xact.expr`).  When the input is a typed expression,
+    the result is also returned as a typed expression.
 
     Example
     -------
     >>> xact.canonicalize("T[-b,-a] - T[-a,-b]")
     '0'
     """
-    from xact.expr import TExpr  # noqa: PLC0415
+    from xact.expr import TExpr, _parse_to_texpr  # noqa: PLC0415
 
-    if isinstance(expr, TExpr):
+    is_typed = isinstance(expr, TExpr)
+    if is_typed:
         expr = str(expr)
     _, mod = _ensure_init()
-    return str(mod.ToCanonical(expr))
+    result = str(mod.ToCanonical(expr))
+    return _parse_to_texpr(result) if is_typed else result
 
 
-def contract(expr: str | Any) -> str:
+def contract(expr: str | Any) -> str | Any:
     """Evaluate metric contractions in a tensor expression.
 
     Accepts either a string expression or a typed expression object.
+    When the input is typed, the result is also a typed expression.
 
     Example
     -------
     >>> xact.contract("V[a] * g[-a,-b]")
     'V[-b]'
     """
-    from xact.expr import TExpr  # noqa: PLC0415
+    from xact.expr import TExpr, _parse_to_texpr  # noqa: PLC0415
 
-    if isinstance(expr, TExpr):
+    is_typed = isinstance(expr, TExpr)
+    if is_typed:
         expr = str(expr)
     _, mod = _ensure_init()
-    return str(mod.Contract(expr))
+    result = str(mod.Contract(expr))
+    return _parse_to_texpr(result) if is_typed else result
 
 
-def simplify(expr: str | Any) -> str:
+def simplify(expr: str | Any) -> str | Any:
     """Iteratively contract and canonicalize until stable.
 
     Accepts either a string expression or a typed expression object.
+    When the input is typed, the result is also a typed expression.
 
     Example
     -------
     >>> xact.simplify("T[-a,-b] * g[a,b]")
     """
-    from xact.expr import TExpr  # noqa: PLC0415
+    from xact.expr import TExpr, _parse_to_texpr  # noqa: PLC0415
 
-    if isinstance(expr, TExpr):
+    is_typed = isinstance(expr, TExpr)
+    if is_typed:
         expr = str(expr)
     _, mod = _ensure_init()
-    return str(mod.Simplify(expr))
+    result = str(mod.Simplify(expr))
+    return _parse_to_texpr(result) if is_typed else result
 
 
-def perturb(expr: str | Any, order: int = 1) -> str:
+def perturb(expr: str | Any, order: int = 1) -> str | Any:
     """Perturb a tensor expression to the given order.
 
     Applies the multinomial Leibniz expansion.
     Accepts either a string expression or a typed expression object.
+    When the input is typed, the result is also a typed expression.
 
     Example
     -------
     >>> xact.perturb("g[-a,-b]", order=1)
     'h[-a,-b]'
     """
-    from xact.expr import TExpr  # noqa: PLC0415
+    from xact.expr import TExpr, _parse_to_texpr  # noqa: PLC0415
 
-    if isinstance(expr, TExpr):
+    is_typed = isinstance(expr, TExpr)
+    if is_typed:
         expr = str(expr)
     _, mod = _ensure_init()
-    return str(mod.perturb(expr, order))
+    result = str(mod.perturb(expr, order))
+    return _parse_to_texpr(result) if is_typed else result
 
 
 def commute_covds(expr: str | Any, covd: str, index1: str, index2: str) -> str:
@@ -341,14 +355,19 @@ def sort_covds(expr: str | Any, covd: str) -> str:
     return str(mod.SortCovDs(expr, covd))
 
 
-def ibp(expr: str | Any, covd: str) -> str:
-    """Integration by parts — move a covariant derivative off a field."""
-    from xact.expr import TExpr  # noqa: PLC0415
+def ibp(expr: str | Any, covd: str) -> str | Any:
+    """Integration by parts — move a covariant derivative off a field.
 
-    if isinstance(expr, TExpr):
+    When the input is a typed expression, the result is also a typed expression.
+    """
+    from xact.expr import TExpr, _parse_to_texpr  # noqa: PLC0415
+
+    is_typed = isinstance(expr, TExpr)
+    if is_typed:
         expr = str(expr)
     _, mod = _ensure_init()
-    return str(mod.IBP(expr, covd))
+    result = str(mod.IBP(expr, covd))
+    return _parse_to_texpr(result) if is_typed else result
 
 
 def total_derivative_q(expr: str, covd: str) -> bool:
@@ -357,10 +376,19 @@ def total_derivative_q(expr: str, covd: str) -> bool:
     return bool(mod.TotalDerivativeQ(expr, covd))
 
 
-def var_d(expr: str, field: str, covd: str) -> str:
-    """Euler-Lagrange variational derivative."""
+def var_d(expr: str | Any, field: str, covd: str) -> str | Any:
+    """Euler-Lagrange variational derivative.
+
+    When the input is a typed expression, the result is also a typed expression.
+    """
+    from xact.expr import TExpr, _parse_to_texpr  # noqa: PLC0415
+
+    is_typed = isinstance(expr, TExpr)
+    if is_typed:
+        expr = str(expr)
     _, mod = _ensure_init()
-    return str(mod.VarD(expr, field, covd))
+    result = str(mod.VarD(expr, field, covd))
+    return _parse_to_texpr(result) if is_typed else result
 
 
 def riemann_simplify(expr: str, covd: str, *, level: int = 6) -> str:

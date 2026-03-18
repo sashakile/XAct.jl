@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 import xact
-from xact.expr import AppliedTensor, DnIdx, TensorHead
+from xact.expr import AppliedTensor, CovDExpr, CovDHead, DnIdx, TExpr, TensorHead
 
 
 @pytest.fixture(autouse=True)
@@ -166,7 +166,7 @@ class TestEngineIntegration:
         V = xact.Tensor("V", ["a"], manifold)
         g = xact.tensor("g")
         typed = xact.contract(V[a] * g[-a, -b])
-        string = xact.contract("V[a] * g[-a,-b]")
+        string = xact.contract("V[a] g[-a,-b]")
         assert typed == string
 
     def test_simplify_typed(self, manifold, metric):
@@ -184,3 +184,100 @@ class TestEngineIntegration:
         typed = xact.perturb(g[-a, -b], order=1)
         string = xact.perturb("g[-a,-b]", order=1)
         assert typed == string
+
+
+class TestCovDHead:
+    def test_lookup(self, manifold, metric):
+        cd = xact.covd("CD")
+        assert isinstance(cd, CovDHead)
+        assert cd.name == "CD"
+
+    def test_unregistered(self, manifold, metric):
+        with pytest.raises(ValueError):
+            xact.covd("NoSuchCovD")
+
+    def test_repr(self, manifold, metric):
+        cd = xact.covd("CD")
+        assert "CovDHead" in repr(cd)
+
+    def test_getitem_call_creates_covdexpr(self, manifold, metric):
+        a, b, *_ = xact.indices(manifold)
+        T = xact.Tensor("T", ["-a"], manifold)
+        cd = xact.covd("CD")
+        expr = cd[-b](T[-a])
+        assert isinstance(expr, CovDExpr)
+
+    def test_str(self, manifold, metric):
+        a, b, *_ = xact.indices(manifold)
+        T = xact.Tensor("T", ["-a"], manifold)
+        cd = xact.covd("CD")
+        assert str(cd[-b](T[-a])) == "CD[-b][T[-a]]"
+
+    def test_exported_from_xact(self, manifold, metric):
+        assert hasattr(xact, "covd")
+        assert hasattr(xact, "CovDHead")
+        assert hasattr(xact, "CovDExpr")
+
+
+class TestRoundTrip:
+    def test_canonicalize_returns_texpr(self, manifold, metric):
+        a, b, *_ = xact.indices(manifold)
+        g = xact.tensor("g")
+        result = xact.canonicalize(g[-a, -b])
+        assert isinstance(result, TExpr)
+
+    def test_canonicalize_zero_typed(self, manifold, metric):
+        a, b, *_ = xact.indices(manifold)
+        T = xact.Tensor("T", ["-a", "-b"], manifold, symmetry="Symmetric[{-a,-b}]")
+        result = xact.canonicalize(T[-b, -a] - T[-a, -b])
+        assert result == "0"
+
+    def test_contract_returns_texpr(self, manifold, metric):
+        a, b, *_ = xact.indices(manifold)
+        V = xact.Tensor("V", ["a"], manifold)
+        g = xact.tensor("g")
+        result = xact.contract(V[a] * g[-a, -b])
+        assert isinstance(result, TExpr)
+        assert result == "V[-b]"
+
+    def test_simplify_returns_texpr(self, manifold, metric):
+        a, b, *_ = xact.indices(manifold)
+        g = xact.tensor("g")
+        result = xact.simplify(g[-a, -b])
+        assert isinstance(result, TExpr)
+
+    def test_string_input_still_string(self, manifold, metric):
+        result = xact.canonicalize("g[-a,-b]")
+        assert isinstance(result, str)
+
+    def test_texpr_result_eq_string_result(self, manifold, metric):
+        a, b, *_ = xact.indices(manifold)
+        V = xact.Tensor("V", ["a"], manifold)
+        g = xact.tensor("g")
+        typed = xact.contract(V[a] * g[-a, -b])
+        string = xact.contract("V[a] g[-a,-b]")
+        assert typed == string
+
+    def test_perturb_returns_texpr(self, manifold, metric):
+        a, b, *_ = xact.indices(manifold)
+        h = xact.Tensor("h", ["-a", "-b"], manifold, symmetry="Symmetric[{-a,-b}]")
+        xact.Perturbation(h, metric, order=1)
+        g = xact.tensor("g")
+        result = xact.perturb(g[-a, -b], order=1)
+        assert isinstance(result, TExpr)
+
+    def test_ibp_returns_texpr(self, manifold, metric):
+        a, b, *_ = xact.indices(manifold)
+        phi = xact.Tensor("phi", [], manifold)
+        cd = xact.covd("CD")
+        expr = cd[-a](cd[a](phi[()]))
+        result = xact.ibp(expr, "CD")
+        assert isinstance(result, TExpr)
+
+    def test_var_d_returns_texpr(self, manifold, metric):
+        a, b, *_ = xact.indices(manifold)
+        phi = xact.Tensor("phi", [], manifold)
+        cd = xact.covd("CD")
+        expr = cd[-a](cd[a](phi[()]))
+        result = xact.var_d(expr, "phi", "CD")
+        assert isinstance(result, TExpr)

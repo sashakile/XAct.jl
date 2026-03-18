@@ -49,9 +49,12 @@ from xact.api import (  # noqa: E402, F401
 )
 from xact.expr import (  # noqa: E402, F401
     AppliedTensor,
+    CovDExpr,
+    CovDHead,
     DnIdx,
     Idx,
     TensorHead,
+    covd,
     indices,
     tensor,
 )
@@ -78,6 +81,9 @@ __all__ = [
     "DnIdx",
     "TensorHead",
     "AppliedTensor",
+    "CovDHead",
+    "CovDExpr",
     "indices",
     "tensor",
+    "covd",
 ]
