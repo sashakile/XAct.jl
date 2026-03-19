@@ -1730,8 +1730,8 @@ function PermToInv(rperm::RPerm; db::InvarDB)::RInv
     if isempty(perm_to_index)
         throw(
             ArgumentError(
-                "Case $case_key not found in $label. " *
-                "Load the database with LoadInvarDB first.",
+                "Case $case_key has no entries in the $label dispatch table. " *
+                "The database may not include this case, or call LoadInvarDB to reload.",
             ),
         )
     end
@@ -1743,8 +1743,9 @@ function PermToInv(rperm::RPerm; db::InvarDB)::RInv
     if !haskey(perm_to_index, lookup_key)
         throw(
             ArgumentError(
-                "Permutation $(rperm.perm) not found in $label for case $case_key. " *
-                "The permutation may not be in canonical form, or the database may be incomplete.",
+                "Permutation $(rperm.perm) not found in $label for case $case_key " *
+                "($(length(perm_to_index)) entries loaded). " *
+                "Ensure the permutation is in canonical form.",
             ),
         )
     end
@@ -1772,8 +1773,8 @@ function InvToPerm(rinv::RInv; db::InvarDB)::RPerm
     if !haskey(perm_table, case_key)
         throw(
             ArgumentError(
-                "Case $case_key not found in $label. " *
-                "Load the database with LoadInvarDB first.",
+                "Case $case_key has no entries in the $label dispatch table. " *
+                "The database may not include this case, or call LoadInvarDB to reload.",
             ),
         )
     end
@@ -1832,6 +1833,8 @@ function InvSimplify(
     db::Union{InvarDB,Nothing}=nothing,
     dim::Union{Int,Nothing}=nothing,
 )
+    (1 <= level <= 6) ||
+        throw(ArgumentError("InvSimplify: level must be in 1..6, got $level"))
     _db = (db === nothing ? _ensure_invar_db() : db)::InvarDB
     return InvSimplify(Tuple{Rational{Int},RInv}[(1 // 1, rinv)], level; db=_db, dim=dim)
 end
@@ -1850,7 +1853,12 @@ function InvSimplify(
     db::Union{InvarDB,Nothing}=nothing,
     dim::Union{Int,Nothing}=nothing,
 )
+    (1 <= level <= 6) ||
+        throw(ArgumentError("InvSimplify: level must be in 1..6, got $level"))
     isempty(expr) && return expr
+    level >= 5 &&
+        dim === nothing &&
+        throw(ArgumentError("InvSimplify: dim parameter required for level >= 5"))
     _db = (db === nothing ? _ensure_invar_db() : db)::InvarDB
 
     # Validate: dual invariants require dim == 4
@@ -1974,6 +1982,8 @@ function RiemannSimplify(
     db::Union{InvarDB,Nothing}=nothing,
     dim::Union{Int,Nothing}=nothing,
 )::String
+    (1 <= level <= 6) ||
+        throw(ArgumentError("RiemannSimplify: level must be in 1..6, got $level"))
     _db = (db === nothing ? _ensure_invar_db() : db)::InvarDB
     s = String(strip(expr))
     (s == "0" || isempty(s)) && return "0"

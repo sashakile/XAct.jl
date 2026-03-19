@@ -304,18 +304,48 @@ collision.  Analogous to Wolfram `ValidateSymbolInSession`.
 """
 function ValidateSymbolInSession(name::Symbol)
     sname = string(name)
-    ManifoldQ(name) &&
-        error("ValidateSymbolInSession: \"$sname\" already used as a manifold")
-    VBundleQ(name) &&
-        error("ValidateSymbolInSession: \"$sname\" already used as a vector bundle")
-    MetricQ(name) && error("ValidateSymbolInSession: \"$sname\" already used as a metric")
-    TensorQ(name) && error("ValidateSymbolInSession: \"$sname\" already used as a tensor")
-    CovDQ(name) &&
-        error("ValidateSymbolInSession: \"$sname\" already used as a covariant derivative")
-    PerturbationQ(name) &&
-        error("ValidateSymbolInSession: \"$sname\" already used as a perturbation")
-    BasisQ(name) && error("ValidateSymbolInSession: \"$sname\" already used as a basis")
-    ChartQ(name) && error("ValidateSymbolInSession: \"$sname\" already used as a chart")
+    hint = " Call reset_state!() to clear all definitions or choose a different name."
+    ManifoldQ(name) && throw(
+        ArgumentError(
+            "ValidateSymbolInSession: \"$sname\" already used as a manifold." * hint
+        ),
+    )
+    VBundleQ(name) && throw(
+        ArgumentError(
+            "ValidateSymbolInSession: \"$sname\" already used as a vector bundle." * hint,
+        ),
+    )
+    MetricQ(name) && throw(
+        ArgumentError(
+            "ValidateSymbolInSession: \"$sname\" already used as a metric." * hint
+        ),
+    )
+    TensorQ(name) && throw(
+        ArgumentError(
+            "ValidateSymbolInSession: \"$sname\" already used as a tensor." * hint
+        ),
+    )
+    CovDQ(name) && throw(
+        ArgumentError(
+            "ValidateSymbolInSession: \"$sname\" already used as a covariant derivative." *
+            hint,
+        ),
+    )
+    PerturbationQ(name) && throw(
+        ArgumentError(
+            "ValidateSymbolInSession: \"$sname\" already used as a perturbation." * hint
+        ),
+    )
+    BasisQ(name) && throw(
+        ArgumentError(
+            "ValidateSymbolInSession: \"$sname\" already used as a basis." * hint
+        ),
+    )
+    ChartQ(name) && throw(
+        ArgumentError(
+            "ValidateSymbolInSession: \"$sname\" already used as a chart." * hint
+        ),
+    )
     nothing
 end
 ValidateSymbolInSession(name::AbstractString) = ValidateSymbolInSession(Symbol(name))
@@ -537,7 +567,11 @@ FermionicQ(s::AbstractString) = FermionicQ(Symbol(s))
 
 function Dimension(s::Symbol)
     m = get(_manifolds, s, nothing)
-    isnothing(m) && error("Dimension: manifold $s not defined")
+    isnothing(m) && throw(
+        ArgumentError(
+            "Dimension: manifold $s not defined. Register it with def_manifold!(:$s, dim, indices).",
+        ),
+    )
     m.dimension
 end
 Dimension(s::AbstractString) = Dimension(Symbol(s))
@@ -942,18 +976,20 @@ function def_basis!(
 
     # Validate vbundle exists
     vb = get(_vbundles, vbundle, nothing)
-    isnothing(vb) && error("def_basis!: vector bundle $vbundle not defined")
+    isnothing(vb) && throw(ArgumentError("def_basis!: vector bundle $vbundle not defined"))
 
     # Validate cnumbers length matches dimension
     manifold = _manifolds[vb.manifold]
     dim = manifold.dimension
-    length(cnumbers) == dim || error(
-        "def_basis!: cnumbers length $(length(cnumbers)) != dimension $dim of $vbundle"
+    length(cnumbers) == dim || throw(
+        ArgumentError(
+            "def_basis!: cnumbers length $(length(cnumbers)) != dimension $dim of $vbundle",
+        ),
     )
 
     # Validate cnumbers are distinct integers
     length(unique(cnumbers)) == length(cnumbers) ||
-        error("def_basis!: cnumbers must be distinct")
+        throw(ArgumentError("def_basis!: cnumbers must be distinct"))
 
     # Auto-create parallel derivative name
     pd_name = Symbol("PD" * string(name))
@@ -995,15 +1031,17 @@ function def_chart!(
 
     # Validate manifold exists
     m = get(_manifolds, manifold, nothing)
-    isnothing(m) && error("def_chart!: manifold $manifold not defined")
+    isnothing(m) && throw(ArgumentError("def_chart!: manifold $manifold not defined"))
 
     dim = m.dimension
-    length(cnumbers) == dim ||
-        error("def_chart!: cnumbers length $(length(cnumbers)) != dimension $dim")
-    length(scalars) == dim ||
-        error("def_chart!: scalars length $(length(scalars)) != dimension $dim")
+    length(cnumbers) == dim || throw(
+        ArgumentError("def_chart!: cnumbers length $(length(cnumbers)) != dimension $dim"),
+    )
+    length(scalars) == dim || throw(
+        ArgumentError("def_chart!: scalars length $(length(scalars)) != dimension $dim")
+    )
     length(unique(cnumbers)) == length(cnumbers) ||
-        error("def_chart!: cnumbers must be distinct")
+        throw(ArgumentError("def_chart!: cnumbers must be distinct"))
 
     # Create the coordinate basis on the tangent bundle
     tb_name = Symbol("Tangent" * string(manifold))
@@ -1236,6 +1274,8 @@ function _parse_sum!(terms::Vector{TermAST}, s::AbstractString)
             pos += 1
         elseif c == ')'
             paren_depth -= 1
+            paren_depth < 0 &&
+                error("_parse_sum!: unbalanced parentheses — extra ')' in expression")
             pos += 1
         elseif (c == '+' || c == '-') && pos > 1 && paren_depth == 0
             # Top-level +/-: end current term
@@ -1250,6 +1290,9 @@ function _parse_sum!(terms::Vector{TermAST}, s::AbstractString)
             pos += 1
         end
     end
+
+    paren_depth != 0 &&
+        error("_parse_sum!: unbalanced parentheses — unclosed '(' in expression")
 
     # Last chunk
     chunk = strip(s[current_start:end])
@@ -1348,8 +1391,7 @@ function _parse_monomial(s::AbstractString)::Vector{FactorAST}
         end
 
         # Must be followed by '['
-        pos > n ||
-            s[pos] != '[' &&
+        (pos > n || s[pos] != '[') &&
             error("Expected '[' after tensor name $tensor_name at position $pos in: $s")
         pos += 1  # consume '['
 
@@ -1584,11 +1626,17 @@ function CommuteCovDs(
 
     # Lookup tensor to find its manifold
     tensor_sym = Symbol(tensor_name)
-    haskey(_tensors, tensor_sym) ||
-        error("CommuteCovDs: tensor $tensor_name not registered")
+    haskey(_tensors, tensor_sym) || throw(
+        ArgumentError(
+            "CommuteCovDs: tensor $tensor_name not registered. Register it with def_tensor!(:$tensor_name, indices, manifold).",
+        ),
+    )
     manifold_sym = _tensors[tensor_sym].manifold
-    haskey(_manifolds, manifold_sym) ||
-        error("CommuteCovDs: manifold $manifold_sym not found")
+    haskey(_manifolds, manifold_sym) || throw(
+        ArgumentError(
+            "CommuteCovDs: manifold $manifold_sym not found. Register it with def_manifold!(:$manifold_sym, dim, indices).",
+        ),
+    )
     manifold_indices = _manifolds[manifold_sym].index_labels
 
     # Riemann tensor name for this CovD
@@ -2595,17 +2643,23 @@ Raises an error if either tensor is unknown, `order < 1`, or the perturbation
 is already defined.
 """
 function def_perturbation!(tensor::Symbol, background::Symbol, order::Int)::PerturbationObj
-    order < 1 && error("def_perturbation!: order must be ≥ 1, got $order")
+    order < 1 && throw(ArgumentError("def_perturbation!: order must be ≥ 1, got $order"))
     PerturbationQ(tensor) &&
-        error("def_perturbation!: perturbation $tensor already defined")
-    haskey(_tensors, tensor) ||
-        error("def_perturbation!: tensor $tensor not registered — call def_tensor! first")
-    haskey(_tensors, background) ||
-        error("def_perturbation!: background tensor $background not registered")
+        throw(ArgumentError("def_perturbation!: perturbation $tensor already defined"))
+    haskey(_tensors, tensor) || throw(
+        ArgumentError(
+            "def_perturbation!: tensor $tensor not registered — call def_tensor! first"
+        ),
+    )
+    haskey(_tensors, background) || throw(
+        ArgumentError("def_perturbation!: background tensor $background not registered")
+    )
     for (existing_name, existing_p) in _perturbations
         if existing_p.background == background && existing_p.order == order
-            error(
-                "def_perturbation!: order-$order perturbation for $background already registered as $existing_name",
+            throw(
+                ArgumentError(
+                    "def_perturbation!: order-$order perturbation for $background already registered as $existing_name",
+                ),
             )
         end
     end
@@ -2691,8 +2745,9 @@ PerturbationOrder(:Pertg2)   # → 2
 """
 function PerturbationOrder(tensor_name::Symbol)::Int
     p = get(_perturbations, tensor_name, nothing)
-    isnothing(p) &&
-        error("PerturbationOrder: $tensor_name is not a registered perturbation")
+    isnothing(p) && throw(
+        ArgumentError("PerturbationOrder: $tensor_name is not a registered perturbation"),
+    )
     p.order
 end
 
@@ -2719,7 +2774,11 @@ function PerturbationAtOrder(background::Symbol, order::Int)::Symbol
             return pname
         end
     end
-    error("PerturbationAtOrder: no order-$order perturbation registered for $background")
+    throw(
+        ArgumentError(
+            "PerturbationAtOrder: no order-$order perturbation registered for $background"
+        ),
+    )
 end
 
 function PerturbationAtOrder(background::AbstractString, order::Int)::Symbol
@@ -2743,7 +2802,12 @@ function perturb(tensor_name::Symbol, order::Int)::String
             return String(pname)
         end
     end
-    error("perturb: no order-$order perturbation registered for $tensor_name")
+    throw(
+        ArgumentError(
+            "perturb: no order-$order perturbation registered for $tensor_name. " *
+            "Register with def_perturbation!(:pert_name, :$tensor_name, $order).",
+        ),
+    )
 end
 
 """
@@ -2822,7 +2886,7 @@ function perturb(expr::AbstractString, order::Int)::String
             perturbed_name = perturb(tname, order)
             return coeff == "" ? perturbed_name : "$coeff $perturbed_name"
         catch e
-            e isa ErrorException || rethrow(e)
+            e isa ArgumentError || rethrow(e)
             return "0"
         end
     end
@@ -4498,6 +4562,7 @@ function ToBasis(expr_str::AbstractString, basis::Symbol)::CTensorObj
     # Evaluate each term
     term_results = [_tobasis_term(t, basis, dim) for t in terms]
 
+    isempty(term_results) && error("ToBasis: no valid terms after evaluation")
     # All terms must have same number of free indices
     n_free = length(term_results[1][2])
     for (i, (_, free)) in enumerate(term_results)

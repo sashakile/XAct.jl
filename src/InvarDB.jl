@@ -476,8 +476,7 @@ function read_invar_perms(filepath::String; degree::Int=0)
     result = Dict{Int,Vector{Int}}()
 
     if !isfile(filepath)
-        @warn "Invar database file not found" filepath
-        return result
+        error("read_invar_perms: database file not found: $filepath")
     end
 
     lines = readlines(filepath)
@@ -505,8 +504,7 @@ function read_invar_rules(filepath::String)
     result = Dict{Int,Vector{Tuple{Int,Rational{Int}}}}()
 
     if !isfile(filepath)
-        @warn "Invar database file not found" filepath
-        return result
+        error("read_invar_rules: database file not found: $filepath")
     end
 
     lines = readlines(filepath)
@@ -571,8 +569,11 @@ function LoadInvarDB(dbdir::String; dim::Int=4)
     end
 
     if !isdir(riemann_dir)
-        @warn "Riemann database directory not found" riemann_dir
-        return InvarDB(perms, dual_perms, rules, dual_rules)
+        expected = joinpath(dbdir, "Riemann")
+        error(
+            "LoadInvarDB: Riemann database directory not found: $riemann_dir\n" *
+            "Ensure the Invar database is installed under: $expected",
+        )
     end
 
     # Collect all non-dual cases

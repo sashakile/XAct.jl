@@ -587,10 +587,20 @@ function ValidateSymbol(name::Symbol)
     sname = string(name)
     if haskey(_symbol_registry, sname)
         pkg = _symbol_registry[sname]
-        error("ValidateSymbol: \"$sname\" already used by $pkg")
+        throw(
+            ArgumentError(
+                "ValidateSymbol: \"$sname\" already used by $pkg." *
+                " Call reset_state!() to clear all definitions or choose a different name.",
+            ),
+        )
     end
     if isdefined(Base, name) && Base.isexported(Base, name)
-        error("ValidateSymbol: \"$sname\" is a Julia Base export")
+        throw(
+            ArgumentError(
+                "ValidateSymbol: \"$sname\" is a Julia Base export." *
+                " Call reset_state!() to clear all definitions or choose a different name.",
+            ),
+        )
     end
     nothing
 end

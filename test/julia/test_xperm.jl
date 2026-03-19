@@ -331,4 +331,18 @@ using xAct.XPerm
         @test pos3 == 3
         @test neg3 == 3
     end
+
+    @testset "YoungTableau empty partition" begin
+        tab = YoungTableau(Int[], Int[])
+        @test_throws ErrorException XPerm._young_columns(tab)
+    end
+
+    @testset "Cycles input validation" begin
+        # Duplicate elements in a cycle
+        @test_throws ErrorException Cycles([1, 2, 2])
+
+        # Valid cycles should work fine
+        @test Cycles([1, 2, 3]) == [2, 3, 1]
+        @test Cycles([1, 2], [3, 4]) == [2, 1, 4, 3]
+    end
 end

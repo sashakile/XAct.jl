@@ -179,8 +179,14 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         for stmt in self._RESET_STMTS:
             try:
                 self._jl.seval(stmt)
-            except Exception:
-                pass  # teardown must not raise
+            except Exception:  # noqa: BLE001 — teardown must not raise
+                import warnings  # noqa: PLC0415
+
+                warnings.warn(
+                    f"JuliaAdapter.teardown: failed to execute '{stmt}'",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
 
     # ------------------------------------------------------------------
     # Execution
@@ -312,8 +318,15 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             if action == "RiemannSimplify":
                 return self._riemann_simplify(args)
         except Exception as exc:
+            import traceback as _tb  # noqa: PLC0415
+
+            tb_str = _tb.format_exc()
             return Result(
-                status="error", type="", repr="", normalized="", error=str(exc)
+                status="error",
+                type="",
+                repr="",
+                normalized="",
+                error=f"{exc}\n{tb_str}",
             )
         return Result(
             status="error",
@@ -1252,7 +1265,7 @@ def _bind_wl_atoms(jl: Any, julia_expr: str) -> None:
                 jl.seval(f'Main.eval(:(global {sym} = Symbol("{julia_sym}")))')
             else:
                 jl.seval(f"Main.eval(:(global {sym} = :{sym}))")
-        except Exception:
+        except Exception:  # noqa: BLE001 — binding failure is non-fatal
             pass  # If binding fails, skip — symbol may already be defined correctly
 
 

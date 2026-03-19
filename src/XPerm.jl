@@ -123,6 +123,8 @@ function inverse_perm(p::Vector{Int})
     n = length(p)
     inv_p = similar(p)
     for i in 1:n
+        (1 <= p[i] <= n) ||
+            error("inverse_perm: element p[$i]=$(p[i]) out of range [1, $n]")
         inv_p[p[i]] = i
     end
     inv_p
@@ -915,7 +917,10 @@ function _canonicalize_riemann(
         end
     end
 
-    vals = something(best_vals)
+    isnothing(best_vals) && error(
+        "_canonicalize_riemann: no valid Riemann symmetry element found (internal error)",
+    )
+    vals = best_vals
     new_indices = copy(indices)
     for (m, s) in enumerate([i, j, k, l])
         new_indices[s] = vals[m]
@@ -946,7 +951,13 @@ function _canonicalize_young(
     slot_vals = [indices[s] for s in slots]
     slot_bare = [_bare_label(v) for v in slot_vals]
     for col in _young_columns(tab)
-        col_bare = [slot_bare[findfirst(==(s), slots)] for s in col]
+        col_bare = [
+            let idx = findfirst(==(s), slots)
+                isnothing(idx) &&
+                    error("_canonicalize_young: slot $s not found in slots $slots")
+                slot_bare[idx]
+            end for s in col
+        ]
         if length(unique(col_bare)) < length(col_bare)
             return (String[], 0)
         end
@@ -977,7 +988,9 @@ function _canonicalize_young(
         end
     end
 
-    vals = something(best_vals)
+    isnothing(best_vals) &&
+        error("_canonicalize_young: no valid Young symmetry element found (internal error)")
+    vals = best_vals
     new_indices = copy(indices)
     for (i, s) in enumerate(slots)
         new_indices[s] = vals[i]
@@ -1075,7 +1088,8 @@ function _group_elem_eq(a, b)
             if val isa Vector{Int}
                 return _perm_eq_normalized(val, b)
             end
-        catch
+        catch e
+            e isa UndefVarError || rethrow()
         end
     end
     if b isa String && a isa Vector{Int}
@@ -1084,7 +1098,8 @@ function _group_elem_eq(a, b)
             if val isa Vector{Int}
                 return _perm_eq_normalized(a, val)
             end
-        catch
+        catch e
+            e isa UndefVarError || rethrow()
         end
     end
     a == b
@@ -1126,6 +1141,16 @@ function Cycles(cycles::AbstractVector{<:Integer}...)
     nonempty = [c for c in cycles if !isempty(c)]
     isempty(nonempty) && return Int[]
     n = maximum(maximum(c) for c in nonempty)
+    # Validate cycle elements
+    for cyc in nonempty
+        for x in cyc
+            (1 <= x <= n) || error("Cycles: element $x out of valid range [1, $n]")
+        end
+        if length(unique(cyc)) != length(cyc)
+            dups = [x for x in cyc if count(==(x), cyc) > 1]
+            error("Cycles: duplicate elements in cycle: $(unique(dups))")
+        end
+    end
     img = collect(1:n)
     for cyc in nonempty
         k = length(cyc)
@@ -1231,6 +1256,7 @@ function Orbit(pt::Integer, sgs::StrongGenSet)
 end
 
 function _orbit_bfs(root::Int, GS::Vector{Vector{Int}}, n::Int)
+    (1 <= root <= n) || error("_orbit_bfs: root=$root outside valid range [1, $n]")
     in_orbit = falses(n)
     in_orbit[root] = true
     queue = [root]
@@ -1704,7 +1730,8 @@ function _get_main_named_perms()::Dict{Vector{Int},String}
             end,
             names(Main; all=true),
         )
-    catch
+    catch e
+        e isa ErrorException || e isa UndefVarError || rethrow()
         Symbol[]
     end
     for nm in all_nms
@@ -1718,7 +1745,8 @@ function _get_main_named_perms()::Dict{Vector{Int},String}
             end
             key = n == 0 ? Int[] : val[1:n]
             haskey(lookup, key) || (lookup[key] = String(nm))
-        catch
+        catch e
+            e isa UndefVarError || e isa ErrorException || rethrow()
         end
     end
     lookup
@@ -1945,6 +1973,7 @@ Return the columns of a YoungTableau as lists of slot positions.
 Column j contains tab.filling[i][j] for each row i that has ≥ j elements.
 """
 function _young_columns(tab::YoungTableau)::Vector{Vector{Int}}
+    isempty(tab.partition) && error("_young_columns: empty partition in YoungTableau")
     ncols = tab.partition[1]
     cols = [Int[] for _ in 1:ncols]
     for row in tab.filling

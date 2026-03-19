@@ -687,9 +687,8 @@ using xAct
                 isfile(tmpfile) && rm(tmpfile)
             end
 
-            # Non-existent file returns empty dict
-            result2 = read_invar_perms("/nonexistent/path")
-            @test isempty(result2)
+            # Non-existent file throws ErrorException
+            @test_throws ErrorException read_invar_perms("/nonexistent/path")
         end
 
         # ============================================================
@@ -713,9 +712,8 @@ using xAct
                 isfile(tmpfile) && rm(tmpfile)
             end
 
-            # Non-existent file returns empty dict
-            result2 = read_invar_rules("/nonexistent/path")
-            @test isempty(result2)
+            # Non-existent file throws ErrorException
+            @test_throws ErrorException read_invar_rules("/nonexistent/path")
         end
 
         # ============================================================
@@ -786,10 +784,7 @@ using xAct
         end
 
         @testset "LoadInvarDB missing directory" begin
-            db = LoadInvarDB("/nonexistent/dbdir")
-            @test db isa InvarDB
-            @test isempty(db.perms)
-            @test isempty(db.dual_perms)
+            @test_throws ErrorException LoadInvarDB("/nonexistent/dbdir")
         end
 
         # ============================================================
@@ -801,19 +796,25 @@ using xAct
             xAct.XInvar._reset_invar_db!()
             @test xAct.XInvar._invar_db === nothing
 
-            # _ensure_invar_db with nonexistent path creates an empty DB
-            db = xAct.XInvar._ensure_invar_db("/nonexistent")
-            @test db isa InvarDB
-            @test xAct.XInvar._invar_db !== nothing
-            @test xAct.XInvar._invar_db === db
+            # _ensure_invar_db with a temp dir containing a Riemann subdirectory
+            tmpdir = mktempdir()
+            try
+                mkpath(joinpath(tmpdir, "Riemann"))
+                db = xAct.XInvar._ensure_invar_db(tmpdir)
+                @test db isa InvarDB
+                @test xAct.XInvar._invar_db !== nothing
+                @test xAct.XInvar._invar_db === db
 
-            # Calling again returns the same cached instance
-            db2 = xAct.XInvar._ensure_invar_db("/nonexistent")
-            @test db2 === db
+                # Calling again returns the same cached instance
+                db2 = xAct.XInvar._ensure_invar_db(tmpdir)
+                @test db2 === db
 
-            # Reset clears it
-            xAct.XInvar._reset_invar_db!()
-            @test xAct.XInvar._invar_db === nothing
+                # Reset clears it
+                xAct.XInvar._reset_invar_db!()
+                @test xAct.XInvar._invar_db === nothing
+            finally
+                rm(tmpdir; recursive=true)
+            end
         end
 
         # ============================================================
@@ -821,13 +822,38 @@ using xAct
         # ============================================================
 
         @testset "reset_state! clears InvarDB" begin
-            # Load a DB
-            xAct.XInvar._ensure_invar_db("/nonexistent")
+            # Load a DB using a temp dir with Riemann subdirectory
+            tmpdir = mktempdir()
+            mkpath(joinpath(tmpdir, "Riemann"))
+            xAct.XInvar._ensure_invar_db(tmpdir)
+            rm(tmpdir; recursive=true)
             @test xAct.XInvar._invar_db !== nothing
 
             # reset_state! should clear it
             xAct.reset_state!()
             @test xAct.XInvar._invar_db === nothing
+        end
+
+        @testset "RiemannSimplify input validation" begin
+            xAct.XInvar._reset_invar_db!()
+            # Invalid level
+            @test_throws ArgumentError RiemannSimplify(
+                "RiemannCD[-a,-b,-c,-d]", :g; covd=:CD, level=0
+            )
+            @test_throws ArgumentError RiemannSimplify(
+                "RiemannCD[-a,-b,-c,-d]", :g; covd=:CD, level=7
+            )
+        end
+
+        @testset "InvSimplify level validation" begin
+            @test_throws ArgumentError InvSimplify(RInv(:g, InvariantCase([0]), 1), 0)
+            @test_throws ArgumentError InvSimplify(RInv(:g, InvariantCase([0]), 1), 7)
+        end
+
+        @testset "InvSimplify dim required for level >= 5" begin
+            expr = Tuple{Rational{Int},RInv}[(1 // 1, RInv(:g, InvariantCase([0]), 1))]
+            @test_throws ArgumentError InvSimplify(expr, 5; dim=nothing)
+            @test_throws ArgumentError InvSimplify(expr, 6; dim=nothing)
         end
     end
 
@@ -1671,13 +1697,10 @@ using xAct
             @test result[1] == (1 // 2, RInv(:CD, InvariantCase([0, 0]), 1))
         end
 
-        @testset "level 5: skipped when dim=nothing" begin
+        @testset "level 5: throws when dim=nothing" begin
             db = _make_simplify_db()
             rinv = RInv(:CD, InvariantCase([0, 0]), 2)
-            result = InvSimplify(rinv, 5; db=db, dim=nothing)
-            # No dim → step 5 skipped → inv2 still present (unchanged from step 4)
-            @test length(result) == 1
-            @test result[1] == (1 // 1, rinv)
+            @test_throws ArgumentError InvSimplify(rinv, 5; db=db, dim=nothing)
         end
 
         @testset "level 6: skipped when dim != 4" begin
@@ -1837,8 +1860,8 @@ using xAct
 
         @testset "trivial: zero" begin
             db = _make_riemann_simplify_db()
-            @test RiemannSimplify("0", :g; covd=:CD, db=db) == "0"
-            @test RiemannSimplify("", :g; covd=:CD, db=db) == "0"
+            @test RiemannSimplify("0", :g; covd=:CD, db=db, dim=4) == "0"
+            @test RiemannSimplify("", :g; covd=:CD, db=db, dim=4) == "0"
         end
 
         @testset "RicciScalar passthrough" begin
@@ -1846,7 +1869,7 @@ using xAct
             # Clear dispatch cache from previous tests
             empty!(xAct.XInvar._perm_dispatch)
 
-            result = RiemannSimplify("RicciScalarCD[]", :g; covd=:CD, db=db)
+            result = RiemannSimplify("RicciScalarCD[]", :g; covd=:CD, db=db, dim=4)
             # Should produce a tensor expression for case [0], inv 1
             @test !isempty(result)
             @test result != "0"
@@ -1858,7 +1881,7 @@ using xAct
             empty!(xAct.XInvar._perm_dispatch)
 
             result = RiemannSimplify(
-                "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]", :g; covd=:CD, db=db
+                "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]", :g; covd=:CD, db=db, dim=4
             )
             @test !isempty(result)
             @test result != "0"
@@ -1876,6 +1899,7 @@ using xAct
                 :g;
                 covd=:CD,
                 db=db,
+                dim=4,
             )
             @test result == "0"
         end
@@ -1884,9 +1908,9 @@ using xAct
             db = _make_riemann_simplify_db()
             empty!(xAct.XInvar._perm_dispatch)
 
-            result_no_cr = RiemannSimplify("RicciScalarCD[]", :g; covd=:CD, db=db)
+            result_no_cr = RiemannSimplify("RicciScalarCD[]", :g; covd=:CD, db=db, dim=4)
             result_cr = RiemannSimplify(
-                "RicciScalarCD[]", :g; covd=:CD, db=db, curvature_relations=true
+                "RicciScalarCD[]", :g; covd=:CD, db=db, dim=4, curvature_relations=true
             )
 
             # Without curvature_relations: should have RiemannCD
@@ -2470,7 +2494,7 @@ using xAct
 
             @testset "RiemannSimplify: RicciScalar (order 2)" begin
                 empty!(xAct.XInvar._perm_dispatch)
-                r = RiemannSimplify("RicciScalarCD[]", :g; covd=:CD, db=db)
+                r = RiemannSimplify("RicciScalarCD[]", :g; covd=:CD, db=db, dim=4)
                 @test r != "0"
                 @test contains(r, "RiemannCD[")
             end
@@ -2478,7 +2502,7 @@ using xAct
             @testset "RiemannSimplify: Kretschner (order 4)" begin
                 empty!(xAct.XInvar._perm_dispatch)
                 r = RiemannSimplify(
-                    "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]", :g; covd=:CD, db=db
+                    "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]", :g; covd=:CD, db=db, dim=4
                 )
                 @test r != "0"
                 @test contains(r, "RiemannCD[")
@@ -2486,7 +2510,9 @@ using xAct
 
             @testset "RiemannSimplify: Ricci² (order 4)" begin
                 empty!(xAct.XInvar._perm_dispatch)
-                r = RiemannSimplify("RicciCD[-a,-b] RicciCD[a,b]", :g; covd=:CD, db=db)
+                r = RiemannSimplify(
+                    "RicciCD[-a,-b] RicciCD[a,b]", :g; covd=:CD, db=db, dim=4
+                )
                 @test r != "0"
                 @test contains(r, "RiemannCD[")
             end
@@ -2498,6 +2524,7 @@ using xAct
                     :g;
                     covd=:CD,
                     db=db,
+                    dim=4,
                 )
                 @test r == "0"
             end
@@ -2505,7 +2532,7 @@ using xAct
             @testset "RiemannSimplify: curvature_relations roundtrip" begin
                 empty!(xAct.XInvar._perm_dispatch)
                 r = RiemannSimplify(
-                    "RicciScalarCD[]", :g; covd=:CD, db=db, curvature_relations=true
+                    "RicciScalarCD[]", :g; covd=:CD, db=db, dim=4, curvature_relations=true
                 )
                 @test contains(r, "RicciScalarCD[]")
             end
@@ -2517,6 +2544,7 @@ using xAct
                     :g;
                     covd=:CD,
                     db=db,
+                    dim=4,
                 )
                 @test r != "0"
                 @test contains(r, "RiemannCD[")
@@ -2531,9 +2559,9 @@ using xAct
                 ]
                 for expr in exprs
                     empty!(xAct.XInvar._perm_dispatch)
-                    r1 = RiemannSimplify(expr, :g; covd=:CD, db=db)
+                    r1 = RiemannSimplify(expr, :g; covd=:CD, db=db, dim=4)
                     empty!(xAct.XInvar._perm_dispatch)
-                    r2 = RiemannSimplify(r1, :g; covd=:CD, db=db)
+                    r2 = RiemannSimplify(r1, :g; covd=:CD, db=db, dim=4)
                     @test r1 == r2
                 end
             end

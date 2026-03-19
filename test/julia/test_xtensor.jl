@@ -514,8 +514,8 @@ using xAct
         @test PerturbationOrder("PoPert1") == 1
 
         # PerturbationOrder throws for unregistered tensors
-        @test_throws ErrorException PerturbationOrder(:Pog)
-        @test_throws ErrorException PerturbationOrder(:DoesNotExist)
+        @test_throws ArgumentError PerturbationOrder(:Pog)
+        @test_throws ArgumentError PerturbationOrder(:DoesNotExist)
 
         # PerturbationAtOrder returns the tensor registered at each order
         @test PerturbationAtOrder(:Pog, 1) == :PoPert1
@@ -524,8 +524,8 @@ using xAct
         @test PerturbationAtOrder("Pog", 1) == :PoPert1
 
         # PerturbationAtOrder throws when no perturbation at the given order
-        @test_throws ErrorException PerturbationAtOrder(:Pog, 4)
-        @test_throws ErrorException PerturbationAtOrder(:DoesNotExist, 1)
+        @test_throws ArgumentError PerturbationAtOrder(:Pog, 4)
+        @test_throws ArgumentError PerturbationAtOrder(:DoesNotExist, 1)
 
         # Round-trip: PerturbationAtOrder(bg, PerturbationOrder(p)) == p
         @test PerturbationAtOrder(:Pog, PerturbationOrder(:PoPert1)) == :PoPert1
@@ -662,28 +662,28 @@ using xAct
 
         # Manifold collision
         def_manifold!(:VSM4, 4, [:vsa, :vsb, :vsc, :vsd])
-        err = @test_throws ErrorException ValidateSymbolInSession(:VSM4)
+        err = @test_throws ArgumentError ValidateSymbolInSession(:VSM4)
         @test occursin("manifold", err.value.msg)
 
         # VBundle collision (auto-created by def_manifold!)
-        err = @test_throws ErrorException ValidateSymbolInSession(:TangentVSM4)
+        err = @test_throws ArgumentError ValidateSymbolInSession(:TangentVSM4)
         @test occursin("vector bundle", err.value.msg)
 
         # Tensor collision
         def_tensor!(:VST, ["-vsa", "-vsb"], :VSM4; symmetry_str="Symmetric[{-vsa,-vsb}]")
-        err = @test_throws ErrorException ValidateSymbolInSession(:VST)
+        err = @test_throws ArgumentError ValidateSymbolInSession(:VST)
         @test occursin("tensor", err.value.msg)
 
         # Metric / CovD collision
         def_metric!(1, "VSg[-vsa,-vsb]", :VScd)
-        err = @test_throws ErrorException ValidateSymbolInSession(:VScd)
+        err = @test_throws ArgumentError ValidateSymbolInSession(:VScd)
         @test occursin("covariant derivative", err.value.msg) ||
             occursin("metric", err.value.msg)
 
         # Perturbation collision
         def_tensor!(:VSpert, ["-vsa", "-vsb"], :VSM4; symmetry_str="Symmetric[{-vsa,-vsb}]")
         def_perturbation!(:VSpert, :VSg, 1)
-        err = @test_throws ErrorException ValidateSymbolInSession(:VSpert)
+        err = @test_throws ArgumentError ValidateSymbolInSession(:VSpert)
         @test occursin("perturbation", err.value.msg) || occursin("tensor", err.value.msg)
 
         reset_state!()
@@ -692,7 +692,7 @@ using xAct
     @testset "def_manifold! rejects duplicate via ValidateSymbolInSession" begin
         reset_state!()
         def_manifold!(:DupM, 3, [:da, :db, :dc])
-        @test_throws ErrorException def_manifold!(:DupM, 3, [:da, :db, :dc])
+        @test_throws ArgumentError def_manifold!(:DupM, 3, [:da, :db, :dc])
         reset_state!()
     end
 
@@ -700,7 +700,7 @@ using xAct
         reset_state!()
         def_manifold!(:CrossM, 2, [:ca, :cb])
         # Trying to define a tensor with the same name as the manifold
-        @test_throws ErrorException def_tensor!(:CrossM, ["-ca", "-cb"], :CrossM)
+        @test_throws ArgumentError def_tensor!(:CrossM, ["-ca", "-cb"], :CrossM)
         reset_state!()
     end
 
@@ -2206,5 +2206,19 @@ end
 
         # Main term should be fully sorted
         @test occursin("SCD[-sa][SCD[-sb][SCD[-sc][ST[-sd]]]]", result)
+    end
+
+    # ============================================================
+    # Parser error handling
+    # ============================================================
+
+    @testset "Parser error handling" begin
+        reset_state!()
+        def_manifold!(:PM, 4, [:pa, :pb, :pc, :pd])
+        def_tensor!(:PT, ["-pa", "-pb"], :PM)
+
+        # Unbalanced parentheses
+        @test_throws ErrorException ToCanonical("(PT[-pa,-pb]")
+        @test_throws ErrorException ToCanonical("PT[-pa,-pb])")
     end
 end

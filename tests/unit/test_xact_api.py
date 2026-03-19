@@ -114,6 +114,64 @@ class TestPerturbation:
         assert repr(p) == "Perturbation('h', 'g', order=1)"
 
 
+class TestManifoldValidation:
+    def test_empty_name(self):
+        with pytest.raises(ValueError, match="valid identifier"):
+            xact.Manifold("", 4, ["a", "b"])
+
+    def test_invalid_name(self):
+        with pytest.raises(ValueError, match="valid identifier"):
+            xact.Manifold("123bad", 4, ["a", "b"])
+
+    def test_zero_dimension(self):
+        with pytest.raises(ValueError, match="dimension must be >= 1"):
+            xact.Manifold("M", 0, ["a", "b"])
+
+    def test_empty_indices(self):
+        with pytest.raises(ValueError, match="at least one index"):
+            xact.Manifold("M", 4, [])
+
+
+class TestMetricValidation:
+    def test_bad_manifold_type(self, manifold):
+        with pytest.raises(TypeError, match="Manifold instance"):
+            xact.Metric("not_a_manifold", "g", signature=-1, covd="CD")
+
+    def test_bad_signature(self, manifold):
+        with pytest.raises(ValueError, match="signature must be"):
+            xact.Metric(manifold, "g", signature=0, covd="CD")
+
+    def test_bad_name(self, manifold):
+        with pytest.raises(ValueError, match="valid identifier"):
+            xact.Metric(manifold, "", signature=-1, covd="CD")
+
+
+class TestTensorValidation:
+    def test_bad_name(self, manifold, metric):
+        with pytest.raises(ValueError, match="valid identifier"):
+            xact.Tensor("", ["-a", "-b"], manifold)
+
+    def test_bad_manifold_type(self, manifold, metric):
+        with pytest.raises(TypeError, match="Manifold instance"):
+            xact.Tensor("T", ["-a", "-b"], "not_a_manifold")
+
+
+class TestPerturbationValidation:
+    def test_bad_tensor_type(self, manifold, metric):
+        with pytest.raises(TypeError, match="Tensor instance"):
+            xact.Perturbation("not_a_tensor", metric, order=1)
+
+    def test_bad_background_type(self, manifold, metric):
+        h = xact.Tensor("h", ["-a", "-b"], manifold, symmetry="Symmetric[{-a,-b}]")
+        with pytest.raises(TypeError, match="Metric or Tensor"):
+            xact.Perturbation(h, "not_a_metric", order=1)
+
+    def test_bad_order(self, manifold, metric):
+        h = xact.Tensor("h", ["-a", "-b"], manifold, symmetry="Symmetric[{-a,-b}]")
+        with pytest.raises(ValueError, match="order must be >= 1"):
+            xact.Perturbation(h, metric, order=0)
+
+
 class TestReset:
     def test_reset_clears_state(self):
         xact.Manifold("M", 4, ["a", "b", "c", "d"])

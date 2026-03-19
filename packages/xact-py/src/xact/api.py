@@ -73,6 +73,12 @@ class Manifold:
     """
 
     def __init__(self, name: str, dim: int, indices: list[str]) -> None:
+        if not name or not name.isidentifier():
+            raise ValueError(f"Manifold name must be a valid identifier, got {name!r}")
+        if dim < 1:
+            raise ValueError(f"Manifold dimension must be >= 1, got {dim}")
+        if not indices:
+            raise ValueError("Manifold requires at least one index label")
         _, mod = _ensure_init()
         mod.def_manifold_b(name, dim, _to_jl_vec(indices))
         self.name = name
@@ -119,6 +125,16 @@ class Metric:
         covd: str = "CD",
         indices: tuple[str, str] | None = None,
     ) -> None:
+        if not isinstance(manifold, Manifold):
+            raise TypeError(
+                f"manifold must be a Manifold instance, got {type(manifold).__name__}"
+            )
+        if not name or not name.isidentifier():
+            raise ValueError(f"Metric name must be a valid identifier, got {name!r}")
+        if signature not in (-1, 1):
+            raise ValueError(
+                f"signature must be -1 (Lorentzian) or 1 (Euclidean), got {signature}"
+            )
         _, mod = _ensure_init()
         if indices is None:
             a, b = manifold.indices[0], manifold.indices[1]
@@ -169,6 +185,12 @@ class Tensor:
         *,
         symmetry: str | None = None,
     ) -> None:
+        if not name or not name.isidentifier():
+            raise ValueError(f"Tensor name must be a valid identifier, got {name!r}")
+        if not isinstance(manifold, Manifold):
+            raise TypeError(
+                f"manifold must be a Manifold instance, got {type(manifold).__name__}"
+            )
         _, mod = _ensure_init()
         kwargs: dict[str, str] = {}
         if symmetry is not None:
@@ -219,6 +241,16 @@ class Perturbation:
         *,
         order: int = 1,
     ) -> None:
+        if not isinstance(tensor, Tensor):
+            raise TypeError(
+                f"tensor must be a Tensor instance, got {type(tensor).__name__}"
+            )
+        if not isinstance(background, (Metric, Tensor)):
+            raise TypeError(
+                f"background must be a Metric or Tensor instance, got {type(background).__name__}"
+            )
+        if order < 1:
+            raise ValueError(f"Perturbation order must be >= 1, got {order}")
         _, mod = _ensure_init()
         mod.def_perturbation_b(tensor.name, background.name, order)
         self.tensor = tensor
