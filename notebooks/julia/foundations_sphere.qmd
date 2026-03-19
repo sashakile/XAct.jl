@@ -18,7 +18,18 @@ the surface is curved even though the ambient space is flat.
 
 ## 1. Setup
 
-First, we load the required modules.
+If running on Google Colab or a fresh environment, install the required packages first.
+
+```{julia}
+# Uncomment the lines below if running on Google Colab:
+# using Pkg
+# Pkg.add(url="https://github.com/sashakile/sxAct.git")
+# Pkg.add("Plots")
+```
+
+## 2. Setup
+
+Load the required modules.
 
 ```{julia}
 using xAct

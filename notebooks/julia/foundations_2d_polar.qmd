@@ -18,7 +18,18 @@ Christoffel symbols.
 
 ## 1. Setup
 
-First, we load the required modules.
+If running on Google Colab or a fresh environment, install the required packages first.
+
+```{julia}
+# Uncomment the lines below if running on Google Colab:
+# using Pkg
+# Pkg.add(url="https://github.com/sashakile/sxAct.git")
+# Pkg.add("Plots")
+```
+
+## 2. Setup
+
+Load the required modules.
 
 ```{julia}
 using xAct
@@ -26,7 +37,6 @@ using Plots
 using LinearAlgebra
 ```
 
-!!! tip "Common Pitfall: Global State"
     `xAct.jl` maintains a global registry of manifolds and tensors. If you re-run
     definition cells (like `def_manifold!`) without calling `reset_state!()`,
     you will get a "Symbol already exists" error. Always include `reset_state!()`

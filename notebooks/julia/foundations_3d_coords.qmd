@@ -18,7 +18,16 @@ coordinate systems and demonstrate how standard vector calculus operators
 
 ## 1. Setup
 
-First, we load the required modules.
+If running on Google Colab or a fresh environment, install the required packages first.
+
+```{julia}
+# Uncomment the lines below if running on Google Colab:
+# using Pkg
+# Pkg.add(url="https://github.com/sashakile/sxAct.git")
+# Pkg.add("Plots")
+```
+
+## 2. Setup
 
 ```{julia}
 using xAct
