@@ -102,6 +102,10 @@
 {"created_at":"2026-03-10T17:25:50Z","created_by":"sashakile","depends_on_id":"sxAct-ead","issue_id":"sxAct-ead.1","metadata":"{}","type":"parent-child"}
 {"created_at":"2026-03-17T15:07:52Z","created_by":"sashakile","depends_on_id":"sxAct-gic4","issue_id":"sxAct-ead.1","metadata":"{}","type":"blocks"}
 {"created_at":"2026-03-17T14:54:48Z","created_by":"sashakile","depends_on_id":"sxAct-ht3u","issue_id":"sxAct-ead.1","metadata":"{}","type":"blocks"}
+{"created_at":"2026-03-19T12:46:52Z","created_by":"sashakile","depends_on_id":"sxAct-ead","issue_id":"sxAct-ead.10","metadata":"{}","type":"parent-child"}
+{"created_at":"2026-03-19T12:46:58Z","created_by":"sashakile","depends_on_id":"sxAct-ead.10","issue_id":"sxAct-ead.10.1","metadata":"{}","type":"parent-child"}
+{"created_at":"2026-03-19T12:47:03Z","created_by":"sashakile","depends_on_id":"sxAct-ead.10","issue_id":"sxAct-ead.10.2","metadata":"{}","type":"parent-child"}
+{"created_at":"2026-03-19T12:47:09Z","created_by":"sashakile","depends_on_id":"sxAct-ead.10","issue_id":"sxAct-ead.10.3","metadata":"{}","type":"parent-child"}
 {"created_at":"2026-03-10T17:25:56Z","created_by":"sashakile","depends_on_id":"sxAct-ead","issue_id":"sxAct-ead.2","metadata":"{}","type":"parent-child"}
 {"created_at":"2026-03-10T17:26:01Z","created_by":"sashakile","depends_on_id":"sxAct-ead","issue_id":"sxAct-ead.3","metadata":"{}","type":"parent-child"}
 {"created_at":"2026-03-10T17:26:06Z","created_by":"sashakile","depends_on_id":"sxAct-ead","issue_id":"sxAct-ead.4","metadata":"{}","type":"parent-child"}
@@ -109,6 +113,10 @@
 {"created_at":"2026-03-10T17:26:16Z","created_by":"sashakile","depends_on_id":"sxAct-ead","issue_id":"sxAct-ead.6","metadata":"{}","type":"parent-child"}
 {"created_at":"2026-03-10T17:26:21Z","created_by":"sashakile","depends_on_id":"sxAct-ead","issue_id":"sxAct-ead.7","metadata":"{}","type":"parent-child"}
 {"created_at":"2026-03-10T17:26:26Z","created_by":"sashakile","depends_on_id":"sxAct-ead","issue_id":"sxAct-ead.8","metadata":"{}","type":"parent-child"}
+{"created_at":"2026-03-19T12:44:01Z","created_by":"sashakile","depends_on_id":"sxAct-ead","issue_id":"sxAct-ead.9","metadata":"{}","type":"parent-child"}
+{"created_at":"2026-03-19T12:44:15Z","created_by":"sashakile","depends_on_id":"sxAct-ead.9","issue_id":"sxAct-ead.9.1","metadata":"{}","type":"parent-child"}
+{"created_at":"2026-03-19T12:44:57Z","created_by":"sashakile","depends_on_id":"sxAct-ead.9","issue_id":"sxAct-ead.9.2","metadata":"{}","type":"parent-child"}
+{"created_at":"2026-03-19T12:45:13Z","created_by":"sashakile","depends_on_id":"sxAct-ead.9","issue_id":"sxAct-ead.9.3","metadata":"{}","type":"parent-child"}
 {"created_at":"2026-03-09T17:10:38Z","created_by":"sashakile","depends_on_id":"sxAct-00d","issue_id":"sxAct-eex","metadata":"{}","type":"blocks"}
 {"created_at":"2026-03-09T17:06:27Z","created_by":"sashakile","depends_on_id":"sxAct-l1w","issue_id":"sxAct-eex","metadata":"{}","type":"discovered-from"}
 {"created_at":"2026-03-09T17:45:30Z","created_by":"sashakile","depends_on_id":"sxAct-3et","issue_id":"sxAct-eig","metadata":"{}","type":"discovered-from"}
