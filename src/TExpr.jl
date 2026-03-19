@@ -418,6 +418,8 @@ const _GREEK_MAP = Dict(
     :Einstein => ("G", "G"),
     :eta => ("η", "\\eta"),
     :delta => ("δ", "\\delta"),
+    :CD => ("∇", "\\nabla"),
+    :PD => ("∂", "\\partial"),
 )
 
 const _SUPERSCRIPTS = Dict(
@@ -641,15 +643,17 @@ function _to_latex(s::TSum)::String
 end
 
 function _to_unicode(c::TCovD)::String
+    name = _label_to_unicode(c.covd)
     idx = _to_unicode(c.index)
     op = c.operand isa TSum ? "(" * _to_unicode(c.operand) * ")" : _to_unicode(c.operand)
-    "∇" * idx * op
+    name * idx * op
 end
 
 function _to_latex(c::TCovD)::String
+    name = _label_to_latex(c.covd)
     idx = _to_latex(c.index)
     op = c.operand isa TSum ? "(" * _to_latex(c.operand) * ")" : _to_latex(c.operand)
-    "\\nabla" * idx * op
+    name * idx * op
 end
 
 function _to_unicode(s::TSymbol)::String
@@ -684,7 +688,7 @@ end
 
 # HTML for notebooks
 function Base.show(io::IO, ::MIME"text/html", e::TExpr)
-    print(io, "\$\$\\begin{aligned}", _to_latex(e), "\\end{aligned}\$\$")
+    print(io, "\$\\displaystyle ", _to_latex(e), "\$")
 end
 
 # REPL / text/plain for index objects
@@ -910,9 +914,9 @@ function _parse_texpr_atom(s::AbstractString, imap::Dict{Symbol,Symbol})::TExpr
     close1 = _texpr_find_close(s, bracket1)
 
     # CovD: Name[-idx][operand]
-    if close1 < ncodeunits(s) && s[close1 + 1] == '['
+    if close1 < ncodeunits(s) && s[nextind(s, close1)] == '['
         idx_str = s[(bracket1 + 1):(close1 - 1)]
-        open2 = close1 + 1
+        open2 = nextind(s, close1)
         close2 = _texpr_find_close(s, open2)
         op_str = s[(open2 + 1):(close2 - 1)]
         idx = _parse_texpr_idx(idx_str, imap)
