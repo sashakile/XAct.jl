@@ -4,6 +4,10 @@
 using Documenter
 using Literate
 using xAct
+using Plots
+
+# Headless plotting for CI/builds
+ENV["GKSwstype"] = "100"
 
 # Transform Literate examples into Markdown
 example_dir = joinpath(@__DIR__, "examples")
@@ -45,8 +49,14 @@ for (subdir, lang_label) in [("julia", "Julia"), ("python", "Python")]
         src = read(joinpath(qmd_dir, file), String)
         # Strip YAML frontmatter
         md = replace(src, r"^---\n.*?^---\n*"ms => "")
-        # Convert ```{julia} / ```{python} to plain fenced blocks
-        md = replace(md, r"```\{(\w+)\}" => s"```\1")
+        # Use @example blocks for Julia so Documenter executes them and shows plots
+        if subdir == "julia"
+            label = "$(name)_julia"
+            md = replace(md, r"```\{julia\}" => "```@example $label")
+        else
+            # Convert ```{python} to plain fenced blocks (Documenter doesn't run Python)
+            md = replace(md, r"```\{(\w+)\}" => s"```\1")
+        end
         # Rewrite links: ../../docs/src/ -> ../
         md = replace(md, "../../docs/src/" => "../")
         # Rewrite .qmd links: name.qmd -> name_julia.md (or python)
