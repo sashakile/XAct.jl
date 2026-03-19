@@ -1,0 +1,120 @@
+---
+title: "Foundational Geometry: The 2-Sphere"
+jupyter: julia-1.12
+---
+
+# Tutorial: Surface Geometry - The 2-Sphere
+
+!!! info "Project Profile for AI Agents (LLM TL;DR)"
+    - **Goal**: Demonstrate intrinsic curvature on a 2-sphere embedded in $R^3$.
+    - **Key Symbols**: Manifold `:S2`, Chart `:Sph`.
+    - **Curvature**: Ricci Scalar $R = 2/R^2$.
+    - **Prerequisites**: `xAct.jl`, `Plots.jl`, `LinearAlgebra`.
+
+This tutorial explores **intrinsic curvature** using the 2-sphere ($S^2$)
+embedded in 3D Euclidean space. We will calculate the induced metric on the
+sphere and compute its Riemann curvature tensor and Ricci scalar to show that
+the surface is curved even though the ambient space is flat.
+
+## 1. Setup
+
+First, we load the required modules.
+
+```{julia}
+using xAct
+using Plots
+using LinearAlgebra
+```
+
+!!! tip "Common Pitfall: Global State"
+    Always call `reset_state!()` before defining a manifold to avoid "Symbol
+    already exists" errors when re-running cells.
+
+## 2. Define the Manifold and Chart
+
+We define a 2D manifold $S^2$ with abstract indices.
+
+```{julia}
+reset_state!()
+M = def_manifold!(:S2, 2, [:a, :b, :c, :d, :th, :ph])
+@indices S2 a b c d th ph
+
+# Coordinate chart (theta, phi)
+def_chart!(:Sph, :S2, [1, 2], [:th, :ph])
+```
+
+## 3. Induced Metric on the 2-Sphere
+
+For a sphere of radius $R$ embedded in $R^3$, the induced metric in spherical
+coordinates is:
+$ds^2 = R^2 d\theta^2 + R^2 \sin^2\theta d\phi^2$
+
+```{julia}
+def_metric!(1, "g[-a,-b]", :CD)
+
+function sphere_metric(R, θ)
+    [R^2 0;
+     0 R^2*sin(θ)^2]
+end
+
+R_val = 1.0
+θ_val = pi/4
+g_comp = sphere_metric(R_val, θ_val)
+
+set_components!(:g, g_comp, [:Sph, :Sph])
+
+println("Induced metric components at θ = π/4 (R=1):")
+display(g_comp)
+```
+
+## 4. Visualization: The 2-Sphere
+
+Let's visualize the surface we are analyzing.
+
+```{julia}
+function plot_sphere(R)
+    θs = range(0, π, length=30)
+    φs = range(0, 2π, length=60)
+
+    xs = [R * sin(θ) * cos(φ) for θ in θs, φ in φs]
+    ys = [R * sin(θ) * sin(φ) for θ in θs, φ in φs]
+    zs = [R * cos(θ) for θ in θs, φ in φs]
+
+    surface(xs, ys, zs, alpha=0.8, color=:viridis,
+            title="The 2-Sphere (R=$R)", aspect_ratio=:equal)
+end
+
+plot_sphere(R_val)
+```
+
+## 5. Intrinsic Curvature
+
+The Riemann tensor $R^a{}_{bcd}$ measures the intrinsic curvature of the
+manifold. For a sphere of radius $R$, the Ricci scalar $R = g^{ab} R_{ab}$
+should be a constant: $R = 2/R^2$.
+
+```{julia}
+# Riemann, Ricci, and RicciScalar are auto-created by def_metric!
+Riem = tensor(:RiemannCD)
+Ric  = tensor(:RicciCD)
+RS   = tensor(:RicciScalarCD)
+
+# For a sphere of R=1, the Ricci Scalar should be exactly 2.
+# We use Contract to evaluate the scalar expression.
+val = Contract(RS[])
+println("Ricci Scalar (expected 2.0): ", val)
+```
+
+## Key Takeaways: Intrinsic Geometry
+
+This tutorial demonstrated:
+1. Defining a manifold for a curved surface.
+2. Calculating the induced metric from an embedding.
+3. Visualizing the surface.
+4. Verifying intrinsic curvature by computing the Ricci Scalar ($R = 2$).
+
+## Next Steps
+
+- **Schwarzschild**: Move to 4D Spacetime in the [Schwarzschild Geodesics](../../docs/src/examples/basics.md) tutorial.
+- **3D Geometry**: Review 3D coordinate systems in [Curvilinear Coordinates](foundations_3d_coords.qmd).
+- **Core Guide**: See the [Typed Expressions (TExpr)](../../docs/src/guide/TExpr.md) guide.

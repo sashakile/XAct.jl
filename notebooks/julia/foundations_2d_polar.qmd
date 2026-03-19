@@ -1,0 +1,154 @@
+---
+title: "Foundational Geometry: 2D Polar vs. Cartesian"
+jupyter: julia-1.12
+---
+
+# Tutorial: 2D Geometry - Polar vs. Cartesian
+
+!!! info "Project Profile for AI Agents (LLM TL;DR)"
+    - **Goal**: Teach coordinate transformations and metrics in 2D Euclidean space.
+    - **Key Symbols**: Manifold `:M`, Charts `:Cart`, `:Polar`.
+    - **Verification**: Metric transforms as $g_{i'j'} = J^i{}_{i'} J^j{}_{j'} g_{ij}$.
+    - **Prerequisites**: `xAct.jl`, `Plots.jl`, `LinearAlgebra`.
+
+This tutorial introduces foundational concepts in differential geometry using
+a familiar 2D Euclidean space. We will define the Euclidean metric in Cartesian
+coordinates, transform it to Polar coordinates, and calculate the resulting
+Christoffel symbols.
+
+## 1. Setup
+
+First, we load the required modules.
+
+```{julia}
+using xAct
+using Plots
+using LinearAlgebra
+```
+
+!!! tip "Common Pitfall: Global State"
+    `xAct.jl` maintains a global registry of manifolds and tensors. If you re-run
+    definition cells (like `def_manifold!`) without calling `reset_state!()`,
+    you will get a "Symbol already exists" error. Always include `reset_state!()`
+    at the start of your exploration.
+
+## 2. Define the Manifold and Charts
+
+We start by defining a 2D manifold $R^2$ with abstract indices.
+
+```{julia}
+reset_state!()
+M = def_manifold!(:M, 2, [:a, :b, :c, :d, :r, :th])
+@indices M a b c d r th
+```
+
+Define two coordinate charts:
+1. **Cartesian** ($x, y$)
+2. **Polar** ($r, \theta$)
+
+```{julia}
+def_chart!(:Cart, :M, [1, 2], [:x, :y])
+def_chart!(:Polar, :M, [1, 2], [:r, :th])
+```
+
+## 3. Define the Metric
+
+In Cartesian coordinates, the Euclidean metric is simply $\delta_{ij} = \text{diag}(1, 1)$.
+
+```{julia}
+def_metric!(1, "g[-a,-b]", :CD)
+
+# Set the components of the metric in the Cartesian basis.
+set_components!(:g, [1 0; 0 1], [:Cart, :Cart])
+```
+
+## 4. Visualization: Coordinate Grids
+
+Let's visualize how the Cartesian grid transforms into the Polar grid. This
+helps build intuition for why the metric components change in different
+coordinate systems.
+
+```{julia}
+function plot_grids()
+    p = plot(aspect_ratio=:equal, title="Coordinate Transformation: Cartesian → Polar",
+             xlabel="x", ylabel="y", legend=false)
+
+    # Plot radial lines (constant theta)
+    for θ in range(0, 2π, length=13)
+        rs = range(0, 2, length=10)
+        xs = rs .* cos(θ)
+        ys = rs .* sin(θ)
+        plot!(p, xs, ys, color=:blue, alpha=0.3)
+    end
+
+    # Plot circles (constant r)
+    for r in [0.5, 1.0, 1.5, 2.0]
+        θs = range(0, 2π, length=100)
+        xs = r .* cos.(θs)
+        ys = r .* sin.(θs)
+        plot!(p, xs, ys, color=:red, alpha=0.5)
+    end
+
+    return p
+end
+
+plot_grids()
+```
+
+## 5. Computing the Metric in Polar Coordinates
+
+To transform to Polar coordinates, we need the Jacobian matrix $J^i{}_{j'}$
+representing the partial derivatives $\frac{\partial x^i}{\partial x^{j'}}$.
+
+$x = r \cos(\theta)$
+$y = r \sin(\theta)$
+
+The Jacobian is:
+$J = \begin{pmatrix} \cos(\theta) & -r \sin(\theta) \\ \sin(\theta) & r \cos(\theta) \end{pmatrix}$
+
+We can calculate the metric components in the Polar basis at a specific point
+using the transformation rule $g_{i'j'} = J^i{}_{i'} J^j{}_{j'} g_{ij}$.
+
+```{julia}
+function polar_jacobian(r_val, th_val)
+    [cos(th_val) -r_val*sin(th_val);
+     sin(th_val)  r_val*cos(th_val)]
+end
+
+# Calculate at (r=2, theta=pi/4)
+r_val = 2.0
+th_val = pi/4
+J = polar_jacobian(r_val, th_val)
+g_cart = [1 0; 0 1]
+g_polar = J' * g_cart * J
+
+println("Metric in Polar coordinates at (r=$r_val, θ=$th_val):")
+display(g_polar)
+```
+
+The metric in polar coordinates is $ds^2 = dr^2 + r^2 d\theta^2$, which matches
+the $\text{diag}(1, 4)$ result above for $r=2$.
+
+## 6. Metric Determinant and Volume Form
+
+The determinant of the polar metric is $\sqrt{|g|} = r$.
+This is the familiar factor in polar integration: $dA = r dr d\theta$.
+
+```{julia}
+det_g = det(g_polar)
+println("Square root of metric determinant (r): ", sqrt(det_g))
+```
+
+## Key Takeaways: 2D Transformations
+
+This tutorial demonstrated:
+1. Defining a 2D manifold and multiple coordinate charts.
+2. Setting tensor components in a specific basis.
+3. Visualizing the relationship between coordinate systems.
+4. Transforming the metric and calculating geometric invariants.
+
+## Next Steps
+
+- **3D Geometry**: Extend these concepts to 3D in [Curvilinear Coordinates](foundations_3d_coords.qmd).
+- **Curvature**: Explore intrinsic curvature in [The 2-Sphere](foundations_sphere.qmd).
+- **Core Guide**: See the [Typed Expressions (TExpr)](../../docs/src/guide/TExpr.md) guide.
