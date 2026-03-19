@@ -174,4 +174,4 @@ end
 # ## 10. Next Steps
 # Now that you've mastered the basics, check out:
 # - [Differential Geometry Primer](../differential-geometry-primer.md)
-# - [Feature Status](../theory/STATUS.md)
+# - [Feature Status](../status.md)

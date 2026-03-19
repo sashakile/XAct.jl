@@ -3,7 +3,7 @@
 !!! info "LLM TL;DR"
     - `@indices M a b c` creates typed index variables bound to manifold `:M`
     - `tensor(:T)` returns a `TensorHead`; apply indices to get an expression: `T[-a,-b]`
-    - Typed expressions serialize to strings, call the same engine, return strings (Stage 1)
+    - **Stage 2**: Full round-trip — engine functions return `TExpr` objects, not strings
     - Catches slot-count and manifold errors **at construction**, not inside the engine
     - Both APIs coexist: `ToCanonical(T[-a,-b])` and `ToCanonical("T[-a,-b]")` are equivalent
 
@@ -202,11 +202,12 @@ xact.tensor("RiemannCD")[-a,-b,-c]  # IndexError: RiemannCD has 4 slots, got 3
 
 ## Interoperability with the string API
 
-All engine functions accept both `String` and `TExpr`. Stage 1 returns strings:
+All engine functions accept both `String` and `TExpr`. If you pass a `TExpr`,
+you get a `TExpr` back (Stage 2). If you pass a `String`, you get a `String` back.
 
 ```julia
-r1 = ToCanonical(Riem[-a,-b,-c,-d] + Riem[-a,-c,-d,-b])  # String result
-r2 = Contract(r1)     # string in, string out — works fine
+r1 = ToCanonical(Riem[-a,-b,-c,-d] + Riem[-a,-c,-d,-b])  # TExpr result
+r2 = Contract(r1)     # TExpr in, TExpr out — perfect for chaining
 r3 = Simplify(r2)     # same
 ```
 
@@ -249,9 +250,10 @@ slot positions. The typed layer never reaches into them.
 | Stage | Status | Description |
 |-------|--------|-------------|
 | **Stage 1** | ✅ Shipped | Typed construction, validation, serialization |
-| **Stage 2** | Planned | Typed output — engine returns `TExpr`, not `String` |
+| **Stage 2** | ✅ Shipped | Typed output — engine returns `TExpr`, not `String` |
 | **Stage 3** | Planned | Rich display — Unicode REPL, LaTeX for Jupyter |
-| **Stage 4** | Planned | Introspection — `free_indices()`, `rank()`, `terms()` |
+| **Stage 4** | Planned | Introspection — `free_indices()`, `rank()`, `terms()`. |
+
 
 For the full design rationale, see the
 [TExpr design spec](https://github.com/sashakile/sxAct/blob/main/plans/2026-03-17-typed-expression-api.md).

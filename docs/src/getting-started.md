@@ -143,4 +143,4 @@ For experienced `xAct` users, this table shows direct mappings from Wolfram Lang
 - **Core Concepts**: See [Key Concepts](concepts.md) for details on the symbol registry.
 - **Migrating from Wolfram?**: See the [Wolfram Migration Guide](wolfram-migration.md) for the expression translator and REPL.
 - **Verification**: Learn how we ensure mathematical correctness in the [Verification Framework Guide](verification-tools.md).
-- **Status Dashboard**: Check the [Feature Matrix](theory/STATUS.md) to see which functions are ready for production use.
+- **Status Dashboard**: Check the [Feature Matrix](status.md) to see which functions are ready for production use.

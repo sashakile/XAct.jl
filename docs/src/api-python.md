@@ -161,9 +161,8 @@ The `xact` package includes a typed expression layer that catches mistakes at
 expression-construction time — wrong slot counts, indices from the wrong
 manifold — rather than deep inside the engine.
 
-!!! note "Stage 1 limitation"
-    In Stage 1, engine functions accept typed expressions but still return
-    `str`. Full round-trip (typed in → typed out) is planned for Stage 2.
+Stage 2 is fully implemented: engine functions accept typed expressions and
+return typed expressions (round-trip).
 
 #### Index Types
 

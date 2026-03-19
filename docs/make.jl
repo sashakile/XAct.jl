@@ -72,7 +72,7 @@ makedocs(;
     modules=[xAct, xAct.XCore, xAct.XPerm, xAct.XTensor, xAct.XInvar],
     pages=[
         "Home" => "index.md",
-        "Status" => "theory/STATUS.md",
+        "Status" => "status.md",
         "Installation" => "installation.md",
         "Getting Started" => "getting-started.md",
         "Guide" => ["Typed Expressions (TExpr)" => "guide/TExpr.md"],

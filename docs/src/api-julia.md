@@ -24,9 +24,8 @@ Order = [:function, :type, :constant]
 
 The `TExprLayer` module provides a typed, validated expression layer on top of the string-based engine API.
 
-!!! note "Stage 1 limitation"
-    In Stage 1, engine functions accept `TExpr` inputs but still return `String`.
-    Full round-trip (`TExpr` → engine → `TExpr`) is planned for Stage 2.
+Stage 2 is fully implemented: engine functions accept `TExpr` inputs and
+return `TExpr` results (full round-trip).
 
 ### Index Types
 

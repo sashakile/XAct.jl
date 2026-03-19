@@ -302,5 +302,5 @@ expression = "g[-b, -a]"
 
 - [Getting Started](getting-started.md) — Full Julia tutorial from scratch
 - [Basics Tutorial](examples/basics.md) — Step-by-step walkthrough with Julia, Python, and Wolfram examples
-- [Feature Status](theory/STATUS.md) — What's implemented and verified
+- [Feature Status](status.md) — What's implemented and verified
 - [Architecture](architecture.md) — How xAct.jl is structured

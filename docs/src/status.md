@@ -1,7 +1,7 @@
 # xAct.jl Feature Completion Matrix
 
 !!! info "Status TL;DR for AI Agents"
-    All core features DONE: XPerm (canonicalization), XTensor (algebra, CovD, perturbation, IBP, VarD, TExpr typed expressions), xCoba (coordinates, Christoffel), xTras (utilities), XInvar (Riemann invariant engine, all 11 phases). 1200+ Julia unit tests + 700+ Python tests passing. Gaps: spinors, exterior calculus, LaTeX rendering.
+    All core features DONE: XPerm (canonicalization), XTensor (algebra, CovD, perturbation, IBP, VarD, TExpr typed expressions Stage 2), xCoba (coordinates, Christoffel), xTras (utilities), XInvar (Riemann invariant engine, all 11 phases). 1200+ Julia unit tests + 700+ Python tests passing. Gaps: spinors, exterior calculus, LaTeX rendering.
 
 This page tracks the implementation status of xAct features in the Julia core (`xAct.jl`) and their verification status against the Wolfram Language implementation.
 
@@ -49,7 +49,7 @@ Foundational tensor algebra and curvature operators.
 | Curvature Tensors (Riemann, Ricci, Weyl, etc.) | DONE | Auto-created by `DefMetric` |
 | `reset_state!()` | DONE | Clean session state for testing |
 | `ValidateSymbolInSession` | DONE | Checks all registries for name collisions |
-| **TExpr typed expression layer** | **DONE** | `@indices`, `tensor()`, `T[-a,-b]` syntax; 128 Julia + 24 Python tests |
+| **TExpr typed expression layer (Stage 2)** | **DONE** | `@indices`, `tensor()`, `T[-a,-b]` syntax; Typed input AND output. |
 
 ---
 
@@ -136,4 +136,5 @@ The `sxact` Python package provides a multi-tier verification suite.
 - **Harmonics**: Spherical harmonic decomposition for perturbation theory.
 - **TexAct**: LaTeX rendering of tensor expressions.
 - **DifferentialEquations.jl**: Geodesic equations and ODE integration.
-- **TExpr Stage 2**: Typed output from engine functions (`ToCanonical`, `Contract`, etc. returning `TExpr` values).
+- **TExpr Stage 3**: Rich display — Unicode REPL, LaTeX for Jupyter.
+- **TExpr Stage 4**: Introspection — `free_indices()`, `rank()`, `terms()`.
