@@ -123,7 +123,7 @@ g_cart = [1 0; 0 1]
 g_polar = J' * g_cart * J
 
 println("Metric in Polar coordinates at (r=$r_val, θ=$th_val):")
-display(g_polar)
+g_polar
 ```
 
 The metric in polar coordinates is $ds^2 = dr^2 + r^2 d\theta^2$, which matches

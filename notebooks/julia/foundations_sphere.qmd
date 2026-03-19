@@ -64,7 +64,7 @@ g_comp = sphere_metric(R_val, θ_val)
 set_components!(:g, g_comp, [:Sph, :Sph])
 
 println("Induced metric components at θ = π/4 (R=1):")
-display(g_comp)
+g_comp
 ```
 
 ## 4. Visualization: The 2-Sphere

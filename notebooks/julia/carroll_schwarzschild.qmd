@@ -66,7 +66,7 @@ g_comp = schwarzschild_metric(r_val, θ_val)
 set_components!(:g, g_comp, [:Schw, :Schw])
 
 println("Schwarzschild metric at r=$r_val, θ=π/2:")
-display(g_comp)
+g_comp
 ```
 
 ## 4. Curvature and Vacuum Equations
@@ -112,7 +112,7 @@ end
 plot!(p, rs, [V_eff(r, 4.0, 0.0) for r in rs], label="L=4 (Photon)", linestyle=:dash, color=:black)
 
 hline!(p, [0.5], label="E_inf (at rest)", alpha=0.3)
-display(p)
+p
 ```
 
 ### Key Features:

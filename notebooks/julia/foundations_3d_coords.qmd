@@ -102,7 +102,7 @@ r_val, th_val, ph_val = 1.0, pi/4, pi/2
 g_sph = spherical_metric(r_val, th_val, ph_val)
 
 println("Metric in Spherical coordinates at (r=$r_val, θ=$th_val, φ=$ph_val):")
-display(g_sph)
+g_sph
 ```
 
 ## 6. Vector Calculus as Tensor Algebra
