@@ -107,6 +107,10 @@ makedocs(;
             "Wald: FLRW Cosmology" => "notebooks/wald_cosmology_julia.md",
             "MTW: Gravitational Waves" => "notebooks/mtw_gravitational_waves_julia.md",
         ],
+        "Physics" => [
+            "Electromagnetism" => "notebooks/physics_em_julia.md",
+            "Fluid Dynamics" => "notebooks/physics_fluids_julia.md",
+        ],
         "Theory" => ["Differential Geometry Primer" => "differential-geometry-primer.md"],
         "Advanced" => ["Oracle Quirks" => "theory/oracle-quirks.md"],
         "Architecture" => "architecture.md",

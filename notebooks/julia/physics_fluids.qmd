@@ -1,0 +1,107 @@
+---
+title: "Physics: Relativistic Fluid Dynamics"
+jupyter: julia-1.12
+---
+
+# Physics: Relativistic Fluid Dynamics
+
+This tutorial explores **Relativistic Fluid Dynamics** using `xAct.jl`.
+We will define the energy-momentum tensor for a **perfect fluid**, verify its
+conservation laws, and derive the relativistic Euler equations.
+
+## 1. Setup
+
+```{julia}
+using xAct
+using Plots
+using LinearAlgebra
+
+# Headless plotting for build compatibility
+ENV["GKSwstype"] = "100"
+```
+
+!!! info "Project Profile for AI Agents (LLM TL;DR)"
+    - **Goal**: Implement perfect fluid $T_{ab}$ and verify conservation laws.
+    - **Key Symbols**: Velocity $u^a$, Density $\rho$, Pressure $p$.
+    - **Physics**: $T_{ab} = (\rho + p)u_a u_b + p g_{ab}$, verify $\nabla_a T^{ab} = 0$.
+
+## 2. Define the Manifold and Metric
+
+```{julia}
+reset_state!()
+M = def_manifold!(:M4, 4, [:a, :b, :c, :d, :e, :f])
+@indices M4 a b c d e f
+
+# General metric g_ab
+g = def_metric!(-1, "g[-a,-b]", :CD)
+```
+
+## 3. The Perfect Fluid Energy-Momentum Tensor
+
+A perfect fluid is characterized by its **energy density** $\rho$,
+**pressure** $p$, and **4-velocity** $u^a$. The energy-momentum tensor is:
+$T_{ab} = (\rho + p) u_a u_b + p g_{ab}$
+
+```{julia}
+# Define scalar fields rho and p
+def_tensor!(:rho, String[], :M4)
+def_tensor!(:p, String[], :M4)
+rho = tensor(:rho)
+p_tensor = tensor(:p)
+
+# Define 4-velocity vector u^a
+def_tensor!(:u, ["a"], :M4)
+u = tensor(:u)
+
+# Define T_ab
+# T_ab = (rho + p) u_a u_b + p g_ab
+T_expr = ToCanonical((rho[] + p_tensor[]) * u[-a] * u[-b] + p_tensor[] * tensor(:g)[-a, -b])
+
+println("Energy-Momentum Tensor T_{ab}:")
+T_expr
+```
+
+## 4. Conservation Laws
+
+The physical evolution of the fluid is governed by the conservation of
+energy and momentum:
+$\nabla_a T^{ab} = 0$
+
+```{julia}
+# Compute the divergence: g^{ac} \nabla_a T_{cb}
+div_T = ToCanonical(Contract(tensor(:g)[a, c] * covd(:CD)[-a](T_expr)))
+
+println("Divergence of T_{ab} (Conservation Law):")
+div_T
+```
+
+## 5. Deriving Continuity and Euler Equations
+
+The conservation equations $\nabla_a T^{ab} = 0$ contain both the energy
+conservation (continuity) and momentum conservation (Euler) equations.
+
+### Energy Conservation
+Projecting along the 4-velocity ($u_b \nabla_a T^{ab} = 0$) yields the
+continuity equation:
+$u^a \nabla_a \rho + (\rho + p) \nabla_a u^a = 0$
+
+```{julia}
+# Project divergence onto u^b
+energy_cons = ToCanonical(Contract(u[b] * div_T))
+
+println("Energy Conservation Equation (u_b \nabla_a T^{ab}):")
+energy_cons
+```
+
+## 6. Summary
+
+This tutorial demonstrated:
+1. Constructing complex physical tensors from fundamental fields.
+2. Symbolically deriving conservation laws in curved spacetime.
+3. Projecting tensor equations to extract specific physical components (like energy conservation).
+
+## Next Steps
+
+- **Electromagnetism**: See [Maxwell's Equations in Curved Spacetime](physics_em_julia.md).
+- **Black Holes**: Review [Carroll: Schwarzschild Geodesics](carroll_schwarzschild_julia.md).
+- **Cosmology**: Review [Wald: FLRW Cosmology](wald_cosmology_julia.md).
