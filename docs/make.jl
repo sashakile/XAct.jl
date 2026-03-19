@@ -63,10 +63,11 @@ for (subdir, lang_label) in [("julia", "Julia"), ("python", "Python")]
         md = replace(
             md, r"([\w\d_-]+)\.qmd" => SubstitutionString("\\1_$(lowercase(lang_label)).md")
         )
-        # Add a note linking to the .ipynb
+        # Add a note linking to the .ipynb and Colab
         header = """
 !!! tip "Run this notebook"
-    Download the [Jupyter notebook](https://github.com/sashakile/sxAct/blob/main/notebooks/$subdir/$name.ipynb) or open it in Google Colab.
+    - [Download the Jupyter notebook](https://github.com/sashakile/sxAct/blob/main/notebooks/$subdir/$name.ipynb)
+    - [Open in Google Colab](https://colab.research.google.com/github/sashakile/sxAct/blob/main/notebooks/$subdir/$name.ipynb)
 
 """
         outpath = joinpath(pluto_output, "$(name)_$(lowercase(lang_label)).md")
