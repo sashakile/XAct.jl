@@ -672,14 +672,19 @@ end
 # Default fallback (serialization)
 Base.show(io::IO, e::TExpr) = print(io, _to_string(e))
 
-# LaTeX for Jupyter / Documenter
+# Markdown for Documenter / Jupyter — ensures LaTeX is rendered
+function Base.show(io::IO, ::MIME"text/markdown", e::TExpr)
+    print(io, "\$", _to_latex(e), "\$")
+end
+
+# LaTeX for direct Jupyter output
 function Base.show(io::IO, ::MIME"text/latex", e::TExpr)
     print(io, "\$", _to_latex(e), "\$")
 end
 
 # HTML for notebooks
 function Base.show(io::IO, ::MIME"text/html", e::TExpr)
-    print(io, "<span class=\"tex\">\\(", _to_latex(e), "\\)</span>")
+    print(io, "\$\$\\begin{aligned}", _to_latex(e), "\\end{aligned}\$\$")
 end
 
 # REPL / text/plain for index objects
