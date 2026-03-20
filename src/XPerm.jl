@@ -657,6 +657,20 @@ function double_coset_rep(
     end
 
     # Step 2: Enumerate all elements of D by BFS over the Cayley graph.
+    # Guard: |D| = product of k! for each dummy group of size k.
+    # For k >= 8, this exceeds 40320 elements — warn and fall back.
+    max_d_size = 1
+    for grp in dummy_groups
+        k = length(grp)
+        k <= 1 && continue
+        max_d_size *= factorial(k)
+        if max_d_size > 40_320  # 8! — practical limit for BFS enumeration
+            @warn "double_coset_rep: dummy group too large (|D| ≥ $max_d_size), " *
+                "falling back to right_coset_rep without dummy optimization"
+            return right_coset_rep(perm, sgs)
+        end
+    end
+
     id_n = identity_perm(n)
     d_elements = Vector{Vector{Int}}([id_n])
     seen_d = Set{Vector{Int}}([id_n])

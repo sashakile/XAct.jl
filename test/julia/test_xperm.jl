@@ -362,4 +362,25 @@ using xAct.XPerm
         sgs = schreier_sims([1, 2, 3], [[2, 1, 3]], 3)
         @test 3 in StablePoints(sgs)  # point 3 is stable under (1 2) swap
     end
+
+    @testset "double_coset_rep large dummy group guard" begin
+        # Small dummy group (size 3 → 3! = 6 elements): works normally
+        n = 6
+        sgs = symmetric_sgs(collect(1:n), n)
+        p = identity_perm(n)
+        dummy_small = [[1, 2, 3]]  # 3! = 6 elements
+        result, sign = double_coset_rep(p, sgs, dummy_small)
+        @test length(result) == n
+
+        # Large dummy group (size 10 → 10! = 3628800): should warn and fallback
+        n2 = 12
+        sgs2 = symmetric_sgs(collect(1:n2), n2)
+        p2 = identity_perm(n2)
+        dummy_large = [collect(1:10)]  # 10! elements — too large
+        # Should complete quickly (fallback to right_coset_rep) instead of blowing up
+        result2, sign2 = @test_logs (:warn, r"dummy group too large") double_coset_rep(
+            p2, sgs2, dummy_large
+        )
+        @test length(result2) == n2
+    end
 end
