@@ -4913,12 +4913,41 @@ Swap two index labels in an expression string, handling both covariant
 function _swap_indices(
     expr::AbstractString, label_a::AbstractString, label_b::AbstractString
 )::String
-    placeholder = "__SWAP_TMP__"
-    # Swap using a temporary placeholder to avoid collision
-    result = replace(expr, label_a => placeholder)
-    result = replace(result, label_b => label_a)
-    result = replace(result, placeholder => label_b)
-    result
+    # Only substitute inside bracket groups [...], leaving tensor names untouched
+    result = IOBuffer()
+    i = 1
+    while i <= ncodeunits(expr)
+        if expr[i] == '['
+            j = findnext(']', expr, i)
+            isnothing(j) && error("_swap_indices: unmatched '[' in expression")
+            bracket = SubString(expr, i, j)
+            bracket = _replace_label(bracket, label_a, "__TMP__")
+            bracket = _replace_label(bracket, label_b, label_a)
+            bracket = _replace_label(bracket, "__TMP__", label_b)
+            write(result, bracket)
+            i = j + 1
+        else
+            write(result, expr[i])
+            i += 1
+        end
+    end
+    String(take!(result))
+end
+
+"""
+Replace a whole index label inside a bracket string, bounded by delimiters.
+"""
+function _replace_label(s::AbstractString, old::AbstractString, new::AbstractString)
+    # Boundaries: start of string, [, ], comma, -, whitespace
+    pat = Regex("(?<=[\\[,\\s-]|^)" * _regex_escape(old) * "(?=[\\],\\s-]|\$)")
+    replace(s, pat => new)
+end
+
+"""
+Escape special regex characters in a string.
+"""
+function _regex_escape(s::AbstractString)
+    replace(s, r"([.+*?^${}()|\\[\]])" => s"\\\1")
 end
 
 """

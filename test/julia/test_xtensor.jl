@@ -2249,4 +2249,37 @@ end
         @test_throws ErrorException ToCanonical("(PT[-pa,-pb]")
         @test_throws ErrorException ToCanonical("PT[-pa,-pb])")
     end
+
+    # ==========================================================
+    # _swap_indices bracket-aware substitution
+    # ==========================================================
+
+    @testset "_swap_indices" begin
+        _swap = xAct.XTensor._swap_indices
+
+        # Basic swap inside brackets
+        @test _swap("T[-a,-b]", "a", "b") == "T[-b,-a]"
+
+        # Tensor name contains label substring — must not corrupt
+        @test _swap("Tab[-a,-ab]", "a", "b") == "Tab[-b,-ab]"
+        @test _swap("Rab[-a,-b]", "a", "b") == "Rab[-b,-a]"
+
+        # Label at end of bracket group
+        @test _swap("V[a]", "a", "b") == "V[b]"
+
+        # Multiple bracket groups (product expression)
+        @test _swap("T[-a,-b] V[a]", "a", "b") == "T[-b,-a] V[b]"
+
+        # No brackets — nothing changes
+        @test _swap("scalar", "a", "b") == "scalar"
+
+        # Label not present — no-op
+        @test _swap("T[-c,-d]", "a", "b") == "T[-c,-d]"
+
+        # Multi-char labels
+        @test _swap("T[-ab,-cd]", "ab", "cd") == "T[-cd,-ab]"
+
+        # Coefficient outside brackets untouched
+        @test _swap("3 T[-a,-b]", "a", "b") == "3 T[-b,-a]"
+    end
 end
