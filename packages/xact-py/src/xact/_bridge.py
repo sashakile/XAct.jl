@@ -16,12 +16,15 @@ Usage::
 
 from __future__ import annotations
 
+import logging
 import re
 import threading
+import time
 from typing import Any
 
 _IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _lock = threading.Lock()
+_log = logging.getLogger(__name__)
 
 
 def validate_ident(name: str, context: str = "") -> str:
@@ -71,6 +74,34 @@ def jl_path(p: str) -> str:
     return jl_str(str(p))
 
 
+def timed_seval(
+    jl: Any,
+    expr: str,
+    *,
+    warn_after_s: float = 30.0,
+    label: str = "",
+) -> Any:
+    """Wrap ``jl.seval(expr)`` with elapsed-time monitoring.
+
+    Logs a WARNING if the call takes longer than *warn_after_s* seconds.
+    Does **not** forcefully interrupt the call (juliacall is in-process and
+    cannot be safely killed); this is a visibility aid, not a hard timeout.
+    """
+    t0 = time.monotonic()
+    try:
+        return jl.seval(expr)
+    finally:
+        elapsed = time.monotonic() - t0
+        if elapsed >= warn_after_s:
+            tag = f" [{label}]" if label else ""
+            _log.warning(
+                "Slow seval%s: %.1fs for %s",
+                tag,
+                elapsed,
+                expr[:200],
+            )
+
+
 def jl_call(jl: Any, func: str, *args: str) -> Any:
     """Call a Julia function with pre-validated/escaped arguments.
 
@@ -82,6 +113,6 @@ def jl_call(jl: Any, func: str, *args: str) -> Any:
     expr = f"{func}({', '.join(args)})"
     with _lock:
         try:
-            return jl.seval(expr)
+            return timed_seval(jl, expr, label=func)
         except Exception as exc:
             raise RuntimeError(f"Julia call failed: {func}(...)\n{exc}") from exc

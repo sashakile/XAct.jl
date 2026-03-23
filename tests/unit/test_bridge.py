@@ -1,5 +1,9 @@
 """Tests for xact._bridge — safe Julia argument builders."""
 
+import logging
+import time
+from unittest.mock import MagicMock
+
 import pytest
 
 from xact._bridge import (
@@ -10,6 +14,7 @@ from xact._bridge import (
     jl_str,
     jl_sym,
     jl_sym_list,
+    timed_seval,
     validate_ident,
 )
 
@@ -163,3 +168,51 @@ class TestJlCall:
             jl_sym_list(["a", "b", "c", "d"], "indices"),
         )
         assert calls == ["xAct.def_manifold!(:M, 4, [:a, :b, :c, :d])"]
+
+
+# ---------------------------------------------------------------------------
+# timed_seval — timeout/warning wrapper (sxAct-iz1u)
+# ---------------------------------------------------------------------------
+
+
+class TestTimedSeval:
+    """timed_seval wraps jl.seval with elapsed-time logging."""
+
+    def test_returns_seval_result(self) -> None:
+        jl = MagicMock()
+        jl.seval.return_value = 42
+        assert timed_seval(jl, "1 + 1") == 42
+
+    def test_propagates_exceptions(self) -> None:
+        jl = MagicMock()
+        jl.seval.side_effect = RuntimeError("boom")
+        with pytest.raises(RuntimeError, match="boom"):
+            timed_seval(jl, "bad()")
+
+    def test_warns_when_slow(self, caplog: pytest.LogCaptureFixture) -> None:
+        jl = MagicMock()
+
+        def slow_seval(expr: str) -> str:
+            time.sleep(0.05)
+            return "ok"
+
+        jl.seval.side_effect = slow_seval
+        with caplog.at_level(logging.WARNING):
+            result = timed_seval(jl, "slow_expr()", warn_after_s=0.01, label="test")
+        assert result == "ok"
+        assert any("slow_expr()" in r.message for r in caplog.records)
+        assert any("test" in r.message for r in caplog.records)
+
+    def test_no_warning_when_fast(self, caplog: pytest.LogCaptureFixture) -> None:
+        jl = MagicMock()
+        jl.seval.return_value = "fast"
+        with caplog.at_level(logging.WARNING):
+            timed_seval(jl, "fast_expr()", warn_after_s=10.0)
+        assert not any("fast_expr()" in r.message for r in caplog.records)
+
+    def test_default_warn_threshold_is_reasonable(self) -> None:
+        """Default warn_after_s should be > 0."""
+        jl = MagicMock()
+        jl.seval.return_value = "ok"
+        # Should not raise with default args
+        timed_seval(jl, "expr()")

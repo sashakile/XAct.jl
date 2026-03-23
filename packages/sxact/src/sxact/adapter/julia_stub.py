@@ -32,6 +32,7 @@ from xact._bridge import (
     jl_str,
     jl_sym,
     jl_sym_list,
+    timed_seval,
     validate_ident,
 )
 
@@ -750,7 +751,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         try:
             # NOTE: seval with translator output — safety relies on _wl_to_jl
             # producing well-formed Julia. Will be addressed when translator is hardened.
-            val = self._jl.seval(julia_expr)
+            val = timed_seval(self._jl, julia_expr, label="execute_expr")
             # PythonCall adds "Julia: " prefix for custom types inside containers.
             # Strip it to get clean WL-compatible repr.
             raw = str(val).replace("Julia: ", "")
@@ -816,7 +817,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         try:
             # NOTE: seval with translator output — safety relies on _wl_to_jl
             # producing well-formed Julia. Will be addressed when translator is hardened.
-            val = self._jl.seval(julia_cond)
+            val = timed_seval(self._jl, julia_cond, label="execute_assert")
             passed = val is True or str(val).lower() == "true"
             if passed:
                 return Result(status="ok", type="Bool", repr="True", normalized="True")
