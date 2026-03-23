@@ -13,6 +13,7 @@ Contract, SignDetOfMetric, Simplify) are dispatched to the Julia XTensor module.
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any, Literal as _Literal
 
@@ -33,6 +34,8 @@ from xact._bridge import (
     jl_sym_list,
     validate_ident,
 )
+
+_log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -826,14 +829,23 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 repr="False",
                 normalized="False",
             )
-        except Exception:
-            # Julia evaluation of the condition threw — treat as assertion failure.
-            # With oracle_is_axiom=true, this produces a stable "False" oracle.
+        except Exception as exc:
+            # Julia evaluation threw — this is an infrastructure failure, not a
+            # semantically false assertion.  Surface the error so callers (runner,
+            # snapshot comparator) can distinguish crashes from logical failures.
+            _log.warning(
+                "Assert seval raised %s: %s (condition: %s)",
+                type(exc).__name__,
+                exc,
+                wolfram_condition,
+            )
             return Result(
-                status="ok",
+                status="error",
                 type="Bool",
                 repr="False",
                 normalized="False",
+                error=f"{type(exc).__name__}: {exc}",
+                diagnostics={"exception_type": type(exc).__name__},
             )
 
     # ------------------------------------------------------------------
