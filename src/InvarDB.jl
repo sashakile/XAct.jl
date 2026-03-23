@@ -230,29 +230,26 @@ function _parse_nested_intlist(s::AbstractString)
 
     # Parse inner sublists
     depth = 0
-    current = ""
+    buf = IOBuffer()
     for ch in inner
         if ch == '['
             depth += 1
             if depth == 1
-                current = ""
+                truncate(buf, 0)
                 continue
             end
         elseif ch == ']'
             depth -= 1
             if depth == 0
-                # Parse the accumulated numbers
-                nums = _parse_int_csv(current)
+                nums = _parse_int_csv(String(take!(buf)))
                 !isempty(nums) && push!(result, nums)
-                current = ""
                 continue
             end
         elseif depth == 0 && ch == ','
-            # Skip commas between sublists at depth 0
             continue
         end
         if depth >= 1
-            current *= ch
+            write(buf, ch)
         end
     end
 

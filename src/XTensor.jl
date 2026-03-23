@@ -2271,8 +2271,8 @@ function ToCanonical(expression::AbstractString)::String
     keys_nonzero = filter(k -> coeff_map[k] != 0, key_order)
     isempty(keys_nonzero) && return "0"
 
-    # Sort keys for deterministic output
-    sort!(keys_nonzero; by=k -> [(string(n), idxs) for (n, idxs) in struct_map[k]])
+    # Sort keys for deterministic output (String keys sort lexicographically)
+    sort!(keys_nonzero)
 
     # Serialize
     _serialize(keys_nonzero, coeff_map)
@@ -2414,19 +2414,16 @@ Returns (covd_key, MetricObj, :contravariant | :covariant) or nothing.
 :covariant     — g_{ab}: both indices down ('-' prefix)   → lowers indices
 """
 function _factor_as_metric(f::FactorAST)::Union{Tuple{Symbol,MetricObj,Symbol},Nothing}
-    t = get(_tensors, f.tensor_name, nothing)
-    isnothing(t) && return nothing
     length(f.indices) == 2 || return nothing
-    for (covd, metric) in _metrics
-        if metric.name == f.tensor_name
-            i1_cov = _is_covariant(f.indices[1])
-            i2_cov = _is_covariant(f.indices[2])
-            if !i1_cov && !i2_cov
-                return (covd, metric, :contravariant)  # g^{ab}
-            elseif i1_cov && i2_cov
-                return (covd, metric, :covariant)       # g_{ab}
-            end
-        end
+    covd = get(_metric_name_index, f.tensor_name, nothing)
+    isnothing(covd) && return nothing
+    metric = _metrics[covd]
+    i1_cov = _is_covariant(f.indices[1])
+    i2_cov = _is_covariant(f.indices[2])
+    if !i1_cov && !i2_cov
+        return (covd, metric, :contravariant)  # g^{ab}
+    elseif i1_cov && i2_cov
+        return (covd, metric, :covariant)       # g_{ab}
     end
     nothing
 end
@@ -2454,12 +2451,69 @@ function _contract_term(term::TermAST)::Union{TermAST,Nothing}
 end
 
 """
-Find one metric factor and contract it with another factor (or apply a trace rule).
-Returns:
+    _apply_trace_rules(...) → (:zero, nothing) | (:replaced, TermAST) | (:none, nothing)
 
-  - The updated TermAST if a contraction was performed
-  - the same TermAST object if no metric found (signal: no more contractions)
-  - nothing if the term is zero (traceless tensor trace)
+Dispatch trace rules through registries. Returns:
+
+  - `(:zero, nothing)` when the trace vanishes (traceless tensor)
+  - `(:replaced, term)` when a trace rule fired
+  - `(:none, nothing)` when no rule matched (caller should fall through)
+"""
+function _apply_trace_rules(
+    term::TermAST,
+    factors::Vector{FactorAST},
+    new_other::FactorAST,
+    metric_pos::Int,
+    other_pos::Int,
+    has_1::Bool,
+    has_2::Bool,
+    bare_1::String,
+    bare_2::String,
+    metric_obj::MetricObj,
+)::Tuple{Symbol,Union{TermAST,Nothing}}
+    # Traceless tensor → term vanishes
+    if new_other.tensor_name in _traceless_tensors
+        return (:zero, nothing)
+    end
+    # Registered trace scalar (e.g. tr(Einstein) → coeff * RicciScalar)
+    if has_1 && has_2 && haskey(_trace_scalars, new_other.tensor_name)
+        remaining_free = [
+            idx for
+            idx in new_other.indices if !(_bare(idx) == bare_1 || _bare(idx) == bare_2)
+        ]
+        if isempty(remaining_free)
+            (scalar_name, coeff_int) = _trace_scalars[new_other.tensor_name]
+            new_factors = FactorAST[]
+            for (k, ff) in enumerate(factors)
+                k == metric_pos && continue
+                k == other_pos && continue
+                push!(new_factors, ff)
+            end
+            push!(new_factors, FactorAST(scalar_name, String[]))
+            return (:replaced, TermAST(term.coeff * coeff_int, new_factors))
+        end
+    end
+    # Metric self-contraction → dimension
+    if has_1 && has_2
+        other_as_metric = _factor_as_metric(new_other)
+        if !isnothing(other_as_metric)
+            (_, other_metric_obj, _) = other_as_metric
+            manifold = get(_manifolds, other_metric_obj.manifold, nothing)
+            if !isnothing(manifold) && other_metric_obj.name == metric_obj.name
+                remaining = [
+                    ff for
+                    (k, ff) in enumerate(factors) if k != metric_pos && k != other_pos
+                ]
+                return (:replaced, TermAST(term.coeff * manifold.dimension, remaining))
+            end
+        end
+    end
+    return (:none, nothing)
+end
+
+"""
+Find one metric factor and contract it with another factor (or apply a trace rule).
+Returns the updated TermAST, the same TermAST if no metric found, or nothing if zero.
 """
 function _contract_one_metric(term::TermAST)::Union{TermAST,Nothing}
     factors = term.factors
@@ -2564,56 +2618,21 @@ function _contract_one_metric(term::TermAST)::Union{TermAST,Nothing}
         is_trace = (has_1 && has_2) || self_trace_from_subst
 
         if is_trace
-            # Apply physics rules for the trace case
-            # First: is this tensor traceless?
-            if other.tensor_name in _traceless_tensors
-                return nothing  # term is zero
-            end
-            # Second: do we have a trace rule for this tensor?
-            if has_1 && has_2 && haskey(_trace_scalars, other.tensor_name)
-                # Check this is truly a full trace (all slots of the tensor contracted by metric)
-                # For a rank-2 tensor this is always the case when has_1 && has_2
-                # For rank-4 we only apply if the tensor has no remaining free indices after contraction
-                # Count how many distinct bare labels remain in new_other after removing contracted ones
-                remaining_free = [
-                    idx for idx in new_other.indices if
-                    !(_bare(idx) == bare_1 || _bare(idx) == bare_2)
-                ]
-                # Fire trace rule only when no free indices remain outside the contracted pair
-                if isempty(remaining_free)
-                    (scalar_name, coeff_int) = _trace_scalars[other.tensor_name]
-                    new_factors = FactorAST[]
-                    scalar_factor = FactorAST(scalar_name, String[])
-                    for (k, ff) in enumerate(factors)
-                        k == metric_pos && continue
-                        k == j && continue
-                        push!(new_factors, ff)
-                    end
-                    push!(new_factors, scalar_factor)
-                    new_coeff = term.coeff * coeff_int
-                    return TermAST(new_coeff, new_factors)
-                end
-            end
-            # Special case: metric contracted with itself → dimension (trace = g^ab g_ab = n)
-            if has_1 && has_2
-                other_as_metric = _factor_as_metric(other)
-                if !isnothing(other_as_metric)
-                    # Get the manifold dimension for this metric
-                    (_, other_metric_obj, _) = other_as_metric
-                    manifold = get(_manifolds, other_metric_obj.manifold, nothing)
-                    if !isnothing(manifold) && other_metric_obj.name == metric_obj.name
-                        dim = manifold.dimension
-                        # Return a pure scalar term with no factors, coefficient = dim
-                        remaining = [
-                            ff for
-                            (k, ff) in enumerate(factors) if k != metric_pos && k != j
-                        ]
-                        new_coeff = term.coeff * dim
-                        return TermAST(new_coeff, remaining)
-                    end
-                end
-            end
-            # No special rule: keep the self-trace factor (ToCanonical handles)
+            (status, trace_term) = _apply_trace_rules(
+                term,
+                factors,
+                new_other,
+                metric_pos,
+                j,
+                has_1,
+                has_2,
+                bare_1,
+                bare_2,
+                metric_obj,
+            )
+            status == :zero && return nothing
+            status == :replaced && return trace_term
+            # :none → no special rule, fall through to normal contraction
         end
 
         # Remove the metric factor, replace `other` with `new_other`
