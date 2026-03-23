@@ -1195,6 +1195,7 @@ using xAct
                 # Backtracking via direct call
                 best_perm = copy(perm)
                 best_sign = Ref(1)
+                saved_stack = [Vector{Int}(undef, degree) for _ in 1:n]
                 for (bmap, bsign) in block_perms
                     bp = _apply_block_perm_to_contraction(perm, bmap, slot_ranges, degree)
                     _backtrack_riemann_syms!(
@@ -1209,6 +1210,7 @@ using xAct
                         slot_ub,
                         best_perm,
                         best_sign,
+                        saved_stack,
                     )
                 end
 
