@@ -331,54 +331,28 @@ class TestChristoffel:
 # ---------------------------------------------------------------------------
 
 
+_XCOBA_EXPORTS = [
+    "Basis",
+    "Chart",
+    "CTensor",
+    "def_basis",
+    "def_chart",
+    "set_basis_change",
+    "change_basis",
+    "get_jacobian",
+    "basis_change_q",
+    "set_components",
+    "get_components",
+    "component_value",
+    "ctensor_q",
+    "to_basis",
+    "from_basis",
+    "trace_basis_dummy",
+    "christoffel",
+]
+
+
 class TestExports:
-    def test_basis_exported(self):
-        assert hasattr(xact, "Basis")
-
-    def test_chart_exported(self):
-        assert hasattr(xact, "Chart")
-
-    def test_def_basis_exported(self):
-        assert hasattr(xact, "def_basis")
-
-    def test_def_chart_exported(self):
-        assert hasattr(xact, "def_chart")
-
-    def test_set_basis_change_exported(self):
-        assert hasattr(xact, "set_basis_change")
-
-    def test_change_basis_exported(self):
-        assert hasattr(xact, "change_basis")
-
-    def test_get_jacobian_exported(self):
-        assert hasattr(xact, "get_jacobian")
-
-    def test_basis_change_q_exported(self):
-        assert hasattr(xact, "basis_change_q")
-
-    def test_ctensor_exported(self):
-        assert hasattr(xact, "CTensor")
-
-    def test_set_components_exported(self):
-        assert hasattr(xact, "set_components")
-
-    def test_get_components_exported(self):
-        assert hasattr(xact, "get_components")
-
-    def test_component_value_exported(self):
-        assert hasattr(xact, "component_value")
-
-    def test_ctensor_q_exported(self):
-        assert hasattr(xact, "ctensor_q")
-
-    def test_to_basis_exported(self):
-        assert hasattr(xact, "to_basis")
-
-    def test_from_basis_exported(self):
-        assert hasattr(xact, "from_basis")
-
-    def test_trace_basis_dummy_exported(self):
-        assert hasattr(xact, "trace_basis_dummy")
-
-    def test_christoffel_exported(self):
-        assert hasattr(xact, "christoffel")
+    @pytest.mark.parametrize("symbol", _XCOBA_EXPORTS)
+    def test_xcoba_exported(self, symbol):
+        assert hasattr(xact, symbol), f"xact.{symbol} not exported"

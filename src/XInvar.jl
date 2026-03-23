@@ -1098,6 +1098,7 @@ function _backtrack_riemann_syms!(
     slot_ub::Vector{Int},
     best_perm::Vector{Int},
     best_sign::Ref{Int},
+    saved_stack::Vector{Vector{Int}},
 )
     if factor > n_factors
         if perm < best_perm
@@ -1107,7 +1108,8 @@ function _backtrack_riemann_syms!(
         return nothing
     end
 
-    saved = copy(perm)
+    saved = saved_stack[factor]
+    copyto!(saved, perm)
     for bits in 0:7
         copyto!(perm, saved)
         current_sign = sign
@@ -1168,6 +1170,7 @@ function _backtrack_riemann_syms!(
                 slot_ub,
                 best_perm,
                 best_sign,
+                saved_stack,
             )
         end
     end
@@ -1292,6 +1295,7 @@ function _canonicalize_contraction_perm(
     else
         # Backtracking with frozen-position pruning for n ≥ 5
         best_sign_ref = Ref(best_sign)
+        saved_stack = [Vector{Int}(undef, degree) for _ in 1:n]
 
         # Precompute block-permuted perms and seed best_perm for tighter pruning
         block_results = Vector{Tuple{Vector{Int},Int}}(undef, length(block_perms))
@@ -1339,6 +1343,7 @@ function _canonicalize_contraction_perm(
                 slot_ub,
                 best_perm,
                 best_sign_ref,
+                saved_stack,
             )
         end
         best_sign = best_sign_ref[]

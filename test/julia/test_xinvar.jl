@@ -120,34 +120,34 @@ using xAct
     # MaxIndex
     # ================================================================
 
-    @testset "MaxIndex" begin
-        # Spot checks against Wolfram Invar.m
-        @test MaxIndex([0]) == 1
-        @test MaxIndex([0, 0]) == 3
-        @test MaxIndex([2]) == 2
-        @test MaxIndex([0, 0, 0]) == 9
-        @test MaxIndex([0, 2]) == 12
-        @test MaxIndex([1, 1]) == 12
-        @test MaxIndex([4]) == 12
-        @test MaxIndex([0, 0, 0, 0]) == 38
-        @test MaxIndex([6]) == 105
-        @test MaxIndex([0, 0, 0, 0, 0, 0, 0]) == 16532
+    _MAXINDEX_CASES = [
+        ([0], 1),
+        ([0, 0], 3),
+        ([2], 2),
+        ([0, 0, 0], 9),
+        ([0, 2], 12),
+        ([1, 1], 12),
+        ([4], 12),
+        ([0, 0, 0, 0], 38),
+        ([6], 105),
+        ([0, 0, 0, 0, 0, 0, 0], 16532),
+    ]
+    @testset "MaxIndex $deriv → $expected" for (deriv, expected) in _MAXINDEX_CASES
+        @test MaxIndex(deriv) == expected
+    end
 
-        # Integer shorthand: MaxIndex(n) = MaxIndex(fill(0, n))
-        @test MaxIndex(1) == 1
-        @test MaxIndex(2) == 3
-        @test MaxIndex(3) == 9
-        @test MaxIndex(7) == 16532
+    @testset "MaxIndex integer shorthand" begin
+        for (n, expected) in [(1, 1), (2, 3), (3, 9), (7, 16532), (8, 217395), (9, 3406747)]
+            @test MaxIndex(n) == expected
+        end
+    end
 
-        # InvariantCase overload
+    @testset "MaxIndex InvariantCase overload" begin
         @test MaxIndex(InvariantCase([0, 0])) == 3
         @test MaxIndex(InvariantCase([1, 3])) == 138
+    end
 
-        # Higher algebraic
-        @test MaxIndex(8) == 217395
-        @test MaxIndex(9) == 3406747
-
-        # Unknown case throws
+    @testset "MaxIndex unknown throws" begin
         @test_throws ArgumentError MaxIndex([99])
         @test_throws ArgumentError MaxIndex([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
     end
@@ -162,22 +162,23 @@ using xAct
     # MaxDualIndex
     # ================================================================
 
-    @testset "MaxDualIndex" begin
-        @test MaxDualIndex([0]) == 1
-        @test MaxDualIndex([0, 0]) == 4
-        @test MaxDualIndex([2]) == 3
-        @test MaxDualIndex([0, 0, 0]) == 27
-        @test MaxDualIndex([0, 0, 0, 0]) == 232
-        @test MaxDualIndex([6]) == 435
+    _MAXDUALINDEX_CASES = [
+        ([0], 1), ([0, 0], 4), ([2], 3), ([0, 0, 0], 27), ([0, 0, 0, 0], 232), ([6], 435)
+    ]
+    @testset "MaxDualIndex $deriv → $expected" for (deriv, expected) in _MAXDUALINDEX_CASES
+        @test MaxDualIndex(deriv) == expected
+    end
 
-        # Integer shorthand
+    @testset "MaxDualIndex integer shorthand" begin
         @test MaxDualIndex(1) == 1
         @test MaxDualIndex(5) == 2582
+    end
 
-        # InvariantCase overload
+    @testset "MaxDualIndex InvariantCase overload" begin
         @test MaxDualIndex(InvariantCase([0, 2])) == 58
+    end
 
-        # Unknown case throws
+    @testset "MaxDualIndex unknown throws" begin
         @test_throws ArgumentError MaxDualIndex([99])
     end
 
@@ -198,14 +199,9 @@ using xAct
         @test length(Set(all_cases)) == 48
     end
 
-    @testset "InvarCases by order" begin
-        @test length(InvarCases(2)) == 1
-        @test length(InvarCases(4)) == 2
-        @test length(InvarCases(6)) == 4
-        @test length(InvarCases(8)) == 7
-        @test length(InvarCases(10)) == 12
-        @test length(InvarCases(12)) == 21
-        @test length(InvarCases(14)) == 1
+    _INVARCASES_BY_ORDER = [(2, 1), (4, 2), (6, 4), (8, 7), (10, 12), (12, 21), (14, 1)]
+    @testset "InvarCases order=$order → $count" for (order, count) in _INVARCASES_BY_ORDER
+        @test length(InvarCases(order)) == count
     end
 
     @testset "InvarCases by order and degree" begin

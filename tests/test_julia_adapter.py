@@ -103,3 +103,58 @@ class TestTopLevelSplit:
         from sxact.adapter.julia_stub import _top_level_split
 
         assert _top_level_split("no separator here", " === ") == ["no separator here"]
+
+
+# ---------------------------------------------------------------------------
+# WL pattern stripping must not mangle snake_case Julia names (sxAct-yg6v)
+# ---------------------------------------------------------------------------
+
+
+class TestWlPatternStripping:
+    """_preprocess_wl_patterns must strip WL blanks but preserve snake_case."""
+
+    def test_simple_blank_stripped(self):
+        from sxact.adapter.julia_stub import _preprocess_wl_patterns
+
+        assert _preprocess_wl_patterns("x_") == "x"
+
+    def test_typed_blank_stripped(self):
+        from sxact.adapter.julia_stub import _preprocess_wl_patterns
+
+        assert _preprocess_wl_patterns("x_Integer") == "x"
+
+    def test_blank_sequence_stripped(self):
+        from sxact.adapter.julia_stub import _preprocess_wl_patterns
+
+        assert _preprocess_wl_patterns("x__") == "x"
+
+    def test_blank_null_sequence_stripped(self):
+        from sxact.adapter.julia_stub import _preprocess_wl_patterns
+
+        assert _preprocess_wl_patterns("x___") == "x"
+
+    def test_snake_case_preserved(self):
+        from sxact.adapter.julia_stub import _preprocess_wl_patterns
+
+        assert (
+            _preprocess_wl_patterns("check_perturbation_order")
+            == "check_perturbation_order"
+        )
+
+    def test_snake_case_in_call_preserved(self):
+        from sxact.adapter.julia_stub import _preprocess_wl_patterns
+
+        expr = "check_perturbation_order(Pertg1, 1) === true"
+        assert _preprocess_wl_patterns(expr) == expr
+
+    def test_mixed_snake_and_blank(self):
+        from sxact.adapter.julia_stub import _preprocess_wl_patterns
+
+        # x_ should be stripped but check_order should be preserved
+        assert _preprocess_wl_patterns("f[x_, check_order]") == "f[x, check_order]"
+
+    def test_wl_to_jl_preserves_snake_case(self):
+        from sxact.adapter.julia_stub import _wl_to_jl
+
+        result = _wl_to_jl("check_perturbation_order(Pertg1, 1) === true")
+        assert "check_perturbation_order" in result
