@@ -514,4 +514,31 @@ using xAct.XPerm
         @test order_of_group(min2) == 6
         @test length(min2.GS) == length(sgs2.GS)
     end
+
+    # ------------------------------------------------------------------
+    # Bug fixes: sxAct-e8a7, sxAct-2bqw, sxAct-2w46
+    # ------------------------------------------------------------------
+    @testset "_extract_sign validates both sign bits" begin
+        # Valid positive sign: (n+1,n+2) = (5,6)
+        @test XPerm._extract_sign([1, 2, 3, 4, 5, 6], 4, true) == 1
+        # Valid negative sign: (n+1,n+2) = (6,5)
+        @test XPerm._extract_sign([2, 1, 3, 4, 6, 5], 4, true) == -1
+        # Unsigned: always 1
+        @test XPerm._extract_sign([2, 1, 3, 4], 4, false) == 1
+        # Short perm: treat as unsigned
+        @test XPerm._extract_sign([2, 1, 3, 4], 4, true) == 1
+    end
+
+    @testset "schreier_sims with identity generators" begin
+        # All identity generators → trivial group
+        id3 = [1, 2, 3]
+        sgs = schreier_sims(Int[], [id3, id3], 3)
+        @test isempty(sgs.base)
+        @test isempty(sgs.GS)
+        @test order_of_group(sgs) == 1
+
+        # Mix of identity and non-identity
+        sgs2 = schreier_sims(Int[], [id3, [2, 1, 3]], 3)
+        @test order_of_group(sgs2) == 2
+    end
 end

@@ -370,6 +370,12 @@ function schreier_sims(
     deg = length(generators[1])
     signed = (deg == n + 2)
 
+    # Filter out identity generators (they don't contribute to the group)
+    nontrivial = filter(g -> !is_identity(g[1:n]), generators)
+    if isempty(nontrivial)
+        return StrongGenSet(Int[], Vector{Int}[], n, signed)
+    end
+
     base = copy(initbase)
     level_GS = Vector{Vector{Vector{Int}}}()  # generators per level
     level_seen = Vector{Set{Vector{Int}}}()      # dedup sets per level
@@ -414,21 +420,21 @@ function schreier_sims(
 
     # Determine initial base from generators if caller passed empty base.
     if isempty(base)
-        for g in generators
+        for g in nontrivial
             moved = findfirst(i -> g[i] != i, 1:n)
             if !isnothing(moved) && !(moved in base)
                 push!(base, moved)
                 break
             end
         end
-        isempty(base) && return StrongGenSet(Int[], copy(generators), n, signed)
+        isempty(base) && return StrongGenSet(Int[], Vector{Int}[], n, signed)
     end
 
     # Seed level 1 with all initial generators (deduplicated).
     push!(level_GS, Vector{Vector{Int}}())
     push!(level_seen, Set{Vector{Int}}())
     push!(sv_cache, nothing)
-    for g in generators
+    for g in nontrivial
         add_gen!(1, g)
     end
 
@@ -606,8 +612,15 @@ end
 
 function _extract_sign(perm::Vector{Int}, n::Int, signed::Bool)::Int
     !signed && return 1
-    length(perm) < n + 1 && return 1
-    perm[n + 1] == n+1 ? 1 : -1
+    length(perm) < n + 2 && return 1
+    # Sign bits must be a swap pair: (n+1,n+2) → +1, (n+2,n+1) → -1
+    if perm[n + 1] == n + 1 && perm[n + 2] == n + 2
+        return 1
+    elseif perm[n + 1] == n + 2 && perm[n + 2] == n + 1
+        return -1
+    end
+    @warn "Corrupted sign-bit pair at positions $(n+1),$(n+2): [$(perm[n+1]),$(perm[n+2])]"
+    return 1  # defensive fallback
 end
 
 # ============================================================
@@ -2145,7 +2158,7 @@ function _enumerate_signed_group_elements(sgs::StrongGenSet)::Vector{Tuple{Vecto
             end
         end
     end
-    collect((_ -> [(k, v) for (k, v) in seen])(values(seen)))
+    [(k, v) for (k, v) in seen]
 end
 
 """
