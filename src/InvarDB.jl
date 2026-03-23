@@ -416,11 +416,19 @@ function _parse_coefficient(s::AbstractString)
     if occursin("sigma", s)
         has_sigma = true
         s = replace(s, "sigma" => "")
-        s = replace(s, "**" => "*")  # clean up double *
+        # Clean up multiplication artifacts: "**" → "*", leading/trailing *
+        s = replace(s, "**" => "*")
         s = strip(s)
-        if endswith(s, "*")
-            s = strip(s[1:(end - 1)])
+        # Strip stray * (e.g. "-*3/2" → "-3/2", "*3" → "3", "2*" → "2")
+        s = replace(s, "-*" => "-")
+        s = replace(s, "+*" => "+")
+        if startswith(s, "*")
+            s = s[2:end]
         end
+        if endswith(s, "*")
+            s = s[1:(end - 1)]
+        end
+        s = strip(s)
     end
 
     # Empty, pure "+", or pure "-"

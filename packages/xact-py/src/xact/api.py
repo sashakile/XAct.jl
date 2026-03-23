@@ -714,12 +714,71 @@ class CTensor:
         return f"CTensor({self.tensor!r}, bases={self.bases!r})"
 
 
+def _jl_to_scalar(v: Any) -> int | float:
+    """Convert a Julia scalar to Python int or float."""
+    f = float(v)
+    return int(f) if f == int(f) else f
+
+
+def _jl_to_list(obj: Any) -> Any:
+    """Convert a Julia array to nested Python lists, preserving shape.
+
+    Uses numpy if available (fast path), otherwise reshapes manually from
+    the flat column-major iteration order using .shape.
+    """
+    ndim = getattr(obj, "ndim", None)
+    if ndim is None:
+        return _jl_to_scalar(obj)
+    if ndim == 0:
+        # 0-dimensional array: extract the single element
+        flat = [_jl_to_scalar(x) for x in obj]
+        return flat[0] if flat else _jl_to_scalar(obj)
+
+    # Fast path: use numpy if available
+    try:
+        return obj.to_numpy().tolist()
+    except (ImportError, ModuleNotFoundError):
+        pass
+
+    # Pure-Python fallback: flat column-major → nested row-major lists
+    shape = obj.shape
+    flat = [_jl_to_scalar(x) for x in obj]
+    if len(shape) == 1:
+        return flat
+    return _reshape_colmajor(flat, shape)
+
+
+def _reshape_colmajor(flat: list[int | float], shape: tuple[int, ...]) -> list[Any]:
+    """Reshape a flat column-major list into nested row-major Python lists."""
+    if len(shape) == 1:
+        return flat
+    # Julia arrays are column-major: first index varies fastest
+    # For 2D (rows, cols): flat[i + j*rows] = arr[i, j]
+    rows, cols = shape[0], shape[1]
+    if len(shape) == 2:
+        return [[flat[i + j * rows] for j in range(cols)] for i in range(rows)]
+    # For 3D+: recurse on slices
+    stride = 1
+    for d in shape[:-1]:
+        stride *= d
+    slices = [flat[i * stride : (i + 1) * stride] for i in range(shape[-1])]
+    inner_shape = shape[:-1]
+    result_slices = [_reshape_colmajor(s, inner_shape) for s in slices]
+    # Transpose outermost: Julia stores last index slowest
+    n_first = shape[0]
+    return [
+        [
+            result_slices[k][i] if len(inner_shape) == 1 else result_slices[k][i]
+            for k in range(shape[-1])
+        ]
+        for i in range(n_first)
+    ]
+
+
 def _ct_from_julia(ct_jl: Any) -> "CTensor":
     """Convert a Julia CTensorObj to a Python CTensor."""
-    import numpy as _np  # noqa: PLC0415
-
     tensor_name = str(ct_jl.tensor).lstrip(":")
-    array = _np.array(ct_jl.array).tolist()
+    array = _jl_to_list(ct_jl.array)
     bases = [str(b).lstrip(":") for b in ct_jl.bases]
     weight = int(ct_jl.weight)
     julia_str = str(ct_jl.array)

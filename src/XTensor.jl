@@ -258,8 +258,10 @@ const _manifolds = Dict{Symbol,ManifoldObj}()
 const _vbundles = Dict{Symbol,VBundleObj}()
 const _tensors = Dict{Symbol,TensorObj}()
 const _metrics = Dict{Symbol,MetricObj}()
+const _metric_name_index = Dict{Symbol,Symbol}()  # metric tensor name → covd name
 const _perturbations = Dict{Symbol,PerturbationObj}()
 const _bases = Dict{Symbol,BasisObj}()
+const _parallel_deriv_index = Dict{Symbol,Symbol}()  # parallel_deriv → basis name
 const _charts = Dict{Symbol,ChartObj}()
 const _basis_changes = Dict{Tuple{Symbol,Symbol},BasisChangeObj{<:Number}}()
 const _ctensors = Dict{Tuple{Symbol,Vararg{Symbol}},CTensorObj{<:Number}}()
@@ -378,8 +380,10 @@ function reset_state!()
     empty!(_vbundles);
     empty!(_tensors);
     empty!(_metrics);
+    empty!(_metric_name_index)
     empty!(_perturbations)
     empty!(_bases);
+    empty!(_parallel_deriv_index)
     empty!(_charts)
     empty!(_basis_changes)
     empty!(_ctensors)
@@ -579,7 +583,7 @@ BasisQ(s::Symbol) = haskey(_bases, s)
 BasisQ(s::AbstractString) = BasisQ(Symbol(s))
 ChartQ(s::Symbol) = haskey(_charts, s)
 ChartQ(s::AbstractString) = ChartQ(Symbol(s))
-CovDQ(s::Symbol) = haskey(_metrics, s) || any(b -> b.parallel_deriv == s, values(_bases))
+CovDQ(s::Symbol) = haskey(_metrics, s) || haskey(_parallel_deriv_index, s)
 CovDQ(s::AbstractString) = CovDQ(Symbol(s))
 PerturbationQ(s::Symbol) = haskey(_perturbations, s)
 PerturbationQ(s::AbstractString) = PerturbationQ(Symbol(s))
@@ -683,11 +687,9 @@ MemberQ(collection::AbstractString, s) = MemberQ(Symbol(collection), s)
 Return the sign of the determinant (+1 Riemannian, -1 Lorentzian) for a registered metric.
 """
 function SignDetOfMetric(metric_name::Symbol)::Int
-    # _metrics is keyed by covd name; search by metric tensor name
-    for (covd, m) in _metrics
-        if m.name == metric_name
-            return m.signdet
-        end
+    covd = get(_metric_name_index, metric_name, nothing)
+    if covd !== nothing
+        return _metrics[covd].signdet
     end
     error("SignDetOfMetric: metric $metric_name not found")
 end
@@ -967,6 +969,7 @@ function def_metric!(
 
     metric = MetricObj(metric_name, manifold_sym, covd_name, signdet)
     _metrics[covd_name] = metric
+    _metric_name_index[metric_name] = covd_name
 
     _register_symbol_hook[](covd_name, "XTensor")
 
@@ -1023,6 +1026,7 @@ function def_basis!(
 
     b = BasisObj(name, vbundle, sort(cnumbers), pd_name, false)
     _bases[name] = b
+    _parallel_deriv_index[pd_name] = name
     push!(Bases, name)
 
     _register_symbol_hook[](name, "XTensor")
