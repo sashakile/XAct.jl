@@ -94,48 +94,6 @@ class _JuliaContext:
 class JuliaAdapter(TestAdapter[_JuliaContext]):
     """Concrete adapter for the Julia XCore + XTensor backend."""
 
-    # Actions handled by XTensor
-    _XTENSOR_ACTIONS = frozenset(
-        {
-            "DefManifold",
-            "DefMetric",
-            "DefTensor",
-            "DefBasis",
-            "DefChart",
-            "ToCanonical",
-            "Contract",
-            "CommuteCovDs",
-            "SortCovDs",
-            "DefPerturbation",
-            "CheckMetricConsistency",
-            "Perturb",
-            "PerturbCurvature",
-            "Simplify",
-            "PerturbationOrder",
-            "PerturbationAtOrder",
-            "IntegrateByParts",
-            "TotalDerivativeQ",
-            "VarD",
-            "SetBasisChange",
-            "ChangeBasis",
-            "GetJacobian",
-            "BasisChangeQ",
-            "SetComponents",
-            "GetComponents",
-            "ComponentValue",
-            "CTensorQ",
-            "ToBasis",
-            "FromBasis",
-            "TraceBasisDummy",
-            "Christoffel",
-            "CollectTensors",
-            "AllContractions",
-            "SymmetryOf",
-            "MakeTraceFree",
-            "RiemannSimplify",
-        }
-    )
-
     # Tier 2 deferred actions
     _DEFERRED_ACTIONS: frozenset[str] = frozenset()
 
@@ -146,6 +104,49 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         self._jl: Any = None
         self._xact_version: str = "unknown"
         self._julia_version: str = "unknown"
+        # Action → handler registry.  Handlers that need ctx take (ctx, args);
+        # handlers that don't take (args) only.  _CTX_ACTIONS lists the former.
+        self._ACTION_HANDLERS: dict[str, str] = {
+            "DefManifold": "_def_manifold",
+            "DefMetric": "_def_metric",
+            "DefTensor": "_def_tensor",
+            "DefBasis": "_def_basis",
+            "DefChart": "_def_chart",
+            "ToCanonical": "_to_canonical",
+            "Contract": "_contract",
+            "CommuteCovDs": "_commute_covds",
+            "SortCovDs": "_sort_covds",
+            "DefPerturbation": "_def_perturbation",
+            "CheckMetricConsistency": "_check_metric_consistency",
+            "Perturb": "_perturb",
+            "PerturbCurvature": "_perturb_curvature",
+            "Simplify": "_simplify",
+            "PerturbationOrder": "_perturbation_order",
+            "PerturbationAtOrder": "_perturbation_at_order",
+            "IntegrateByParts": "_integrate_by_parts",
+            "TotalDerivativeQ": "_total_derivative_q",
+            "VarD": "_vard",
+            "SetBasisChange": "_set_basis_change",
+            "ChangeBasis": "_change_basis",
+            "GetJacobian": "_get_jacobian",
+            "BasisChangeQ": "_basis_change_q",
+            "SetComponents": "_set_components",
+            "GetComponents": "_get_components",
+            "ComponentValue": "_component_value",
+            "CTensorQ": "_ctensor_q",
+            "ToBasis": "_to_basis",
+            "FromBasis": "_from_basis",
+            "TraceBasisDummy": "_trace_basis_dummy",
+            "Christoffel": "_christoffel",
+            "CollectTensors": "_collect_tensors",
+            "AllContractions": "_all_contractions",
+            "SymmetryOf": "_symmetry_of",
+            "MakeTraceFree": "_make_trace_free",
+            "RiemannSimplify": "_riemann_simplify",
+        }
+        self._CTX_ACTIONS = frozenset(
+            {"DefManifold", "DefMetric", "DefTensor", "DefPerturbation"}
+        )
 
     def _ensure_ready(self) -> None:
         if self._jl is not None:
@@ -214,7 +215,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
 
         self._ensure_ready()
 
-        if action in self._XTENSOR_ACTIONS:
+        if action in self._ACTION_HANDLERS:
             return self._execute_xtensor(ctx, action, args)
 
         if action == "Evaluate":
@@ -250,80 +251,24 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
     def _execute_xtensor(
         self, ctx: _JuliaContext, action: str, args: dict[str, Any]
     ) -> Result:
-        """Dispatch xTensor actions to Julia XTensor module."""
+        """Dispatch xTensor actions via handler registry."""
+        method_name = self._ACTION_HANDLERS.get(action)
+        if method_name is None:
+            return Result(
+                status="error",
+                type="",
+                repr="",
+                normalized="",
+                error=f"unhandled xTensor action: {action!r}",
+            )
         try:
-            if action == "DefManifold":
-                return self._def_manifold(ctx, args)
-            if action == "DefTensor":
-                return self._def_tensor(ctx, args)
-            if action == "DefMetric":
-                return self._def_metric(ctx, args)
-            if action == "DefBasis":
-                return self._def_basis(args)
-            if action == "DefChart":
-                return self._def_chart(args)
-            if action == "ToCanonical":
-                return self._to_canonical(args)
-            if action == "Contract":
-                return self._contract(args)
-            if action == "CommuteCovDs":
-                return self._commute_covds(args)
-            if action == "SortCovDs":
-                return self._sort_covds(args)
-            if action == "DefPerturbation":
-                return self._def_perturbation(ctx, args)
-            if action == "Perturb":
-                return self._perturb(args)
-            if action == "CheckMetricConsistency":
-                return self._check_metric_consistency(args)
-            if action == "Simplify":
-                return self._simplify(args)
-            if action == "PerturbCurvature":
-                return self._perturb_curvature(args)
-            if action == "PerturbationOrder":
-                return self._perturbation_order(args)
-            if action == "PerturbationAtOrder":
-                return self._perturbation_at_order(args)
-            if action == "IntegrateByParts":
-                return self._integrate_by_parts(args)
-            if action == "TotalDerivativeQ":
-                return self._total_derivative_q(args)
-            if action == "VarD":
-                return self._vard(args)
-            if action == "SetBasisChange":
-                return self._set_basis_change(args)
-            if action == "ChangeBasis":
-                return self._change_basis(args)
-            if action == "GetJacobian":
-                return self._get_jacobian(args)
-            if action == "BasisChangeQ":
-                return self._basis_change_q(args)
-            if action == "SetComponents":
-                return self._set_components(args)
-            if action == "GetComponents":
-                return self._get_components(args)
-            if action == "ComponentValue":
-                return self._component_value(args)
-            if action == "CTensorQ":
-                return self._ctensor_q(args)
-            if action == "ToBasis":
-                return self._to_basis(args)
-            if action == "FromBasis":
-                return self._from_basis(args)
-            if action == "TraceBasisDummy":
-                return self._trace_basis_dummy(args)
-            if action == "Christoffel":
-                return self._christoffel(args)
-            if action == "CollectTensors":
-                return self._collect_tensors(args)
-            if action == "AllContractions":
-                return self._all_contractions(args)
-            if action == "SymmetryOf":
-                return self._symmetry_of(args)
-            if action == "MakeTraceFree":
-                return self._make_trace_free(args)
-            if action == "RiemannSimplify":
-                return self._riemann_simplify(args)
+            handler = getattr(self, method_name)
+            result: Result
+            if action in self._CTX_ACTIONS:
+                result = handler(ctx, args)
+            else:
+                result = handler(args)
+            return result
         except Exception as exc:
             import traceback as _tb  # noqa: PLC0415
 
@@ -335,13 +280,6 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
                 normalized="",
                 error=f"{exc}\n{tb_str}",
             )
-        return Result(
-            status="error",
-            type="",
-            repr="",
-            normalized="",
-            error=f"unhandled xTensor action: {action!r}",
-        )
 
     def _def_manifold(self, ctx: _JuliaContext, args: dict[str, Any]) -> Result:
         from sxact.compare.tensor_objects import Manifold
