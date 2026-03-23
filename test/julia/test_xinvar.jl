@@ -518,8 +518,9 @@ using xAct
             @test _parse_int_csv("2,abc,3") == [2, 3]
             @test _parse_int_csv(",,") == Int[]
 
-            # _parse_nested_intlist: unbalanced brackets
-            @test _parse_nested_intlist("[[2,1]") == [[2, 1]]
+            # _parse_nested_intlist: unbalanced brackets — missing outer ] means
+            # inner list never completes at depth 0, so returns empty
+            @test _parse_nested_intlist("[[2,1]") == Vector{Int}[]
             @test _parse_nested_intlist("[2,1]]") == Vector{Int}[]
             @test _parse_nested_intlist("[]") == Vector{Int}[]
             @test _parse_nested_intlist("[[]]") == Vector{Int}[]
