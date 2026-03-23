@@ -580,6 +580,10 @@ using xAct
             @test _parse_coefficient("- 2*") == -2 // 1
             @test _parse_coefficient("sigma*") == 1 // 1
             @test _parse_coefficient("- sigma*") == -1 // 1
+
+            # Truly malformed input warns but still returns 1//1 (sxAct-tecf)
+            @test_logs (:warn, r"unparsable coefficient") _parse_coefficient("2.5*")
+            @test _parse_coefficient("sigma*") == 1 // 1  # sigma: no warning
         end
 
         # ============================================================

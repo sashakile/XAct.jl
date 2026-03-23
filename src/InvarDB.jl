@@ -449,7 +449,10 @@ function _parse_coefficient(s::AbstractString)
     n = tryparse(Int, s)
     n !== nothing && return n // 1
 
-    # Fallback
+    # Fallback: warn on unrecognised coefficient format (may indicate corrupt data)
+    if !has_sigma
+        @warn "InvarDB: unparsable coefficient $(repr(s)), defaulting to 1//1"
+    end
     return 1 // 1
 end
 
