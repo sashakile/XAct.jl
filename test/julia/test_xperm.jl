@@ -383,4 +383,135 @@ using xAct.XPerm
         )
         @test length(result2) == n2
     end
+
+    # ------------------------------------------------------------------
+    # canonical_perm — direct tests (sxAct-fyvv)
+    # ------------------------------------------------------------------
+    @testset "canonical_perm direct" begin
+        # Trivial SGS (empty base) → returns perm[1:n] with sign 1
+        sgs_trivial = StrongGenSet(Int[], Vector{Int}[], 3, false)
+        cp, cs = canonical_perm([1, 2, 3], sgs_trivial, Int[], Vector{Vector{Int}}())
+        @test cp == [1, 2, 3]
+        @test cs == 1
+
+        # Symmetric pair (unsigned), identity perm → canonical with sign +1
+        sgs_sym = symmetric_sgs([1, 2], 4)
+        perm_id = identity_perm(4)  # [1,2,3,4], degree 4 (unsigned)
+        cp2, cs2 = canonical_perm(perm_id, sgs_sym, Int[], Vector{Vector{Int}}())
+        @test cs2 == 1
+        @test length(cp2) == 4
+        @test cp2 == [1, 2, 3, 4]
+
+        # Swapped perm [2,1,3,4] under symmetric pair → canonical [1,2,3,4]
+        cp_swap, cs_swap = canonical_perm(
+            [2, 1, 3, 4], sgs_sym, Int[], Vector{Vector{Int}}()
+        )
+        @test cs_swap == 1
+        @test cp_swap == [1, 2, 3, 4]
+
+        # With free_points: canonical_perm calls right_coset_rep first
+        cp3, cs3 = canonical_perm(perm_id, sgs_sym, [1, 2], Vector{Vector{Int}}())
+        @test cs3 != 0
+        @test length(cp3) == 4
+    end
+
+    # ------------------------------------------------------------------
+    # Wolfram-compat API functions (sxAct-fyvv)
+    # ------------------------------------------------------------------
+    @testset "Stabilizer" begin
+        GS = [[2, 1, 3, 4], [1, 2, 4, 3]]
+        # First gen swaps 1↔2 (fixes 3,4); second swaps 3↔4 (fixes 1,2)
+        @test Stabilizer([3, 4], GS) == [[2, 1, 3, 4]]
+        @test Stabilizer([1, 2], GS) == [[1, 2, 4, 3]]
+        # All points fixed → empty
+        @test Stabilizer([1, 2, 3, 4], GS) == Vector{Int}[]
+        # No points → all generators stabilize
+        @test Stabilizer(Int[], GS) == GS
+    end
+
+    @testset "First" begin
+        @test First([42, -1]) == 42
+        @test First((1, 2, 3)) == 1
+    end
+
+    @testset "Schreier / SchreierResult" begin
+        sr = Schreier([1, 2], [0, "g1"], [0, 1])
+        @test sr.orbit == [1, 2]
+        @test sr.label_vec == [0, "g1"]
+        @test sr.parent_vec == [0, 1]
+    end
+
+    @testset "SchreierOrbits" begin
+        # Two disjoint transpositions: orbits {1,2} and {3,4}
+        GS = [[2, 1, 3, 4], [1, 2, 4, 3]]
+        result = SchreierOrbits(GS, 4, ["g1", "g2"])
+        @test length(result.orbits) == 2
+        sorted_orbits = sort(result.orbits; by=first)
+        @test sort(sorted_orbits[1]) == [1, 2]
+        @test sort(sorted_orbits[2]) == [3, 4]
+        @test length(result.label_vec) == 4
+        @test length(result.parent_vec) == 4
+    end
+
+    @testset "Dimino" begin
+        # Z2 from a single transposition
+        g = Dimino([[2, 1]])
+        @test length(g) == 2
+        @test g.elems[1] == "ID"
+
+        # Trivial group from empty generators
+        g_trivial = Dimino(Vector{Vector{Int}}())
+        @test length(g_trivial) == 1
+        @test g_trivial.elems[1] == "ID"
+
+        # S3 from two generators (padded to length 3)
+        g_s3 = Dimino([[2, 1, 3], [1, 3, 2]])
+        @test length(g_s3) == 6  # |S3| = 6
+    end
+
+    @testset "Timing / AbsoluteTiming / Second" begin
+        @test Timing(42) == (0.0, 42)
+        @test AbsoluteTiming("hello") == (0.0, "hello")
+        @test Second == 1.0
+    end
+
+    @testset "Group" begin
+        g = Group("ID", [2, 1])
+        @test length(g) == 2
+        # Identity equivalence
+        @test Group(Any["ID"]) == Group(Any[Int[]])
+        # Equality
+        @test Group(Any["ID", [2, 1]]) == Group(Any["ID", [2, 1]])
+    end
+
+    @testset "PermWord" begin
+        sgs = schreier_sims([1, 2], [[2, 1, 3, 4], [1, 2, 4, 3]], 4)
+        pw = PermWord([2, 1, 4, 3], sgs)
+        # PermWordResult is iterable and produces vectors
+        @test pw isa PermWordResult
+        @test length(pw.word) >= 1
+
+        # Identity perm → all word elements should be identity (empty or [1..n])
+        pw_id = PermWord(identity_perm(4), sgs)
+        for elem in pw_id.word
+            @test isempty(elem) || elem == collect(1:length(elem))
+        end
+    end
+
+    @testset "DeleteRedundantGenerators" begin
+        # S3 with redundant generator: (12), (23), (13) — padded to length 3
+        g12 = [2, 1, 3]
+        g23 = [1, 3, 2]
+        g13 = [3, 2, 1]
+        sgs = schreier_sims(Int[], [g12, g23, g13], 3)
+        minimal = DeleteRedundantGenerators(sgs)
+        @test order_of_group(minimal) == 6  # S3 preserved
+        @test length(minimal.GS) <= length(sgs.GS)  # no more generators
+
+        # Already minimal — no change
+        sgs2 = schreier_sims(Int[], [g12, g23], 3)
+        min2 = DeleteRedundantGenerators(sgs2)
+        @test order_of_group(min2) == 6
+        @test length(min2.GS) == length(sgs2.GS)
+    end
 end
