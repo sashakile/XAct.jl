@@ -359,7 +359,7 @@ def perturb(expr: str | Any, order: int = 1) -> str | Any:
     return _parse_to_texpr(result) if is_typed else result
 
 
-def commute_covds(expr: str | Any, covd: str, index1: str, index2: str) -> str:
+def commute_covds(expr: str | Any, covd: str, index1: str, index2: str) -> str | Any:
     """Commute two covariant derivative indices, producing curvature terms.
 
     Parameters
@@ -371,12 +371,13 @@ def commute_covds(expr: str | Any, covd: str, index1: str, index2: str) -> str:
     index1, index2 : str
         The two derivative indices to commute.
     """
-    from xact.expr import TExpr  # noqa: PLC0415
+    from xact.expr import TExpr, _parse_to_texpr  # noqa: PLC0415
 
-    if isinstance(expr, TExpr):
+    is_typed = isinstance(expr, TExpr)
+    if is_typed:
         expr = str(expr)
     jl, _ = _ensure_init()
-    return str(
+    result = str(
         jl_call(
             jl,
             "XTensor.CommuteCovDs",
@@ -386,20 +387,23 @@ def commute_covds(expr: str | Any, covd: str, index1: str, index2: str) -> str:
             jl_str(index2),
         )
     )
+    return _parse_to_texpr(result) if is_typed else result
 
 
-def sort_covds(expr: str | Any, covd: str) -> str:
+def sort_covds(expr: str | Any, covd: str) -> str | Any:
     """Sort all covariant derivatives into canonical order."""
-    from xact.expr import TExpr  # noqa: PLC0415
+    from xact.expr import TExpr, _parse_to_texpr  # noqa: PLC0415
 
-    if isinstance(expr, TExpr):
+    is_typed = isinstance(expr, TExpr)
+    if is_typed:
         expr = str(expr)
     jl, _ = _ensure_init()
-    return str(
+    result = str(
         jl_call(
             jl, "XTensor.SortCovDs", jl_str(expr), jl_sym(covd, "covariant derivative")
         )
     )
+    return _parse_to_texpr(result) if is_typed else result
 
 
 def ibp(expr: str | Any, covd: str) -> str | Any:
@@ -438,7 +442,7 @@ def var_d(expr: str | Any, field: str, covd: str) -> str | Any:
     return _parse_to_texpr(result) if is_typed else result
 
 
-def riemann_simplify(expr: str, covd: str, *, level: int = 6) -> str:
+def riemann_simplify(expr: str | Any, covd: str, *, level: int = 6) -> str | Any:
     """Simplify scalar Riemann polynomial expressions.
 
     Uses the Invar database to reduce expressions modulo
@@ -446,15 +450,21 @@ def riemann_simplify(expr: str, covd: str, *, level: int = 6) -> str:
 
     Parameters
     ----------
-    expr : str
+    expr : str or TExpr
         A scalar polynomial in Riemann, Ricci, etc.
     covd : str
         Covariant derivative name.
     level : int
         Simplification level (1-6). Default 6 (all identities).
     """
+    from xact.expr import TExpr, _parse_to_texpr  # noqa: PLC0415
+
+    is_typed = isinstance(expr, TExpr)
+    if is_typed:
+        expr = str(expr)
     _, mod = _ensure_init()
-    return str(mod.RiemannSimplify(expr, covd, level=level))
+    result = str(mod.RiemannSimplify(expr, covd, level=level))
+    return _parse_to_texpr(result) if is_typed else result
 
 
 # ---------------------------------------------------------------------------
