@@ -438,6 +438,9 @@ function _make_bianchi_identity(tensor_name::Symbol)
     )
 end
 
+# Type alias for structured key (used before TermAST is defined)
+const _StructKey = Vector{Tuple{Symbol,Vector{String}}}
+
 """
     _apply_identities!(coeff_map, key_order)
 
@@ -445,13 +448,14 @@ Apply all registered multi-term identities to the canonical term map.
 Replaces the hardcoded `_bianchi_reduce!` with a general framework.
 """
 function _apply_identities!(
-    coeff_map::Dict{Vector{Tuple{Symbol,Vector{String}}},Rational{Int}},
-    key_order::Vector{Vector{Tuple{Symbol,Vector{String}}}},
+    coeff_map::Dict{String,Rational{Int}},
+    struct_map::Dict{String,_StructKey},
+    key_order::Vector{String},
 )
     isempty(_identity_registry) && return nothing
     for (_, identities) in _identity_registry
         for identity in identities
-            _apply_single_identity!(coeff_map, key_order, identity)
+            _apply_single_identity!(coeff_map, struct_map, key_order, identity)
         end
     end
     nothing
@@ -466,20 +470,21 @@ Groups single-factor terms by sector (values at fixed_slots + sorted values at c
 then for each complete sector eliminates the designated term.
 """
 function _apply_single_identity!(
-    coeff_map::Dict{Vector{Tuple{Symbol,Vector{String}}},Rational{Int}},
-    key_order::Vector{Vector{Tuple{Symbol,Vector{String}}}},
+    coeff_map::Dict{String,Rational{Int}},
+    struct_map::Dict{String,_StructKey},
+    key_order::Vector{String},
     id::MultiTermIdentity,
 )
-    # Map: sector_key → (rank_perm → key)
+    # Map: sector_key → (rank_perm → skey)
     # sector_key = (fixed_values, sorted_cycled_values)
     SectorKey = Tuple{Vector{String},Vector{String}}
-    KeyType = Vector{Tuple{Symbol,Vector{String}}}
-    sectors = Dict{SectorKey,Dict{Vector{Int},KeyType}}()
+    sectors = Dict{SectorKey,Dict{Vector{Int},String}}()
 
-    for key in key_order
-        get(coeff_map, key, 0 // 1) == 0 && continue
-        length(key) != 1 && continue
-        tname, indices = key[1]
+    for skey in key_order
+        get(coeff_map, skey, 0 // 1) == 0 && continue
+        sk = struct_map[skey]
+        length(sk) != 1 && continue
+        tname, indices = sk[1]
         tname != id.tensor && continue
         length(indices) != id.n_slots && continue
 
@@ -490,7 +495,7 @@ function _apply_single_identity!(
 
         sector_key = (fixed_vals, sorted_cycled)
         if !haskey(sectors, sector_key)
-            sectors[sector_key] = Dict{Vector{Int},KeyType}()
+            sectors[sector_key] = Dict{Vector{Int},String}()
         end
 
         # Compute rank permutation: map each cycled value to its rank in sorted order
@@ -500,7 +505,7 @@ function _apply_single_identity!(
         end
         perm = [rank_map[v] for v in cycled_vals]
 
-        sectors[sector_key][perm] = key
+        sectors[sector_key][perm] = skey
     end
 
     # Apply identity to each complete sector
@@ -1247,6 +1252,16 @@ struct TermAST
 end
 
 """
+Serialize a structured key to a canonical string for O(1) Dict hashing.
+"""
+function _term_key_str(factors::_StructKey)::String
+    join(["$(n)[$(join(idxs,","))]" for (n, idxs) in factors], " ")
+end
+_term_key_str(factors::Vector{FactorAST})::String = _term_key_str([
+    (f.tensor_name, f.indices) for f in factors
+])
+
+"""
     _parse_expression(expr_str) → Vector{TermAST}
 
 Parse a tensor expression string into a list of terms.
@@ -1490,10 +1505,11 @@ Legacy wrapper: delegates to `_apply_identities!`.
 Kept for backward compatibility; new code should call `_apply_identities!` directly.
 """
 function _bianchi_reduce!(
-    coeff_map::Dict{Vector{Tuple{Symbol,Vector{String}}},Rational{Int}},
-    key_order::Vector{Vector{Tuple{Symbol,Vector{String}}}},
+    coeff_map::Dict{String,Rational{Int}},
+    struct_map::Dict{String,_StructKey},
+    key_order::Vector{String},
 )
-    _apply_identities!(coeff_map, key_order)
+    _apply_identities!(coeff_map, struct_map, key_order)
 end
 
 # ============================================================
@@ -2229,28 +2245,30 @@ function ToCanonical(expression::AbstractString)::String
 
     isempty(canon_terms) && return "0"
 
-    # Collect like terms: key = tuple of (name, frozen_indices)
-    coeff_map = Dict{Vector{Tuple{Symbol,Vector{String}}},Rational{Int}}()
-    key_order = Vector{Tuple{Symbol,Vector{String}}}[]
+    # Collect like terms: String key for O(1) hashing, structured data for identity/serialization
+    coeff_map = Dict{String,Rational{Int}}()
+    struct_map = Dict{String,_StructKey}()
+    key_order = String[]
 
     for term in canon_terms
-        key = [(f.tensor_name, copy(f.indices)) for f in term.factors]
-        if !haskey(coeff_map, key)
-            coeff_map[key] = 0 // 1
-            push!(key_order, key)
+        skey = _term_key_str(term.factors)
+        if !haskey(coeff_map, skey)
+            coeff_map[skey] = 0 // 1
+            struct_map[skey] = [(f.tensor_name, copy(f.indices)) for f in term.factors]
+            push!(key_order, skey)
         end
-        coeff_map[key] += term.coeff
+        coeff_map[skey] += term.coeff
     end
 
     # Apply Bianchi identity reduction: R_{a[bcd]} = 0
-    _apply_identities!(coeff_map, key_order)
+    _apply_identities!(coeff_map, struct_map, key_order)
 
     # Drop zero-coefficient terms
     keys_nonzero = filter(k -> coeff_map[k] != 0, key_order)
     isempty(keys_nonzero) && return "0"
 
     # Sort keys for deterministic output
-    sort!(keys_nonzero; by=k -> [(string(n), idxs) for (n, idxs) in k])
+    sort!(keys_nonzero; by=k -> [(string(n), idxs) for (n, idxs) in struct_map[k]])
 
     # Serialize
     _serialize(keys_nonzero, coeff_map)
@@ -2302,17 +2320,14 @@ end
 """
 Serialize the canonical map to a Wolfram-style string.
 """
-function _serialize(
-    keys::Vector{Vector{Tuple{Symbol,Vector{String}}}},
-    coeff_map::Dict{Vector{Tuple{Symbol,Vector{String}}},Rational{Int}},
-)::String
+function _serialize(keys::Vector{String}, coeff_map::Dict{String,Rational{Int}})::String
     parts = Tuple{Rational{Int},String}[]
 
-    for key in keys
-        c = coeff_map[key]
+    for skey in keys
+        c = coeff_map[skey]
         c == 0 && continue
 
-        mono = join(["$(n)[$(join(idxs,","))]" for (n, idxs) in key], " ")
+        mono = skey  # already a canonical string representation
         push!(parts, (c, mono))
     end
 
