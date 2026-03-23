@@ -146,6 +146,8 @@ function _cycles_to_images(cycles::Vector{Vector{Int}}, degree::Int)
     for cycle in cycles
         n = length(cycle)
         n <= 1 && continue
+        # Validate all elements are in range
+        all(1 <= c <= degree for c in cycle) || continue
         for i in 1:n
             images[cycle[i]] = cycle[mod1(i + 1, n)]
         end

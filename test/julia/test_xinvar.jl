@@ -514,6 +514,40 @@ using xAct
         end
 
         # ============================================================
+        # Malformed input edge cases (sxAct-6m19)
+        # ============================================================
+
+        @testset "malformed DB input" begin
+            # _parse_int_csv: non-integer tokens silently skipped
+            @test _parse_int_csv("2,abc,3") == [2, 3]
+            @test _parse_int_csv(",,") == Int[]
+
+            # _parse_nested_intlist: unbalanced brackets
+            @test _parse_nested_intlist("[[2,1]") == [[2, 1]]
+            @test _parse_nested_intlist("[2,1]]") == Vector{Int}[]
+            @test _parse_nested_intlist("[]") == Vector{Int}[]
+            @test _parse_nested_intlist("[[]]") == Vector{Int}[]
+
+            # _parse_maple_perm_line: negative indices — out-of-range cycle skipped
+            neg_line = "RInv[{0,0},1] := [[2,-1],[4,3]];"
+            neg_perm = _parse_maple_perm_line(neg_line)
+            @test neg_perm == [1, 2, 4, 3]  # [2,-1] skipped, [4,3] applied
+
+            # _parse_maple_perm_line: empty cycles
+            empty_line = "RInv[{0,0},1] := [[],[]];"
+            @test _parse_maple_perm_line(empty_line) === nothing
+
+            # _extract_inv_index: malformed patterns
+            @test _extract_inv_index("RInv[{},]") === nothing
+            @test _extract_inv_index("RInv[{0,0}]") === nothing
+            @test _extract_inv_index("") === nothing
+
+            # _extract_inv_case: malformed patterns
+            @test _extract_inv_case("RInv[{},1]") == Int[]
+            @test _extract_inv_case("") === nothing
+        end
+
+        # ============================================================
         # _parse_maple_perm_line
         # ============================================================
 

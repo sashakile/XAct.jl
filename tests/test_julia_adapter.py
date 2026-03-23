@@ -69,3 +69,37 @@ class TestExecuteAssertExceptionDiagnostics:
         result = adapter._execute_assert("1 == 2", None)
         assert result.status == "ok"
         assert result.repr == "False"
+
+
+# ---------------------------------------------------------------------------
+# _top_level_split string literal handling (sxAct-fcfq)
+# ---------------------------------------------------------------------------
+
+
+class TestTopLevelSplit:
+    """_top_level_split must skip separators inside brackets and strings."""
+
+    def test_basic_split(self):
+        from sxact.adapter.julia_stub import _top_level_split
+
+        assert _top_level_split("a === b", " === ") == ["a", "b"]
+
+    def test_brackets_prevent_split(self):
+        from sxact.adapter.julia_stub import _top_level_split
+
+        result = _top_level_split("f(a === b) === c", " === ")
+        assert result == ["f(a === b)", "c"]
+
+    def test_string_literal_prevents_split(self):
+        from sxact.adapter.julia_stub import _top_level_split
+
+        # Separator inside quotes should NOT trigger a split
+        result = _top_level_split('"a === b" === "c"', " === ")
+        assert len(result) == 2
+        assert result[0] == '"a === b"'
+        assert result[1] == '"c"'
+
+    def test_no_sep_returns_whole(self):
+        from sxact.adapter.julia_stub import _top_level_split
+
+        assert _top_level_split("no separator here", " === ") == ["no separator here"]

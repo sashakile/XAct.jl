@@ -1290,15 +1290,27 @@ def _is_tensor_expr(expr: str) -> bool:
 
 
 def _top_level_split(s: str, sep: str) -> list[str]:
-    """Split `s` on `sep` but only at depth 0 (not inside brackets)."""
-    parts = []
+    """Split `s` on `sep` but only at depth 0 (not inside brackets or strings)."""
+    parts: list[str] = []
     depth = 0
-    current = []
+    in_string = False
+    string_char = ""
+    current: list[str] = []
     i = 0
     n = len(s)
     while i < n:
         ch = s[i]
-        if ch in "([{":
+        # Track string literals (single or double quotes)
+        if ch in ('"', "'") and not in_string:
+            in_string = True
+            string_char = ch
+            current.append(ch)
+        elif in_string and ch == string_char:
+            in_string = False
+            current.append(ch)
+        elif in_string:
+            current.append(ch)
+        elif ch in "([{":
             depth += 1
             current.append(ch)
         elif ch in ")]}":
