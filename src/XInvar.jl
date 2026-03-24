@@ -1708,7 +1708,9 @@ function _ensure_case_dispatch(
 
     if !haskey(dispatch, case_key)
         if !haskey(perm_table, case_key)
-            return Dict{Vector{Int},Int}()
+            # Cache the miss so subsequent calls don't re-check
+            dispatch[case_key] = Dict{Vector{Int},Int}()
+            return dispatch[case_key]
         end
         if is_dual
             dispatch[case_key] = _build_case_dispatch_raw(perm_table[case_key])
@@ -2017,8 +2019,11 @@ function RiemannSimplify(
     # Convert to InvExpr via PermToInv
     inv_terms = InvExpr()
     for (coeff, rperm) in rperm_terms
-        # DB lookup REQUIRES canonical form
-        cp, cs = _canonicalize_contraction_perm(rperm.perm, rperm.case)
+        # RiemannToPerm already returns canonical perms (_monomial_to_rperm
+        # calls _canonicalize_contraction_perm at line 1422), so we reuse
+        # the perm directly with sign +1.
+        cp = rperm.perm
+        cs = 1
         _rperm = RPerm(rperm.metric, rperm.case, cp)
         rinv = PermToInv(_rperm; db=_db)
         push!(inv_terms, (coeff * cs, rinv))
