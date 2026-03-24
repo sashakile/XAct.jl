@@ -767,6 +767,9 @@ end
 Define a new abstract manifold.
 """
 function def_manifold!(name::Symbol, dim::Int, index_labels::Vector{Symbol})::ManifoldObj
+    @assert dim >= 1 "def_manifold!: dimension must be ≥ 1, got $dim"
+    @assert length(index_labels) >= 2 "def_manifold!: need ≥ 2 index labels, got $(length(index_labels))"
+    @assert length(unique(index_labels)) == length(index_labels) "def_manifold!: duplicate index labels"
     validate_identifier(name; context="manifold name")
     _validate_symbol_hook[](name)
     ValidateSymbolInSession(name)
@@ -945,6 +948,7 @@ covd_name: e.g. "Cnd" (used as suffix for auto-created curvature tensors)
 function def_metric!(
     signdet::Int, metric_expr::AbstractString, covd_name::Symbol
 )::MetricObj
+    @assert signdet in (-1, 0, 1) "def_metric!: signdet must be -1, 0, or 1, got $signdet"
     # Validate covd name against xAct registry and session
     validate_identifier(covd_name; context="covariant derivative name")
     _validate_symbol_hook[](covd_name)

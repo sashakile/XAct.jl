@@ -363,11 +363,13 @@ n          — number of physical points (1..n)
 function schreier_sims(
     initbase::Vector{Int}, generators::Vector{Vector{Int}}, n::Int
 )::StrongGenSet
+    @assert n >= 0 "schreier_sims: n must be non-negative, got $n"
     if isempty(generators)
         return StrongGenSet(Int[], Vector{Int}[], n, false)
     end
 
     deg = length(generators[1])
+    @assert all(g -> length(g) == deg, generators) "schreier_sims: generators have inconsistent degrees"
     signed = (deg == n + 2)
 
     # Filter out identity generators (they don't contribute to the group)
@@ -751,6 +753,7 @@ function canonical_perm(
     free_points::Vector{Int},
     dummy_groups::Vector{Vector{Int}},
 )::Tuple{Vector{Int},Int}
+    @assert length(perm) >= sgs.n "canonical_perm: perm length $(length(perm)) < sgs.n $(sgs.n)"
     isempty(sgs.base) && return (copy(perm[1:sgs.n]), 1)
     p1, s1 = right_coset_rep(perm, sgs)
     s1 == 0 && return (Int[], 0)
