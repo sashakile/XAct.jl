@@ -81,6 +81,11 @@ class Manifold:
             raise ValueError(f"Manifold dimension must be >= 1, got {dim}")
         if not indices:
             raise ValueError("Manifold requires at least one index label")
+        if len(indices) < 2:
+            raise ValueError(
+                f"Manifold requires at least 2 index labels (for metric definition), "
+                f"got {len(indices)}"
+            )
         _, mod = _ensure_init()
         mod.def_manifold_b(name, dim, _to_jl_vec(indices))
         self.name = name

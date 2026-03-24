@@ -2986,7 +2986,7 @@ function perturb(expr::AbstractString, order::Int)::String
                     end
                     push!(perturbed_factors, pi)
                 catch e
-                    e isa ErrorException || rethrow(e)
+                    e isa ArgumentError || rethrow(e)
                     valid = false
                     break
                 end

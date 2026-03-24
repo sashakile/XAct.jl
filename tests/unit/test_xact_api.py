@@ -131,6 +131,10 @@ class TestManifoldValidation:
         with pytest.raises(ValueError, match="at least one index"):
             xact.Manifold("M", 4, [])
 
+    def test_single_index_too_few(self):
+        with pytest.raises(ValueError, match="at least 2 index labels"):
+            xact.Manifold("M", 4, ["a"])
+
 
 class TestMetricValidation:
     def test_bad_manifold_type(self, manifold):
