@@ -775,9 +775,19 @@ using .xAct
             "TET[-tea,-teb] + TES[-tea,-teb]",
             "TET[-tea,-teb] - TES[-tea,-teb]",
             "TET[-tea,-teb] TEV[tea]",
+            "3 TET[-tea,-teb] - 2 TES[-tea,-teb]",
+            "(1/3) TET[-tea,-teb] + (2/3) TES[-tea,-teb]",
+            "-TET[-tea,-teb] + TES[-tea,-teb] - TEV[tea]",
         ]
         for s in exprs
             @test _to_string(_parse_to_texpr(s)) == s
+        end
+
+        # Idempotency: double round-trip == single round-trip
+        for s in exprs
+            once = _to_string(_parse_to_texpr(s))
+            twice = _to_string(_parse_to_texpr(once))
+            @test twice == once
         end
     end
 

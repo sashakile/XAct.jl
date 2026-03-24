@@ -2668,4 +2668,39 @@ using xAct
             @info "Skipping dim-aware cache tests: DB not found"
         end
     end
+
+    # ================================================================
+    # Round-trip property tests (sxAct-9bi7)
+    # ================================================================
+
+    @testset "RiemannToPerm/PermToRiemann round-trip — all InvarCases" begin
+        reset_state!()
+        def_manifold!(:Xrt, 4, [:xra, :xrb, :xrc, :xrd, :xre, :xrf])
+        def_metric!(-1, "xrg[-xra,-xrb]", :XrD)
+
+        for case in InvarCases()
+            degree = PermDegree(case)
+            # Build a canonical identity-like perm for this case
+            test_perm = collect(1:degree)
+            rperm = RPerm(:xrg, case, test_perm)
+            # Round-trip: RPerm → string → RPerm
+            expr = PermToRiemann(rperm; covd=:XrD)
+            rperm2 = RiemannToPerm(expr, :xrg; covd=:XrD)
+            # Permutations must match after round-trip
+            @test rperm2.perm == rperm.perm
+            @test rperm2.case == rperm.case
+        end
+    end
+
+    @testset "_format_rational edge cases" begin
+        fr = xAct.XInvar._format_rational
+        @test fr(0 // 1) == "0"
+        @test fr(1 // 1) == "1"
+        @test fr(-1 // 1) == "-1"
+        @test fr(3 // 1) == "3"
+        @test fr(-3 // 1) == "-3"
+        @test fr(1 // 2) == "(1/2)"
+        @test fr(-1 // 2) == "(-1/2)"
+        @test fr(999999 // 1000000) == "(999999/1000000)"
+    end
 end
