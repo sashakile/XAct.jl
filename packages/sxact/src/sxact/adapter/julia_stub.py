@@ -24,6 +24,14 @@ from sxact.adapter.base import (
     TestAdapter,
     VersionInfo,
 )
+from sxact.adapter.julia_names import (
+    DEF_MANIFOLD as _JN_DEF_MANIFOLD,
+    DEF_METRIC as _JN_DEF_METRIC,
+    DEF_TENSOR as _JN_DEF_TENSOR,
+    DEF_PERTURBATION as _JN_DEF_PERTURBATION,
+    TENSOR_Q as _JN_TENSOR_Q,
+    TO_CANONICAL as _JN_TO_CANONICAL,
+)
 from sxact.normalize import normalize as _normalize
 from sxact.oracle.result import Result
 from xact._bridge import (
@@ -289,7 +297,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         indices = list(args["indices"])
         jl_call(
             self._jl,
-            "XTensor.def_manifold!",
+            _JN_DEF_MANIFOLD,
             jl_sym(name, "manifold name"),
             jl_int(dim),
             jl_sym_list(indices, "manifold indices"),
@@ -324,7 +332,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             jl_manifolds = "Symbol[" + ", ".join(f":{m}" for m in manifold_names) + "]"
             jl_call(
                 self._jl,
-                "XTensor.def_tensor!",
+                _JN_DEF_TENSOR,
                 jl_sym(name, "tensor name"),
                 idx_jl,
                 jl_manifolds + sym_arg,
@@ -335,7 +343,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             manifold = validate_ident(str(args["manifold"]), "manifold name")
             jl_call(
                 self._jl,
-                "XTensor.def_tensor!",
+                _JN_DEF_TENSOR,
                 jl_sym(name, "tensor name"),
                 idx_jl,
                 jl_sym(manifold, "manifold name") + sym_arg,
@@ -371,7 +379,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         covd = validate_ident(str(args["covd"]), "covariant derivative name")
         jl_call(
             self._jl,
-            "XTensor.def_metric!",
+            _JN_DEF_METRIC,
             jl_int(signdet),
             jl_str(metric_raw),
             jl_sym(covd, "covd name"),
@@ -465,7 +473,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
         order = int(args["order"])
         jl_call(
             self._jl,
-            "XTensor.def_perturbation!",
+            _JN_DEF_PERTURBATION,
             jl_sym(tensor, "tensor"),
             jl_sym(background, "background"),
             jl_int(order),
@@ -930,7 +938,7 @@ def _try_tensor_q(condition: str, jl: Any) -> tuple[bool, str, str] | None:
         return None
     tensor_name = m.group(1)
     try:
-        val = jl_call(jl, "XTensor.TensorQ", jl_sym(tensor_name, "tensor name"))
+        val = jl_call(jl, _JN_TENSOR_Q, jl_sym(tensor_name, "tensor name"))
         if val is True or str(val).lower() == "true":
             return (True, "True", "True")
         return (False, "False", "True")
@@ -968,7 +976,7 @@ def _try_single_to_canonical_comparison(
 
     # Call XTensor.ToCanonical on the tensor expression
     try:
-        result = str(jl_call(jl, "XTensor.ToCanonical", jl_str(tensor_expr)))
+        result = str(jl_call(jl, _JN_TO_CANONICAL, jl_str(tensor_expr)))
     except Exception:
         return None
 
@@ -1068,7 +1076,7 @@ def _try_numerical_tolerance_via_canonical(jl: Any, wolfram_expr: str) -> Result
 
     # Apply ToCanonical to the whole difference
     try:
-        result = str(jl_call(jl, "XTensor.ToCanonical", jl_str(preprocessed)))
+        result = str(jl_call(jl, _JN_TO_CANONICAL, jl_str(preprocessed)))
     except Exception:
         return None
 
