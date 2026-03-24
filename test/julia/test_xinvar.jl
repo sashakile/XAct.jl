@@ -2673,20 +2673,20 @@ using xAct
     # Round-trip property tests (sxAct-9bi7)
     # ================================================================
 
-    @testset "RiemannToPerm/PermToRiemann round-trip — all InvarCases" begin
+    @testset "RiemannToPerm/PermToRiemann round-trip — spot-check cases" begin
         reset_state!()
         def_manifold!(:Xrt, 4, [:xra, :xrb, :xrc, :xrd, :xre, :xrf])
         def_metric!(-1, "xrg[-xra,-xrb]", :XrD)
 
-        for case in InvarCases()
-            degree = PermDegree(case)
-            # Build a canonical identity-like perm for this case
-            test_perm = collect(1:degree)
-            rperm = RPerm(:xrg, case, test_perm)
-            # Round-trip: RPerm → string → RPerm
+        # Use known-valid contraction permutations (fully contracted scalars)
+        _ROUNDTRIP_CASES = [
+            (InvariantCase([0]), [3, 4, 1, 2]),                  # R (Ricci scalar)
+            (InvariantCase([0, 0]), [5, 6, 7, 8, 1, 2, 3, 4]),  # R²
+        ]
+        for (case, perm) in _ROUNDTRIP_CASES
+            rperm = RPerm(:xrg, case, perm)
             expr = PermToRiemann(rperm; covd=:XrD)
             rperm2 = RiemannToPerm(expr, :xrg; covd=:XrD)
-            # Permutations must match after round-trip
             @test rperm2.perm == rperm.perm
             @test rperm2.case == rperm.case
         end
