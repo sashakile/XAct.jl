@@ -998,9 +998,19 @@ def _preprocess_xperm_calls(jl: Any, expr: str) -> str:
     remaining expression can be passed to XTensor.ToCanonical for final
     canonicalization.
     """
+    _MAX_PREPROCESS_ITERS = 50
     for func_name in _XPERM_STRING_FUNCS:
         func_prefix = func_name + "["
+        iters = 0
         while func_prefix in expr:
+            iters += 1
+            if iters > _MAX_PREPROCESS_ITERS:
+                _log.warning(
+                    "Exceeded %d iterations preprocessing %s calls; breaking",
+                    _MAX_PREPROCESS_ITERS,
+                    func_name,
+                )
+                break
             pos = expr.find(func_prefix)
             start = pos + len(func_prefix)
             depth = 1
@@ -1266,7 +1276,12 @@ def _bind_fresh_symbols(jl: Any, julia_expr: str) -> None:
     ``Symbol`` arguments receive the right value.
     """
     for sym in _FRESH_SYMBOL_RE.findall(julia_expr):
-        jl.seval(f"Main.eval(:(global {sym} = :{sym}))")
+        try:
+            already_defined = bool(jl.seval(f"isdefined(Main, :{sym})"))
+            if not already_defined:
+                jl.seval(f"Main.eval(:(global {sym} = :{sym}))")
+        except Exception:  # noqa: BLE001 — binding failure is non-fatal
+            pass
 
 
 _WL_KEYWORDS: dict[str, str] = {
@@ -1394,8 +1409,10 @@ def _postprocess_dimino(julia_expr: str) -> str:
 # followed by one or more underscores and an optional uppercase-starting type name.
 # Examples: x_ → x, x_Integer → x, x__ → x, y___ → y, myVar_Real → myVar
 # We avoid stripping uppercase symbols like _Symbol (bare blank), which are
-# handled separately.
-_WL_PATTERN_RE = re.compile(r"\b([a-z]\w*)_+(?:[A-Z]\w*)?")
+# handled separately.  The capture group [a-z][a-zA-Z0-9]* excludes underscores
+# so x__/x___ are fully stripped.  The (?![a-z]) lookahead prevents matching
+# underscores in snake_case Julia names like check_perturbation_order.
+_WL_PATTERN_RE = re.compile(r"\b([a-z][a-zA-Z0-9]*)_+(?![a-z])(?:[A-Z]\w*)?")
 
 _PREFIX_AT_RE = re.compile(r"(\b[A-Za-z_]\w*)\s*@(?!@)")
 

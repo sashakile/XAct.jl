@@ -1643,11 +1643,16 @@ end
         @test t.symmetry.slots == [2, 3]
     end
 
-    @testset "Christoffel not created for dim < 3 labels" begin
+    @testset "Christoffel created for 2D manifold" begin
         reset_state!()
         def_manifold!(:Km2, 2, [:km2a, :km2b])
         def_metric!(-1, "Km2g[-km2a,-km2b]", :Km2d)
-        @test !TensorQ(:ChristoffelKm2d)
+        @test TensorQ(:ChristoffelKm2d)
+        t = get_tensor(:ChristoffelKm2d)
+        @test length(t.slots) == 3
+        @test t.slots[1].covariant == false  # contravariant slot
+        @test t.slots[2].covariant == true   # covariant
+        @test t.slots[3].covariant == true   # covariant
     end
 
     @testset "Christoffel of Minkowski metric = 0" begin

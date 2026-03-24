@@ -1166,14 +1166,16 @@ function _auto_create_curvature!(manifold::Symbol, covd::Symbol)
     end
 
     # Christoffel (second kind): Γ^a_{bc}, symmetric in last two covariant slots
-    # Use 3 distinct labels to avoid symmetry slot lookup ambiguity
-    if n >= 3
-        i3 = "-" * string(idxs[3])
+    # For manifolds with ≥ 3 labels, use distinct labels; for 2-label manifolds,
+    # reuse label 1 for the contravariant slot (a ≠ b,c is fine since variance differs)
+    if n >= 2
+        c_i1 = string(idxs[1])                   # contravariant slot
+        c_i2 = i2                                  # first covariant slot
+        c_i3 = n >= 3 ? "-" * string(idxs[3]) : "-" * string(idxs[1])
         christoffel_name = Symbol("Christoffel" * covd_str)
         if !haskey(_tensors, christoffel_name)
-            # Slot 1 = contravariant (up), Slots 2,3 = covariant (down)
-            slots3 = String[string(idxs[1]), i2, i3]
-            sym3 = "Symmetric[{$i2,$i3}]"
+            slots3 = String[c_i1, c_i2, c_i3]
+            sym3 = "Symmetric[{$c_i2,$c_i3}]"
             def_tensor!(christoffel_name, slots3, manifold; symmetry_str=sym3)
         end
     end
