@@ -1812,9 +1812,10 @@ def _wl_to_jl(expr: str) -> str:
             continue
 
         # Identifier: may be a keyword-mapped name or a function call
+        # Include ⁀ (U+2040 tie) for WL SymbolJoin compound names
         if ch.isalpha() or ch == "_":
             j = i
-            while j < n and (expr[j].isalnum() or expr[j] == "_"):
+            while j < n and (expr[j].isalnum() or expr[j] in ("_", "\u2040")):
                 j += 1
             name = expr[i:j]
             if j < n and expr[j] == "[":
@@ -1863,6 +1864,57 @@ def _wl_to_jl(expr: str) -> str:
                         # Generic fallback: emit as regular function call
                         out.append(f"Cases({_wl_to_jl(inner)})")
                     i = k
+                elif name == "StringQ":
+                    # StringQ[x] → isa(x, String)
+                    depth2 = 1
+                    k = j + 1
+                    while k < n and depth2 > 0:
+                        if expr[k] == "[":
+                            depth2 += 1
+                        elif expr[k] == "]":
+                            depth2 -= 1
+                        k += 1
+                    inner = _wl_to_jl(expr[j + 1 : k - 1].strip())
+                    out.append(f"isa({inner}, String)")
+                    i = k
+                elif name == "StringLength":
+                    # StringLength[x] → length(x)
+                    depth2 = 1
+                    k = j + 1
+                    while k < n and depth2 > 0:
+                        if expr[k] == "[":
+                            depth2 += 1
+                        elif expr[k] == "]":
+                            depth2 -= 1
+                        k += 1
+                    inner = _wl_to_jl(expr[j + 1 : k - 1].strip())
+                    out.append(f"length({inner})")
+                    i = k
+                elif name == "Catch":
+                    # Catch[expr] → try expr catch e nothing end
+                    depth2 = 1
+                    k = j + 1
+                    while k < n and depth2 > 0:
+                        if expr[k] == "[":
+                            depth2 += 1
+                        elif expr[k] == "]":
+                            depth2 -= 1
+                        k += 1
+                    inner = _wl_to_jl(expr[j + 1 : k - 1].strip())
+                    out.append(f"try {inner} catch e nothing end")
+                    i = k
+                elif name == "ClearAll":
+                    # ClearAll[syms...] → nothing (no-op in Julia)
+                    depth2 = 1
+                    k = j + 1
+                    while k < n and depth2 > 0:
+                        if expr[k] == "[":
+                            depth2 += 1
+                        elif expr[k] == "]":
+                            depth2 -= 1
+                        k += 1
+                    out.append("nothing")
+                    i = k
                 else:
                     # Function call: translate name if keyword-mapped, then emit name(
                     translated = _WL_KEYWORDS.get(name, name)
@@ -1870,7 +1922,12 @@ def _wl_to_jl(expr: str) -> str:
                     stack.append("call")
                     i = j + 1
             else:
-                out.append(_WL_KEYWORDS.get(name, name))
+                translated = _WL_KEYWORDS.get(name, name)
+                # Names with ⁀ need Symbol("...") syntax in Julia
+                if "\u2040" in translated:
+                    out.append(f'Symbol("{translated}")')
+                else:
+                    out.append(translated)
                 i = j
             continue
 
