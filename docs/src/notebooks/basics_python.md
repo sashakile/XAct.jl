@@ -96,9 +96,6 @@ String arguments work well but mistakes (wrong index count, wrong manifold) only
 surface inside the engine. The `xact.expr` module adds typed index objects and
 operator overloading to catch these errors at construction time.
 
-> **Stage 1 note:** engine functions still return `str`. Full typed round-trip is
-> planned for Stage 2.
-
 ### Index objects
 
 ```python

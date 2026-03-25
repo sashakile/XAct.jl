@@ -157,10 +157,6 @@ The string-based API above is quick to write but does not catch mistakes
 (wrong number of indices, indices from the wrong manifold) until deep in
 the engine. The **typed expression layer** validates at construction time.
 
-!!! note "Stage 1 limitation"
-    Engine functions currently return `String` even when given a typed
-    expression. Full round-trip is planned for Stage 2.
-
 ### Julia
 
 **Julia**

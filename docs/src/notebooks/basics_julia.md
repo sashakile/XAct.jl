@@ -113,9 +113,6 @@ The string API works well but mistakes — wrong index count, wrong manifold —
 surface inside the engine. The `TExprLayer` module adds typed index objects and
 operator overloading that catch these errors at construction time.
 
-> **Stage 1 note:** engine functions still return `String`. Full typed round-trip
-> is planned for Stage 2.
-
 ### Index declarations
 
 ```julia
