@@ -1,7 +1,7 @@
 # xAct.jl Feature Completion Matrix
 
 !!! info "Status TL;DR for AI Agents"
-    All core features DONE: XPerm (canonicalization), XTensor (algebra, CovD, perturbation, IBP, VarD, TExpr typed expressions Stage 2), xCoba (coordinates, Christoffel), xTras (utilities), XInvar (Riemann invariant engine, all 11 phases). 1200+ Julia unit tests + 700+ Python tests passing. Gaps: spinors, exterior calculus, LaTeX rendering.
+    All core features DONE: XPerm (canonicalization), XTensor (algebra, CovD, perturbation, IBP, VarD, Session isolation, TExpr typed expressions Stage 2), xCoba (coordinates, Christoffel), xTras (utilities), XInvar (Riemann invariant engine, all 11 phases). 1200+ Julia unit tests + 900+ Python tests passing. Gaps: spinors, exterior calculus, LaTeX rendering.
 
 This page tracks the implementation status of xAct features in the Julia core (`xAct.jl`) and their verification status against the Wolfram Language implementation.
 
@@ -37,7 +37,7 @@ Foundational tensor algebra and curvature operators.
 | `ToCanonical` | DONE | Full parse → canonicalize → serialize pipeline |
 | `Contract` | DONE | Metric-aware index contraction |
 | `Simplify` | DONE | Iterative Contract → ToCanonical loop |
-| `CommuteCovDs` | DONE | Covariant derivative commutation with Riemann terms |
+| `CommuteCovDs` / `SortCovDs` | DONE | Covariant derivative commutation and canonical ordering with Riemann corrections |
 | `DefPerturbation` / `Perturb` | DONE | Multinomial Leibniz expansion |
 | `PerturbCurvature` | DONE | Curvature tensor perturbation rules |
 | `PerturbationOrder` / `PerturbationAtOrder` | DONE | Order extraction and filtering |
@@ -47,6 +47,8 @@ Foundational tensor algebra and curvature operators.
 | `Evaluate` | DONE | Expression evaluation and binding |
 | `Assert` | DONE | Symbolic condition checking |
 | Curvature Tensors (Riemann, Ricci, Weyl, etc.) | DONE | Auto-created by `DefMetric` |
+| `RegisterIdentity!` / Multi-term identities | DONE | Bianchi identities, custom identity framework |
+| `Session` struct & `reset_session!` | DONE | Isolated mutable state; all `def_*!` / accessors accept `session` kwarg |
 | `reset_state!()` | DONE | Clean session state for testing |
 | `ValidateSymbolInSession` | DONE | Checks all registries for name collisions |
 | **TExpr typed expression layer (Stage 2)** | **DONE** | `@indices`, `tensor()`, `T[-a,-b]` syntax; Typed input AND output. |
@@ -120,11 +122,11 @@ The `sxact` Python package provides a multi-tier verification suite.
 
 | Suite | Count | Status | Notes |
 |-------|-------|--------|-------|
-| XPerm Julia Unit Tests | 91 | PASS | Permutation group, Schreier-Sims, Young tableaux |
-| XTensor Julia Unit Tests | 417 | PASS | Tensor algebra, xCoba, xTras, perturbation |
-| TExpr Julia Unit Tests | 128 | PASS | Typed expression layer |
-| XInvar Julia Unit Tests | 648,784 | PASS | Riemann invariant phases 2-11 |
-| Python Runner Tests | 709 | PASS | Adapter, normalization, CLI, TExpr |
+| XPerm Julia Unit Tests | 156 | PASS | Permutation group, Schreier-Sims, Young tableaux |
+| XTensor Julia Unit Tests | 567 | PASS | Tensor algebra, xCoba, xTras, perturbation, Session |
+| TExpr Julia Unit Tests | 238 | PASS | Typed expression layer |
+| XInvar Julia Unit Tests | 648,825 | PASS | Riemann invariant phases 2-11 |
+| Python Runner Tests | 909 | PASS | Adapter, normalization, CLI, TExpr |
 | Property Tests (Layer 2) | 29 | PARTIAL | Riemann symmetries, tensor algebra, xCore laws |
 
 ---
