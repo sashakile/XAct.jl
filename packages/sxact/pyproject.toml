@@ -3,6 +3,20 @@ name = "sxact"
 version = "0.4.0"
 description = "Testing framework for xAct implementations"
 requires-python = ">=3.10"
+license = "GPL-3.0-or-later"
+authors = [
+    { name = "sashakile", email = "saxa.kile@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Physics",
+]
 dependencies = [
     "jsonschema>=4.26.0",
     "numpy>=2.2.6",
@@ -10,6 +24,10 @@ dependencies = [
     "tomli>=2.4.0; python_version < '3.11'",
     "xact-py",
 ]
+
+[project.urls]
+Homepage = "https://github.com/sashakile/sxAct"
+Repository = "https://github.com/sashakile/sxAct"
 
 [project.scripts]
 xact-test = "sxact.cli:main"

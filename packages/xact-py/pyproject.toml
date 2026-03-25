@@ -3,10 +3,28 @@ name = "xact-py"
 version = "0.4.0"
 description = "Python wrapper for xAct"
 requires-python = ">=3.10"
+license = "GPL-3.0-or-later"
+authors = [
+    { name = "sashakile", email = "saxa.kile@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Physics",
+]
 dependencies = [
     "juliacall>=0.9.31",
     "juliapkg>=0.1.14",
 ]
+
+[project.urls]
+Homepage = "https://github.com/sashakile/sxAct"
+Repository = "https://github.com/sashakile/sxAct"
 
 [project.optional-dependencies]
 translate = []
