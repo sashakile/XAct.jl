@@ -116,6 +116,6 @@ This tutorial demonstrated:
 
 ## Next Steps
 
-- **Fluids**: Explore [Relativistic Fluid Dynamics](physics_fluids_julia.md).
-- **Black Holes**: Review [Carroll: Schwarzschild Geodesics](carroll_schwarzschild_julia.md).
-- **Foundations**: Review [3D Curvilinear Coordinates](foundations_3d_coords_julia.md).
+- **Fluids**: Explore [Relativistic Fluid Dynamics](physics_fluids.ipynb).
+- **Black Holes**: Review [Carroll: Schwarzschild Geodesics](carroll_schwarzschild.ipynb).
+- **Foundations**: Review [3D Curvilinear Coordinates](foundations_3d_coords.ipynb).

@@ -182,6 +182,6 @@ This tutorial showed:
 
 ## Next Steps
 
-- **Curvature**: Explore intrinsic curvature in [The 2-Sphere](foundations_sphere.qmd).
-- **Basics**: Review 2D transformations in [Polar vs. Cartesian](foundations_2d_polar.qmd).
-- **Core Guide**: See the [Typed Expressions (TExpr)](../../docs/src/guide/TExpr.md) guide.
+- **Curvature**: Explore intrinsic curvature in [The 2-Sphere](foundations_sphere.ipynb).
+- **Basics**: Review 2D transformations in [Polar vs. Cartesian](foundations_2d_polar.ipynb).
+- **Core Guide**: See the [Typed Expressions (TExpr)](https://sashakile.github.io/sxAct/guide/TExpr/) guide.

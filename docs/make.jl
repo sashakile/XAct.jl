@@ -57,11 +57,12 @@ for (subdir, lang_label) in [("julia", "Julia"), ("python", "Python")]
             # Convert ```{python} to plain fenced blocks (Documenter doesn't run Python)
             md = replace(md, r"```\{(\w+)\}" => s"```\1")
         end
-        # Rewrite links: ../../docs/src/ -> ../
-        md = replace(md, "../../docs/src/" => "../")
-        # Rewrite .qmd links: name.qmd -> name_julia.md (or python)
+        # Rewrite deployed-docs URLs to relative Documenter paths
+        md = replace(md, "https://sashakile.github.io/sxAct/" => "../")
+        # Rewrite .ipynb cross-links: name.ipynb -> name_julia.md (or python)
         md = replace(
-            md, r"([\w\d_-]+)\.qmd" => SubstitutionString("\\1_$(lowercase(lang_label)).md")
+            md,
+            r"([\w\d_-]+)\.ipynb" => SubstitutionString("\\1_$(lowercase(lang_label)).md"),
         )
         # Add a note linking to the .ipynb and Colab
         header = """

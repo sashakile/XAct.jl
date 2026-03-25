@@ -114,6 +114,6 @@ This tutorial demonstrated:
 
 ## Next Steps
 
-- **Electromagnetism**: See [Maxwell's Equations in Curved Spacetime](physics_em_julia.md).
-- **Black Holes**: Review [Carroll: Schwarzschild Geodesics](carroll_schwarzschild_julia.md).
-- **Cosmology**: Review [Wald: FLRW Cosmology](wald_cosmology_julia.md).
+- **Electromagnetism**: See [Maxwell's Equations in Curved Spacetime](physics_em.ipynb).
+- **Black Holes**: Review [Carroll: Schwarzschild Geodesics](carroll_schwarzschild.ipynb).
+- **Cosmology**: Review [Wald: FLRW Cosmology](wald_cosmology.ipynb).

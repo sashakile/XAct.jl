@@ -140,6 +140,6 @@ This tutorial demonstrated:
 
 ## Next Steps
 
-- **Black Holes**: Review [Carroll: Schwarzschild Geodesics](carroll_schwarzschild_julia.md).
-- **Cosmology**: Review [Wald: FLRW Cosmology](wald_cosmology_julia.md).
-- **Advanced**: Explore the [Oracle Quirks](../../docs/src/theory/oracle-quirks.md) for verification details.
+- **Black Holes**: Review [Carroll: Schwarzschild Geodesics](carroll_schwarzschild.ipynb).
+- **Cosmology**: Review [Wald: FLRW Cosmology](wald_cosmology.ipynb).
+- **Advanced**: Explore the [Oracle Quirks](https://sashakile.github.io/sxAct/theory/oracle-quirks/) for verification details.

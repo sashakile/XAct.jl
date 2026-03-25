@@ -154,6 +154,6 @@ This tutorial demonstrated:
 
 ## Next Steps
 
-- **Cosmology**: Explore the [Wald: FLRW Cosmology](wald_cosmology_julia.md) tutorial.
-- **Wave Equations**: See [MTW: Gravitational Waves](mtw_gravitational_waves_julia.md).
-- **Foundations**: Review [2-Sphere Geometry](foundations_sphere_julia.md).
+- **Cosmology**: Explore the [Wald: FLRW Cosmology](wald_cosmology.ipynb) tutorial.
+- **Wave Equations**: See [MTW: Gravitational Waves](mtw_gravitational_waves.ipynb).
+- **Foundations**: Review [2-Sphere Geometry](foundations_sphere.ipynb).

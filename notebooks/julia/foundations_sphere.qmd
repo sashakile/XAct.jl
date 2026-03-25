@@ -154,6 +154,6 @@ This tutorial demonstrated:
 
 ## Next Steps
 
-- **Schwarzschild**: Move to 4D Spacetime in the [Schwarzschild Geodesics](../../docs/src/examples/basics.md) tutorial.
-- **3D Geometry**: Review 3D coordinate systems in [Curvilinear Coordinates](foundations_3d_coords.qmd).
-- **Core Guide**: See the [Typed Expressions (TExpr)](../../docs/src/guide/TExpr.md) guide.
+- **Schwarzschild**: Move to 4D Spacetime in the [Schwarzschild Geodesics](https://sashakile.github.io/sxAct/examples/basics/) tutorial.
+- **3D Geometry**: Review 3D coordinate systems in [Curvilinear Coordinates](foundations_3d_coords.ipynb).
+- **Core Guide**: See the [Typed Expressions (TExpr)](https://sashakile.github.io/sxAct/guide/TExpr/) guide.

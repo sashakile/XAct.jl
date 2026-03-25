@@ -133,6 +133,6 @@ This tutorial demonstrated:
 
 ## Next Steps
 
-- **Wave Equations**: See [MTW: Gravitational Waves](mtw_gravitational_waves_julia.md).
-- **Black Holes**: Review [Carroll: Schwarzschild Geodesics](carroll_schwarzschild_julia.md).
-- **Foundations**: Review [3D Curvilinear Coordinates](foundations_3d_coords_julia.md).
+- **Wave Equations**: See [MTW: Gravitational Waves](mtw_gravitational_waves.ipynb).
+- **Black Holes**: Review [Carroll: Schwarzschild Geodesics](carroll_schwarzschild.ipynb).
+- **Foundations**: Review [3D Curvilinear Coordinates](foundations_3d_coords.ipynb).
