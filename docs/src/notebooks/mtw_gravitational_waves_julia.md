@@ -1,0 +1,144 @@
+!!! tip "Run this notebook"
+    - [Download the Jupyter notebook](https://github.com/sashakile/sxAct/blob/main/notebooks/julia/mtw_gravitational_waves.ipynb)
+    - [Open in Google Colab](https://colab.research.google.com/github/sashakile/sxAct/blob/main/notebooks/julia/mtw_gravitational_waves.ipynb)
+
+# MTW: Linearized Gravity & Gravitational Waves
+
+This tutorial follows **Misner, Thorne, and Wheeler's *Gravitation* (Chapter 18)**.
+We explore the weak-field limit of General Relativity, where gravity is treated
+as a small perturbation $h_{ab}$ propagating on a flat Minkowski background $\eta_{ab}$.
+
+## 1. Dependencies
+
+If running on Google Colab or a fresh environment, install the required packages first.
+
+```@example mtw_gravitational_waves_julia
+# Uncomment the lines below if running on Google Colab:
+# using Pkg
+# Pkg.add(url="https://github.com/sashakile/sxAct.git")
+# Pkg.add("Plots")
+```
+
+## 2. Setup
+
+Load the required modules.
+
+```@example mtw_gravitational_waves_julia
+using xAct
+using Plots
+using LinearAlgebra
+
+# Headless plotting for build compatibility
+ENV["GKSwstype"] = "100"
+```
+
+!!! info "Project Profile for AI Agents (LLM TL;DR)"
+    - **Goal**: Implement linearized gravity and visualize wave polarizations.
+    - **Reference**: MTW, *Gravitation*, Chapter 18.
+    - **Key Symbols**: Background `:eta`, Perturbation `:h`, Trace-reversed `:hbar`.
+    - **Physics**: Derive $\square \bar{h}_{ab} = 0$, plot 'plus' and 'cross' modes.
+
+## 3. Define the Flat Background
+
+We start with a 4D Minkowski spacetime.
+
+```@example mtw_gravitational_waves_julia
+reset_state!()
+M = def_manifold!(:M4, 4, [:a, :b, :c, :d, :e, :f])
+@indices M4 a b c d e f
+
+# Minkowski metric η_ab
+eta = def_metric!(1, "eta[-a,-b]", :PD) # PD: Partial Derivative (flat)
+```
+
+## 4. Linearized Perturbations
+
+We define a symmetric rank-2 tensor $h_{ab}$ representing the perturbation.
+
+```@example mtw_gravitational_waves_julia
+def_tensor!(:h, ["-a", "-b"], :M4; symmetry_str="Symmetric[{-a,-b}]")
+h = tensor(:h)
+
+# Register h as a first-order perturbation of eta
+def_perturbation!(:h, :eta, 1)
+```
+
+In the weak-field limit, we can derive the linearized curvature tensors
+symbolically using `perturb_curvature`.
+
+```@example mtw_gravitational_waves_julia
+# Compute first-order perturbations of curvature tensors
+pert_results = perturb_curvature(:PD, :h)
+
+println("Linearized Riemann tensor (first order in h):")
+println(pert_results["Riemann1"])
+
+println("\nLinearized Ricci tensor:")
+pert_results["Ricci1"]
+```
+
+Using the Lorenz gauge and vacuum conditions, these equations reduce to the
+standard gravitational wave equation $\square \bar{h}_{ab} = 0$.
+
+## 5. Visualization: Gravitational Wave Polarizations
+A gravitational wave propagating in the $z$-direction has two independent
+polarization modes: **Plus (+)** and **Cross ($\times$)**.
+
+Let's visualize the effect of these modes on a ring of test particles.
+
+```@example mtw_gravitational_waves_julia
+function plot_gw_effect(mode::Symbol, phase::Number)
+    θs = range(0, 2π, length=50)
+    # Original ring
+    x0 = cos.(θs)
+    y0 = sin.(θs)
+
+    A = 0.3 # Amplitude
+    if mode == :plus
+        # h_xx = A, h_yy = -A
+        x = (1 + A*cos(phase)) .* x0
+        y = (1 - A*cos(phase)) .* y0
+    else
+        # h_xy = A, h_yx = A
+        x = x0 .+ A*cos(phase) .* y0
+        y = y0 .+ A*cos(phase) .* x0
+    end
+
+    p = plot(x, y, seriestype=:scatter, aspect_ratio=:equal,
+             title="GW Polarization: $mode (phase=$(round(phase/π, digits=1))π)",
+             xlims=(-1.5, 1.5), ylims=(-1.5, 1.5), label="Test Particles",
+             markersize=3, color=:blue)
+    plot!(p, x, y, label="", alpha=0.3, color=:blue)
+    return p
+end
+
+# Visualize the 'Plus' mode at different phases
+p1 = plot_gw_effect(:plus, 0.0)
+p2 = plot_gw_effect(:plus, π/2)
+p3 = plot_gw_effect(:plus, π)
+
+plot(p1, p2, p3, layout=(1, 3), size=(900, 300))
+```
+
+And the **Cross** mode:
+
+```@example mtw_gravitational_waves_julia
+p1x = plot_gw_effect(:cross, 0.0)
+p2x = plot_gw_effect(:cross, π/2)
+p3x = plot_gw_effect(:cross, π)
+
+plot(p1x, p2x, p3x, layout=(1, 3), size=(900, 300))
+```
+
+## 6. Summary
+
+This tutorial demonstrated:
+1. Setting up a linearized perturbation on a flat background.
+2. Understanding the theoretical origin of the GW wave equation from MTW.
+3. Visualizing the physical effect of Plus and Cross polarizations on test masses.
+
+## Next Steps
+
+- **Black Holes**: Review [Carroll: Schwarzschild Geodesics](carroll_schwarzschild_julia.md).
+- **Cosmology**: Review [Wald: FLRW Cosmology](wald_cosmology_julia.md).
+- **Advanced**: Explore the [Oracle Quirks](../theory/oracle-quirks.md) for verification details.
