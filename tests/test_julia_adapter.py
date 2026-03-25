@@ -77,18 +77,18 @@ class TestTopLevelSplit:
     """_top_level_split must skip separators inside brackets and strings."""
 
     def test_basic_split(self):
-        from sxact.adapter.julia_stub import _top_level_split
+        from sxact.translate.wl_to_julia import top_level_split as _top_level_split
 
         assert _top_level_split("a === b", " === ") == ["a", "b"]
 
     def test_brackets_prevent_split(self):
-        from sxact.adapter.julia_stub import _top_level_split
+        from sxact.translate.wl_to_julia import top_level_split as _top_level_split
 
         result = _top_level_split("f(a === b) === c", " === ")
         assert result == ["f(a === b)", "c"]
 
     def test_string_literal_prevents_split(self):
-        from sxact.adapter.julia_stub import _top_level_split
+        from sxact.translate.wl_to_julia import top_level_split as _top_level_split
 
         # Separator inside quotes should NOT trigger a split
         result = _top_level_split('"a === b" === "c"', " === ")
@@ -97,7 +97,7 @@ class TestTopLevelSplit:
         assert result[1] == '"c"'
 
     def test_no_sep_returns_whole(self):
-        from sxact.adapter.julia_stub import _top_level_split
+        from sxact.translate.wl_to_julia import top_level_split as _top_level_split
 
         assert _top_level_split("no separator here", " === ") == ["no separator here"]
 
@@ -111,44 +111,44 @@ class TestWlPatternStripping:
     """_preprocess_wl_patterns must strip WL blanks but preserve snake_case."""
 
     def test_simple_blank_stripped(self):
-        from sxact.adapter.julia_stub import _preprocess_wl_patterns
+        from sxact.translate.wl_to_julia import _preprocess_wl_patterns
 
         assert _preprocess_wl_patterns("x_") == "x"
 
     def test_typed_blank_stripped(self):
-        from sxact.adapter.julia_stub import _preprocess_wl_patterns
+        from sxact.translate.wl_to_julia import _preprocess_wl_patterns
 
         assert _preprocess_wl_patterns("x_Integer") == "x"
 
     def test_blank_sequence_stripped(self):
-        from sxact.adapter.julia_stub import _preprocess_wl_patterns
+        from sxact.translate.wl_to_julia import _preprocess_wl_patterns
 
         assert _preprocess_wl_patterns("x__") == "x"
 
     def test_blank_null_sequence_stripped(self):
-        from sxact.adapter.julia_stub import _preprocess_wl_patterns
+        from sxact.translate.wl_to_julia import _preprocess_wl_patterns
 
         assert _preprocess_wl_patterns("x___") == "x"
 
     def test_snake_case_preserved(self):
-        from sxact.adapter.julia_stub import _preprocess_wl_patterns
+        from sxact.translate.wl_to_julia import _preprocess_wl_patterns
 
         assert _preprocess_wl_patterns("check_perturbation_order") == "check_perturbation_order"
 
     def test_snake_case_in_call_preserved(self):
-        from sxact.adapter.julia_stub import _preprocess_wl_patterns
+        from sxact.translate.wl_to_julia import _preprocess_wl_patterns
 
         expr = "check_perturbation_order(Pertg1, 1) === true"
         assert _preprocess_wl_patterns(expr) == expr
 
     def test_mixed_snake_and_blank(self):
-        from sxact.adapter.julia_stub import _preprocess_wl_patterns
+        from sxact.translate.wl_to_julia import _preprocess_wl_patterns
 
         # x_ should be stripped but check_order should be preserved
         assert _preprocess_wl_patterns("f[x_, check_order]") == "f[x, check_order]"
 
     def test_wl_to_jl_preserves_snake_case(self):
-        from sxact.adapter.julia_stub import _wl_to_jl
+        from sxact.translate.wl_to_julia import wl_to_jl as _wl_to_jl
 
         result = _wl_to_jl("check_perturbation_order(Pertg1, 1) === true")
         assert "check_perturbation_order" in result

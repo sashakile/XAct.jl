@@ -23,9 +23,9 @@ from sxact.adapter.base import (
     TestAdapter,
     VersionInfo,
 )
-from sxact.adapter.julia_stub import _wl_to_jl  # reuse the Wolfram→Julia translator
 from sxact.normalize import normalize as _normalize
 from sxact.oracle.result import Result
+from sxact.translate.wl_to_julia import wl_to_jl as _wl_to_jl
 
 # ---------------------------------------------------------------------------
 # Context
