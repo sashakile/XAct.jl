@@ -1361,8 +1361,7 @@ end
 
 Convert a Riemann scalar expression into canonical RPerm permutation form.
 
-For a single monomial, returns an RPerm. For a sum, returns
-`Vector{Tuple{Rational{Int}, RPerm}}`.
+Returns `Vector{Tuple{Rational{Int}, RPerm}}` — one entry per term.
 
 The expression should use pre-canonicalized index ordering. The `covd` keyword
 determines the tensor name prefix (default: same as metric).
@@ -1374,7 +1373,9 @@ RiemannToPerm("RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]", :g; covd=:CD)
 RiemannToPerm("RicciScalarCD[]", :g; covd=:CD)
 ```
 """
-function RiemannToPerm(expr::AbstractString, metric::Symbol; covd::Symbol=metric)
+function RiemannToPerm(
+    expr::AbstractString, metric::Symbol; covd::Symbol=metric
+)::Vector{Tuple{Rational{Int},RPerm}}
     terms = _parse_invar_sum(expr)
     isempty(terms) && throw(ArgumentError("Empty expression"))
 
@@ -1383,10 +1384,6 @@ function RiemannToPerm(expr::AbstractString, metric::Symbol; covd::Symbol=metric
     for (sign, mono_str) in terms
         coeff, rperm = _monomial_to_rperm(mono_str, metric, covd)
         push!(results, (sign * coeff, rperm))
-    end
-
-    if length(results) == 1 && results[1][1] == 1
-        return results[1][2]
     end
 
     results
@@ -2007,14 +2004,7 @@ function RiemannSimplify(
     (s == "0" || isempty(s)) && return "0"
 
     # Convert expression to RPerm terms
-    rperm_result = RiemannToPerm(s, metric; covd=covd)
-
-    # Normalize to a list of (coefficient, RPerm)
-    rperm_terms = if rperm_result isa RPerm
-        Tuple{Rational{Int},RPerm}[(1 // 1, rperm_result)]
-    else
-        rperm_result::Vector{Tuple{Rational{Int},RPerm}}
-    end
+    rperm_terms = RiemannToPerm(s, metric; covd=covd)
 
     # Convert to InvExpr via PermToInv
     inv_terms = InvExpr()

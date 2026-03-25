@@ -1300,24 +1300,34 @@ using xAct
     end
 
     @testset "Phase 3: RiemannToPerm" begin
-        @testset "RicciScalar → case [0]" begin
-            rperm = RiemannToPerm("RicciScalarCD[]", :g; covd=:CD)
-            @test rperm isa RPerm
+        @testset "always returns Vector{Tuple{Rational,RPerm}}" begin
+            # Single monomial — must still return vector
+            result = RiemannToPerm("RicciScalarCD[]", :g; covd=:CD)
+            @test result isa Vector{Tuple{Rational{Int},RPerm}}
+            @test length(result) == 1
+            coeff, rperm = result[1]
+            @test coeff == 1 // 1
             @test rperm.metric == :g
             @test rperm.case == InvariantCase([0])
             @test length(rperm.perm) == 4
         end
 
         @testset "Kretschner scalar → case [0,0]" begin
-            rperm = RiemannToPerm("RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]", :g; covd=:CD)
-            @test rperm isa RPerm
+            result = RiemannToPerm(
+                "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]", :g; covd=:CD
+            )
+            @test result isa Vector{Tuple{Rational{Int},RPerm}}
+            @test length(result) == 1
+            _, rperm = result[1]
             @test rperm.case == InvariantCase([0, 0])
             @test length(rperm.perm) == 8
         end
 
         @testset "Ricci contraction → case [0,0]" begin
-            rperm = RiemannToPerm("RicciCD[-a,-b] RicciCD[a,b]", :g; covd=:CD)
-            @test rperm isa RPerm
+            result = RiemannToPerm("RicciCD[-a,-b] RicciCD[a,b]", :g; covd=:CD)
+            @test result isa Vector{Tuple{Rational{Int},RPerm}}
+            @test length(result) == 1
+            _, rperm = result[1]
             @test rperm.case == InvariantCase([0, 0])
             @test length(rperm.perm) == 8
         end
@@ -1328,7 +1338,7 @@ using xAct
                 :g;
                 covd=:CD,
             )
-            @test result isa Vector
+            @test result isa Vector{Tuple{Rational{Int},RPerm}}
             @test length(result) == 2
             for (coeff, rperm) in result
                 @test rperm isa RPerm
@@ -1338,21 +1348,15 @@ using xAct
 
         @testset "same expression yields same RPerm" begin
             r1 = RiemannToPerm("RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]", :g; covd=:CD)
-            # Relabeled version (same contraction pattern):
             r2 = RiemannToPerm("RiemannCD[-e,-f,-g,-h] RiemannCD[e,f,g,h]", :g; covd=:CD)
-            @test r1.perm == r2.perm
-            @test r1.case == r2.case
+            @test r1[1][2].perm == r2[1][2].perm
+            @test r1[1][2].case == r2[1][2].case
         end
 
         @testset "factor order invariance" begin
-            # RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]
-            # vs
-            # RiemannCD[a,b,c,d] RiemannCD[-a,-b,-c,-d]
-            # These have the same contraction pattern but different raw perms.
-            # After canonicalization they should yield the same RPerm (up to sign).
             r1 = RiemannToPerm("RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]", :g; covd=:CD)
             r2 = RiemannToPerm("RiemannCD[a,b,c,d] RiemannCD[-a,-b,-c,-d]", :g; covd=:CD)
-            @test r1.perm == r2.perm
+            @test r1[1][2].perm == r2[1][2].perm
         end
 
         @testset "free index rejection" begin
@@ -1391,30 +1395,28 @@ using xAct
         end
 
         @testset "RiemannToPerm → PermToRiemann round-trip" begin
-            # Start with an expression, convert to RPerm, convert back, convert again
-            # The two RPerms should match
             original = "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]"
-            rperm1 = RiemannToPerm(original, :g; covd=:CD)
-            reconstructed = PermToRiemann(rperm1; covd=:CD)
-            rperm2 = RiemannToPerm(reconstructed, :g; covd=:CD)
-            @test rperm1.perm == rperm2.perm
-            @test rperm1.case == rperm2.case
+            terms1 = RiemannToPerm(original, :g; covd=:CD)
+            reconstructed = PermToRiemann(terms1[1][2]; covd=:CD)
+            terms2 = RiemannToPerm(reconstructed, :g; covd=:CD)
+            @test terms1[1][2].perm == terms2[1][2].perm
+            @test terms1[1][2].case == terms2[1][2].case
         end
 
         @testset "RicciScalar round-trip" begin
-            rperm1 = RiemannToPerm("RicciScalarCD[]", :g; covd=:CD)
-            reconstructed = PermToRiemann(rperm1; covd=:CD)
-            rperm2 = RiemannToPerm(reconstructed, :g; covd=:CD)
-            @test rperm1.perm == rperm2.perm
-            @test rperm1.case == rperm2.case
+            terms1 = RiemannToPerm("RicciScalarCD[]", :g; covd=:CD)
+            reconstructed = PermToRiemann(terms1[1][2]; covd=:CD)
+            terms2 = RiemannToPerm(reconstructed, :g; covd=:CD)
+            @test terms1[1][2].perm == terms2[1][2].perm
+            @test terms1[1][2].case == terms2[1][2].case
         end
 
         @testset "Ricci squared round-trip" begin
-            rperm1 = RiemannToPerm("RicciCD[-a,-b] RicciCD[a,b]", :g; covd=:CD)
-            reconstructed = PermToRiemann(rperm1; covd=:CD)
-            rperm2 = RiemannToPerm(reconstructed, :g; covd=:CD)
-            @test rperm1.perm == rperm2.perm
-            @test rperm1.case == rperm2.case
+            terms1 = RiemannToPerm("RicciCD[-a,-b] RicciCD[a,b]", :g; covd=:CD)
+            reconstructed = PermToRiemann(terms1[1][2]; covd=:CD)
+            terms2 = RiemannToPerm(reconstructed, :g; covd=:CD)
+            @test terms1[1][2].perm == terms2[1][2].perm
+            @test terms1[1][2].case == terms2[1][2].case
         end
     end
 
@@ -1585,7 +1587,8 @@ using xAct
             empty!(xAct.XInvar._perm_dispatch)
 
             # Kretschner scalar
-            rperm = RiemannToPerm("RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]", :g; covd=:CD)
+            terms = RiemannToPerm("RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]", :g; covd=:CD)
+            rperm = terms[1][2]
 
             # This should match one of the 3 invariants in case [0,0]
             case_dispatch = xAct.XInvar._ensure_case_dispatch(
@@ -1861,18 +1864,18 @@ using xAct
         function _make_riemann_simplify_db()
             # Get canonical perms for known expressions, convert to Invar convention
             _to_invar = xAct.XInvar._involution_to_invar_perm
-            r_scalar = RiemannToPerm("RicciScalarCD[]", :g; covd=:CD)
-            r_kretschner = RiemannToPerm(
+            r_scalar_terms = RiemannToPerm("RicciScalarCD[]", :g; covd=:CD)
+            r_kretschner_terms = RiemannToPerm(
                 "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]", :g; covd=:CD
             )
 
             # Case [0]: 1 invariant (stored in Invar convention)
-            perms_0 = Dict{Int,Vector{Int}}(1 => _to_invar(r_scalar.perm))
+            perms_0 = Dict{Int,Vector{Int}}(1 => _to_invar(r_scalar_terms[1][2].perm))
 
             # Case [0,0]: 3 invariants — Kretschner is one of them
             # Placeholder perms are valid involutions converted to Invar convention
             perms_00 = Dict{Int,Vector{Int}}(
-                1 => _to_invar(r_kretschner.perm),
+                1 => _to_invar(r_kretschner_terms[1][2].perm),
                 2 => _to_invar([2, 1, 6, 5, 4, 3, 8, 7]),  # valid involution: 1↔2, 3↔6, 4↔5, 7↔8
                 3 => _to_invar([2, 1, 5, 7, 3, 8, 4, 6]),  # valid involution: 1↔2, 3↔5, 4↔7, 6↔8
             )
@@ -2627,8 +2630,8 @@ using xAct
                         rperm = InvToPerm(rinv; db=db)
                         expr = PermToRiemann(rperm; covd=:CD)
                         # Verify the expression round-trips through PermToInv
-                        rp = RiemannToPerm(expr, :g; covd=:CD)
-                        rinv2 = PermToInv(rp; db=db)
+                        rp_terms = RiemannToPerm(expr, :g; covd=:CD)
+                        rinv2 = PermToInv(rp_terms[1][2]; db=db)
                         @test rinv2.index == idx
                     end
                 end
@@ -2686,9 +2689,9 @@ using xAct
         for (case, perm) in _ROUNDTRIP_CASES
             rperm = RPerm(:xrg, case, perm)
             expr = PermToRiemann(rperm; covd=:XrD)
-            rperm2 = RiemannToPerm(expr, :xrg; covd=:XrD)
-            @test rperm2.perm == rperm.perm
-            @test rperm2.case == rperm.case
+            rperm2_terms = RiemannToPerm(expr, :xrg; covd=:XrD)
+            @test rperm2_terms[1][2].perm == rperm.perm
+            @test rperm2_terms[1][2].case == rperm.case
         end
     end
 
