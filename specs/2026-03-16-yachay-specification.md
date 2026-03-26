@@ -1,3 +1,13 @@
+> [!CAUTION]
+> **EXTERNAL (2026-03-16)**: Implementation deferred to the [yachay](https://github.com/sashakile/yachay) repository.
+> Schema files (`yachay-case.schema.json`, `yachay-manifest.schema.json`) remain in sxAct for reference.
+> sxAct currently uses `InvarDB.jl` (Maple/Mathematica format parser) instead of Yachay JSON format.
+
+> [!CAUTION]
+> **EXTERNAL** (2026-03-16): Full implementation lives in the [yachay](https://github.com/sashakile/yachay) repository.
+> Only the JSON schemas (`yachay-case.schema.json`, `yachay-manifest.schema.json`) are used in sxAct.
+> InvarDB.jl currently uses its own Maple/Mathematica parser — Yachay format adoption is deferred.
+
 # Yachay Specification v0.1.0
 **The Knowledge Base for Riemann Tensor Identities**
 

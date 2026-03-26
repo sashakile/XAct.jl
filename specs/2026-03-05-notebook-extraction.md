@@ -2,8 +2,9 @@
 
 **Date:** 2026-03-05
 **Ticket:** sxAct-z1c (ButlerExamples automated extraction), sxAct-3w1 (manual xTensor/xPerm curation)
-**Status:** Decision — implementation pending
-**Note:** sxAct-3w1 blocked by sxAct-6tb (Contract action must exist before oracle snapshots for full test coverage)
+**Status:** CLOSED — manual curation path chosen and completed
+**Outcome:** 57 TOML test files curated manually; automated ButlerExamples.nb extraction was never needed.
+Contract action and oracle snapshots are both fully operational.
 
 ---
 
