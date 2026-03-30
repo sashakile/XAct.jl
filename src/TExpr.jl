@@ -8,7 +8,9 @@ serialisation, and TExpr overloads for all engine functions.
 """
 module TExprLayer
 
-using ..XTensor: _manifolds, _tensors, _metrics
+using ..XTensor: get_manifold, get_tensor, get_metric
+using ..XTensor: ManifoldQ, TensorQ, CovDQ
+using ..XTensor: list_manifolds
 import ..XTensor:
     ToCanonical,
     Contract,
@@ -44,8 +46,8 @@ struct Idx
     manifold::Symbol
 
     function Idx(label::Symbol, manifold::Symbol)
-        haskey(_manifolds, manifold) || error("Manifold $manifold is not defined")
-        mobj = _manifolds[manifold]
+        ManifoldQ(manifold) || error("Manifold $manifold is not defined")
+        mobj = get_manifold(manifold)
         label in mobj.index_labels ||
             error("Index $label is not registered for manifold $manifold")
         new(label, manifold)
@@ -193,8 +195,7 @@ Look up a registered tensor and return a `TensorHead` handle.
 Throws if the tensor is not defined (e.g. after `reset_state!()`).
 """
 function tensor(name::Symbol)
-    haskey(_tensors, name) ||
-        error("Tensor $name is not defined (was reset_state!() called?)")
+    TensorQ(name) || error("Tensor $name is not defined (was reset_state!() called?)")
     TensorHead(name)
 end
 tensor(name::String) = tensor(Symbol(name))
@@ -203,10 +204,10 @@ tensor(name::String) = tensor(Symbol(name))
     covd(name::Symbol) -> CovDHead
 
 Look up a registered covariant derivative and return a `CovDHead` handle.
-Throws if `name` is not a defined CovD (metric key in `_metrics`).
+Throws if `name` is not a defined CovD.
 """
 function covd(name::Symbol)
-    haskey(_metrics, name) || error("Covariant derivative $name is not defined")
+    CovDQ(name) || error("Covariant derivative $name is not defined")
     CovDHead(name)
 end
 covd(name::String) = covd(Symbol(name))
@@ -216,9 +217,8 @@ covd(name::String) = covd(Symbol(name))
 # ---------------------------------------------------------------------------
 
 function _validate_tensor_indices(name::Symbol, indices)
-    haskey(_tensors, name) ||
-        error("Tensor $name is not defined (was reset_state!() called?)")
-    tobj = _tensors[name]
+    TensorQ(name) || error("Tensor $name is not defined (was reset_state!() called?)")
+    tobj = get_tensor(name)
 
     length(indices) == length(tobj.slots) ||
         error("$name has $(length(tobj.slots)) slots, got $(length(indices))")
@@ -737,7 +737,8 @@ end
 # Build label→manifold map from all currently-defined manifolds.
 function _build_index_map()::Dict{Symbol,Symbol}
     d = Dict{Symbol,Symbol}()
-    for (mname, mobj) in _manifolds
+    for mname in list_manifolds()
+        mobj = get_manifold(mname)
         for lbl in mobj.index_labels
             d[lbl] = mname
         end
