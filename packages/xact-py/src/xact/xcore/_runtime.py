@@ -22,6 +22,7 @@ Thread-safe: concurrent first-calls block until initialisation completes.
 
 from __future__ import annotations
 
+import os
 import threading
 from pathlib import Path
 from typing import Any
@@ -29,16 +30,34 @@ from typing import Any
 _lock = threading.Lock()
 _jl: Any = None
 _xcore: Any = None
+_init_pid: int | None = None
+
+
+def _check_fork_safety() -> None:
+    """Raise RuntimeError if the current process is a fork of the one that initialized Julia."""
+    if _init_pid is None:
+        return
+    current_pid = os.getpid()
+    if current_pid != _init_pid:
+        raise RuntimeError(
+            f"xact: Julia runtime was initialized in process {_init_pid} but is "
+            f"being accessed from process {current_pid}. This typically happens "
+            f"after os.fork() or multiprocessing with fork start method. juliacall "
+            f"is not fork-safe and may produce incorrect results or crash. Use "
+            f"threading, or multiprocessing with the 'spawn' start method instead."
+        )
 
 
 def get_julia() -> Any:
     """Return the juliacall Main module, initialising Julia if needed."""
+    _check_fork_safety()
     _ensure_initialized()
     return _jl
 
 
 def get_xcore() -> Any:
     """Return the Julia xAct module object, initialising Julia if needed."""
+    _check_fork_safety()
     _ensure_initialized()
     return _xcore
 
@@ -53,7 +72,7 @@ def _ensure_initialized() -> None:
 
 
 def _init_julia() -> None:
-    global _jl, _xcore
+    global _jl, _xcore, _init_pid
     import juliacall
 
     jl = juliacall.Main
@@ -64,6 +83,7 @@ def _init_julia() -> None:
         # Only set globals after full success
         _jl = jl
         _xcore = jl.xAct
+        _init_pid = os.getpid()
     except Exception:
         # Fallback for development if juliapkg hasn't resolved it yet,
         # or if we're running from source without a formal install.
@@ -82,6 +102,7 @@ def _init_julia() -> None:
                     # Only set globals after full success
                     _jl = jl
                     _xcore = jl.xAct
+                    _init_pid = os.getpid()
                 else:
                     raise ImportError(f"xAct.jl not found at {xact_main}")
             else:

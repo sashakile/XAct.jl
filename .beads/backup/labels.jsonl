@@ -3,6 +3,9 @@
 {"issue_id":"sxAct-0hu","label":"onhold"}
 {"issue_id":"sxAct-6d1","label":"onhold"}
 {"issue_id":"sxAct-75s","label":"onhold"}
+{"issue_id":"sxAct-8p82","label":"quality"}
+{"issue_id":"sxAct-8p82","label":"testing"}
+{"issue_id":"sxAct-8p82","label":"verification"}
 {"issue_id":"sxAct-9c4","label":"onhold"}
 {"issue_id":"sxAct-9v8","label":"onhold"}
 {"issue_id":"sxAct-ctx","label":"onhold"}
@@ -41,6 +44,9 @@
 {"issue_id":"sxAct-ead.8","label":"docs"}
 {"issue_id":"sxAct-ead.8","label":"engagement"}
 {"issue_id":"sxAct-ead.8","label":"migration"}
+{"issue_id":"sxAct-ew18","label":"quality"}
+{"issue_id":"sxAct-ew18","label":"testing"}
+{"issue_id":"sxAct-ew18","label":"verification"}
 {"issue_id":"sxAct-k0a","label":"onhold"}
 {"issue_id":"sxAct-l1w","label":"onhold"}
 {"issue_id":"sxAct-lfs","label":"onhold"}
