@@ -637,12 +637,13 @@ end
         end
     end
 
-    @testset "Young {2,1}: col antisymmetry — Y[-a,-b,-c] + Y[-c,-b,-a] = 0 (sorted indices)" begin
-        # NOTE: Full column antisymmetry with arbitrary index orderings fails
-        # when the middle index sorts before slot 1 (row sort interferes with
-        # column canonicalization path). This is a known limitation tracked in
-        # sxAct issue tracker. Here we test the subset that works: indices
-        # already in ascending order.
+    @testset "Young {2,1}: col antisymmetry — Y[-a,-b,-c] + Y[-c,-b,-a] = 0 (sorted)" begin
+        # The col antisymmetry identity T(a,b,c) = -T(c,b,a) is valid at the
+        # canonicalization level only when the product c·r representation covers
+        # the mapping.  For arbitrary index orderings the 4-element product set
+        # {e, (12), (13), (13)(12)} may not find the canonical representative
+        # for both terms — this is a known limitation (sxAct-l36k).
+        # Restricting to sorted indices ensures (13) maps directly to canonical.
         reset_state!()
         setup_standard!()
         rng = MersenneTwister(SEED + 35)
