@@ -68,12 +68,22 @@ jobs:
       - name: Install Python dependencies
         run: uv sync --extra dev
 
+      - name: Patch juliacall OpenSSL_jll constraint for Julia 1.12
+        # juliacall 0.9.31 caps Julia at 1.11 when Python's OpenSSL < 3.5
+        # (pyjuliapkg#75). Safe to remove since we control Julia via setup-julia.
+        run: |
+          python -c "
+          import json, glob
+          for p in glob.glob('.venv/**/juliacall/juliapkg.json', recursive=True):
+              d = json.loads(open(p).read())
+              d.get('packages', {}).pop('OpenSSL_jll', None)
+              open(p, 'w').write(json.dumps(d, indent=4))
+          "
+
       - name: Instantiate Julia project
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
 
       - name: Run pytest (Unit)
-        env:
-          PYTHON_JULIAPKG_OFFLINE: "yes"
         run: uv run pytest tests/ -q -m "not slow" --ignore=tests/integration --ignore=tests/properties --ignore=tests/xperm --ignore=tests/xtensor
 
   julia-tests:
