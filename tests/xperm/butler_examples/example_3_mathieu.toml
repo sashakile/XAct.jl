@@ -8,6 +8,7 @@ description     = "xPerm butler examples: Example 3. Mathieu"
 tags            = ["xperm", "butler", "layer:1"]
 layer           = 1
 oracle_is_axiom = true
+skip            = "wolfram-only"  # Assert conditions contain Wolfram GenSet repr with string labels
 
 [[setup]]
 action   = "Evaluate"

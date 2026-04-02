@@ -408,6 +408,23 @@ def _cmd_run(args: argparse.Namespace) -> int:
             )
             continue
 
+        # Skip files marked with meta-level skip
+        if test_file.meta.skip:
+            all_results.append(
+                (
+                    str(toml_path),
+                    [
+                        _RunResult(
+                            file_id=test_file.meta.id,
+                            test_id="<file>",
+                            status="skip",
+                            message=test_file.meta.skip,
+                        )
+                    ],
+                )
+            )
+            continue
+
         # Skip files where no tests match the tag filter
         if tag_filter:
             file_has_match = tag_filter in test_file.meta.tags or any(
