@@ -102,3 +102,11 @@ repos:
         pass_filenames: false
         files: ^(packages/.*\.py|tests/.*\.py|pyproject\.toml|src/.*\.jl|Project\.toml)$
         stages: [pre-push]
+      - id: toml-regression
+        name: toml-regression
+        description: Run TOML snapshot regression tests on push (MISSING snapshots tolerated).
+        language: system
+        entry: bash -c "fail=0; for d in tests/xperm tests/xtensor; do out=$(uv run xact-test run $d --adapter julia --oracle-mode snapshot --oracle-dir oracle 2>&1); echo \"$out\"; echo \"$out\" | grep -q '  FAIL  ' && fail=1; done; exit $fail"
+        pass_filenames: false
+        files: ^(src/.*\.jl|packages/.*\.py|tests/(xperm|xtensor)/.*\.toml|oracle/)$
+        stages: [pre-push]
