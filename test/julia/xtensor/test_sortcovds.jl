@@ -139,6 +139,32 @@
         @test ids[1].name == :RicciIdentity
     end
 
+    @testset "identical CovD terms cancel to zero" begin
+        reset_state!()
+        def_manifold!(:SM, 4, [:sa, :sb, :sc, :sd, :se, :sf, :sg, :sh])
+        def_metric!(-1, "Sg[-sa,-sb]", :SCD)
+        def_tensor!(:ST, ["-sa"], :SM)
+
+        # T - T = 0: identical CovD chains with opposite signs must cancel
+        result = SortCovDs(
+            "SCD[-sa][SCD[-sb][ST[-sc]]] - SCD[-sa][SCD[-sb][ST[-sc]]]", :SCD
+        )
+        @test result == "0"
+    end
+
+    @testset "CovD terms partially cancel" begin
+        reset_state!()
+        def_manifold!(:SM, 4, [:sa, :sb, :sc, :sd, :se, :sf, :sg, :sh])
+        def_metric!(-1, "Sg[-sa,-sb]", :SCD)
+        def_tensor!(:ST, ["-sa"], :SM)
+
+        # 2T - T = T
+        result = SortCovDs(
+            "2 SCD[-sa][SCD[-sb][ST[-sc]]] - SCD[-sa][SCD[-sb][ST[-sc]]]", :SCD
+        )
+        @test result == "SCD[-sa][SCD[-sb][ST[-sc]]]"
+    end
+
     @testset "unregistered CovD throws error" begin
         reset_state!()
         @test_throws ErrorException SortCovDs("X[-a][X[-b][T[-c]]]", :X)

@@ -453,10 +453,37 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             self._jl.seval(f"Main.eval(:(global {sc} = :{sc}))")
         return Result(status="ok", type="Handle", repr=name, normalized=name)
 
+    # Pattern matching CovD bracket syntax: Name[-idx][
+    _COVD_BRACKET_RE: ClassVar = None
+
+    @staticmethod
+    def _find_covd_names(expr: str) -> list[str]:
+        """Return CovD names that appear in bracket syntax like ``CD[-a][``."""
+        import re
+
+        if JuliaAdapter._COVD_BRACKET_RE is None:
+            JuliaAdapter._COVD_BRACKET_RE = re.compile(r"(\w+)\[-\w+\]\[")
+        return list(
+            dict.fromkeys(m.group(1) for m in JuliaAdapter._COVD_BRACKET_RE.finditer(expr))
+        )
+
     def _to_canonical(self, args: dict[str, Any]) -> Result:
         import xact.api as _api
 
-        raw = _api.canonicalize(str(args["expression"]))
+        expr = str(args["expression"])
+        try:
+            raw = _api.canonicalize(expr)
+        except Exception:
+            # ToCanonical can't parse nested CovD brackets (e.g. CVD[-a][CVD[-b][T[-c]]]).
+            # Fall back to SortCovDs which handles brackets natively and collects
+            # identical CovD terms so they cancel, then retry on the remainder.
+            for covd in self._find_covd_names(expr):
+                expr = _api.sort_covds(expr, covd)
+            if expr.strip() == "0":
+                return Result(status="ok", type="Expr", repr="0", normalized="0")
+            if self._find_covd_names(expr):
+                return Result(status="ok", type="Expr", repr=expr, normalized=_normalize(expr))
+            raw = _api.canonicalize(expr)
         return Result(status="ok", type="Expr", repr=raw, normalized=_normalize(raw))
 
     def _contract(self, args: dict[str, Any]) -> Result:

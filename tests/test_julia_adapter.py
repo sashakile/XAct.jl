@@ -152,3 +152,66 @@ class TestWlPatternStripping:
 
         result = _wl_to_jl("check_perturbation_order(Pertg1, 1) === true")
         assert "check_perturbation_order" in result
+
+
+# ---------------------------------------------------------------------------
+# _to_canonical must expand CovD bracket syntax before canonicalizing
+# ---------------------------------------------------------------------------
+
+
+class TestToCanonicalCovDBrackets:
+    """_to_canonical must handle expressions containing CovD bracket syntax.
+
+    CommuteCovDs returns expressions with CovD bracket notation like
+    CVD[-a][CVD[-b][V[-c]]]. When these are substituted into a ToCanonical
+    expression, the adapter must expand them via SortCovDs first.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _setup(self):
+        adapter = JuliaAdapter()
+        self.ctx = adapter.initialize()
+        self.adapter = adapter
+        adapter.execute(
+            self.ctx,
+            "DefManifold",
+            {"name": "CCm", "dimension": 4, "indices": ["cca", "ccb", "ccc", "ccd", "cce", "ccf"]},
+        )
+        adapter.execute(
+            self.ctx,
+            "DefMetric",
+            {"signdet": -1, "metric": "CCg[-cca,-ccb]", "covd": "CCD"},
+        )
+        adapter.execute(
+            self.ctx,
+            "DefTensor",
+            {"name": "CCv", "indices": ["-cca"], "manifold": "CCm"},
+        )
+        yield
+        adapter.teardown(self.ctx)
+
+    def test_to_canonical_with_covd_brackets_returns_zero(self):
+        """Expression where CovD bracket terms cancel should return '0'."""
+        expr = "CCD[-ccb][CCD[-cca][CCv[-ccc]]] - CCD[-ccb][CCD[-cca][CCv[-ccc]]]"
+        result = self.adapter._to_canonical({"expression": expr})
+        assert result.status == "ok"
+        assert result.repr == "0"
+
+    def test_commute_then_canonical_verification(self):
+        """CommuteCovDs result fed into ToCanonical verification equals zero."""
+        r1 = self.adapter.execute(
+            self.ctx,
+            "CommuteCovDs",
+            {
+                "expression": "CCD[-cca][CCD[-ccb][CCv[-ccc]]]",
+                "covd": "CCD",
+                "indices": ["-cca", "-ccb"],
+            },
+        )
+        check_expr = (
+            f"{r1.repr} - CCD[-ccb][CCD[-cca][CCv[-ccc]]]"
+            " + RiemannCCD[-ccc,ccd,-cca,-ccb] CCv[-ccd]"
+        )
+        r2 = self.adapter._to_canonical({"expression": check_expr})
+        assert r2.status == "ok"
+        assert r2.repr == "0"

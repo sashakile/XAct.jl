@@ -882,6 +882,112 @@ Arguments:
 Returns a string expression with all CovD chains in canonical order.
 Non-CovD terms (Riemann corrections) are simplified via `ToCanonical`.
 """
+
+"""
+    _split_covd_coeff(term) -> (Rational{Int}, String)
+
+Split a CovD term string into (coefficient, body).  Handles leading signs
+and integer/rational coefficients, e.g. `"- 3 SCD[-a][T[-b]]"` → `(-3//1, "SCD[-a][T[-b]]")`.
+"""
+function _split_covd_coeff(term::AbstractString)::Tuple{Rational{Int},String}
+    s = strip(term)
+    isempty(s) && return (0 // 1, "")
+
+    sign = 1
+    pos = 1
+    n = length(s)
+
+    # Consume leading sign
+    if s[pos] == '-'
+        sign = -1
+        pos += 1
+    elseif s[pos] == '+'
+        pos += 1
+    end
+
+    # Skip whitespace
+    while pos <= n && isspace(s[pos])
+        pos += 1
+    end
+
+    # Try to parse a numeric coefficient
+    coeff_end = pos
+    has_digit = false
+    while coeff_end <= n && (isdigit(s[coeff_end]) || s[coeff_end] == '/')
+        has_digit = true
+        coeff_end += 1
+    end
+
+    if has_digit && (coeff_end > n || isspace(s[coeff_end]))
+        coeff = parse(Rational{Int}, s[pos:(coeff_end - 1)])
+        body = strip(s[coeff_end:end])
+        return (sign * coeff, String(body))
+    end
+
+    # No numeric coefficient — implied ±1
+    body = strip(s[pos:end])
+    return (sign * 1 // 1, String(body))
+end
+
+"""
+    _collect_covd_terms(terms::Vector{String}) -> Vector{String}
+
+Group CovD terms by body (ignoring coefficient), sum coefficients, and
+return only terms with non-zero coefficient.  This ensures e.g. `T - T = 0`.
+"""
+function _collect_covd_terms(terms::Vector{String})::Vector{String}
+    isempty(terms) && return terms
+
+    # body → accumulated coefficient (preserving insertion order)
+    bodies = String[]
+    coeffs = Dict{String,Rational{Int}}()
+
+    for term in terms
+        (c, body) = _split_covd_coeff(term)
+        isempty(body) && continue
+        if !haskey(coeffs, body)
+            push!(bodies, body)
+            coeffs[body] = c
+        else
+            coeffs[body] += c
+        end
+    end
+
+    result = String[]
+    for body in bodies
+        c = coeffs[body]
+        c == 0 && continue
+        if c == 1
+            push!(result, body)
+        elseif c == -1
+            push!(result, "- " * body)
+        elseif c > 0
+            push!(result, string(numerator(c) == denominator(c) ? "" : c) * " " * body)
+        else
+            push!(result, string(c) * " " * body)
+        end
+    end
+    result
+end
+
+"""
+Flip the leading sign of a term string.
+"""
+function _negate_term(term::AbstractString)::String
+    s = strip(term)
+    if startswith(s, "- ")
+        return String(s[3:end])
+    elseif startswith(s, "-")
+        return String(s[2:end])
+    elseif startswith(s, "+ ")
+        return "- " * String(s[3:end])
+    elseif startswith(s, "+")
+        return "- " * String(s[2:end])
+    else
+        return "- " * String(s)
+    end
+end
+
 function SortCovDs(expr::AbstractString, covd_name::Symbol)::String
     s = strip(expr)
     (s == "0" || isempty(s)) && return "0"
@@ -929,12 +1035,28 @@ function SortCovDs(expr::AbstractString, covd_name::Symbol)::String
                 manifold_sym,
             )
 
-            # Prepend prefix and append suffix to each part
+            # Apply prefix (coefficient/sign) and suffix to all parts.
+            # The prefix contains the leading sign/coefficient of the original
+            # term — it must multiply every generated part, not just the main
+            # CovD chain (Riemann corrections inherit the same coefficient).
+            (pfx_coeff, _pfx_body) = _split_covd_coeff(prefix * "X")  # dummy body
             rebuilt_parts = String[]
             for (pi, part) in enumerate(new_parts)
-                p = part
-                if pi == 1 && !isempty(prefix)
-                    p = prefix * " " * p
+                if pfx_coeff == 1 // 1
+                    p = part
+                elseif pfx_coeff == -1 // 1
+                    # Negate the part: flip its leading sign
+                    p = _negate_term(part)
+                else
+                    (pc, pb) = _split_covd_coeff(part)
+                    merged = pfx_coeff * pc
+                    if merged == 1 // 1
+                        p = pb
+                    elseif merged == -1 // 1
+                        p = "- " * pb
+                    else
+                        p = string(merged) * " " * pb
+                    end
                 end
                 if pi == 1 && !isempty(suffix)
                     p = p * " " * suffix
@@ -942,7 +1064,15 @@ function SortCovDs(expr::AbstractString, covd_name::Symbol)::String
                 push!(rebuilt_parts, p)
             end
 
-            # Replace this term with the expanded terms
+            # Replace this term with the expanded terms.
+            # Ensure all parts after the first have an explicit sign so
+            # _split_expression_terms can separate them later.
+            for pi in 2:length(rebuilt_parts)
+                rp = rebuilt_parts[pi]
+                if !startswith(rp, "-") && !startswith(rp, "+ ") && !startswith(rp, "+")
+                    rebuilt_parts[pi] = "+ " * rp
+                end
+            end
             terms[tidx] = join(rebuilt_parts, " ")
             current = join(terms, " ")
             break
@@ -967,6 +1097,10 @@ function SortCovDs(expr::AbstractString, covd_name::Symbol)::String
             push!(plain_terms, term)
         end
     end
+
+    # Collect identical CovD terms: split each into (coefficient, body),
+    # group by body, and sum coefficients so that e.g. T - T = 0.
+    covd_terms = _collect_covd_terms(covd_terms)
 
     # Canonicalize plain terms together
     if !isempty(plain_terms)
