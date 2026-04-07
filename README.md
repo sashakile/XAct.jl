@@ -1,7 +1,7 @@
 # xAct.jl
 
 [![Build Status](https://github.com/sashakile/sxAct/actions/workflows/test.yml/badge.svg)](https://github.com/sashakile/sxAct/actions/workflows/test.yml)
-[![Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://sashakile.github.io/sxAct/)
+[![Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://saxa.xyz/sxAct)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 > [!WARNING]
@@ -39,11 +39,15 @@ xact.canonicalize("T[-b,-a] - T[-a,-b]")  # returns "0"
 
 - **xAct.jl** (Julia): The computational engine — canonicalization, contraction, covariant derivatives, perturbation theory, coordinate components (xCoba), and more.
 - **sxact** (Python): Automated parity testing against the Wolfram Engine using TOML test cases and oracle snapshots.
-- **[Chacana](https://github.com/sashakile/chacana)** (External): Unified Tensor DSL and formal specification.
+
+### Related Projects
+
+- **[Chacana](https://github.com/sashakile/chacana)** — Tensor calculus DSL with static type checking and a PEG grammar specification. Parses tensor expressions into a MathJSON-style AST. ([docs](https://saxa.xyz/chacana))
+- **[Eleguá](https://github.com/sashakile/elegua)** — Domain-agnostic, multi-tier test harness for validating mathematical equivalence across symbolic computing systems. ([docs](https://saxa.xyz/elegua))
 
 ## Documentation
 
-Full documentation at [sashakile.github.io/sxAct](https://sashakile.github.io/sxAct/).
+Full documentation at [saxa.xyz/sxAct](https://saxa.xyz/sxAct).
 
 ## AI Attribution
 
