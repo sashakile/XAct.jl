@@ -1,7 +1,7 @@
 {
-  "database": "issues.jsonl",
+  "database": "dolt",
   "backend": "dolt",
-  "dolt_mode": "server",
+  "dolt_mode": "embedded",
   "dolt_database": "sxAct",
   "project_id": "8a6325a6-d8e4-41a9-a8f1-cd4e7ac93e57"
 }
