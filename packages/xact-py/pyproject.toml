@@ -38,11 +38,3 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/xact"]
-
-[tool.hatch.build.targets.wheel.force-include]
-"../../Project.toml" = "xact/julia/Project.toml"
-"../../src" = "xact/julia/src"
-
-[tool.hatch.build.targets.sdist.force-include]
-"../../Project.toml" = "xact/julia/Project.toml"
-"../../src" = "xact/julia/src"
