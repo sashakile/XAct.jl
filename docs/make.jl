@@ -126,4 +126,5 @@ makedocs(;
     ],
 )
 
-deploydocs(; repo="github.com/sashakile/sxAct.git", devbranch="main")
+# Deployment is handled by the GitHub Actions workflow (upload-pages-artifact
+# + deploy-pages), so no deploydocs() call is needed here.
