@@ -25,7 +25,7 @@ jobs:
           python-version: "3.12"
 
       - name: Build xact-py
-        run: uv build packages/xact-py --out-dir dist/
+        run: uv build packages/xact-py --out-dir dist/ --wheel
 
       - name: Upload distributions
         uses: actions/upload-artifact@v4
