@@ -758,16 +758,23 @@ end
 @testset "JuliaFormatter" begin
     # Format check runs via the dedicated tooling environment to avoid
     # JuliaSyntax version conflicts between JuliaFormatter and JET.
-    tooling_proj = joinpath(@__DIR__, "..", "tooling")
-    src_dir = joinpath(@__DIR__, "..", "src")
-    cmd = ```
-    $(Base.julia_cmd()) --project=$(tooling_proj) -e "
-        using JuliaFormatter
-        ok = format(ARGS; overwrite=false)
-        exit(ok ? 0 : 1)
-    " -- $(src_dir)
-    ```
-    @test success(cmd)
+    # Only run on the Julia version used for development (1.12+) since
+    # JuliaFormatter output varies across Julia versions.
+    if VERSION >= v"1.12"
+        tooling_proj = joinpath(@__DIR__, "..", "tooling")
+        src_dir = joinpath(@__DIR__, "..", "src")
+        cmd = ```
+        $(Base.julia_cmd()) --project=$(tooling_proj) -e "
+            using JuliaFormatter
+            ok = format(ARGS; overwrite=false)
+            exit(ok ? 0 : 1)
+        " -- $(src_dir)
+        ```
+        @test success(cmd)
+    else
+        @info "Skipping JuliaFormatter check on Julia $VERSION (requires ≥1.12)"
+        @test_skip true
+    end
 end
 
 # ============================================================
