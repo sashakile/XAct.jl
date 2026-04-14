@@ -96,7 +96,7 @@ class PythonAdapter(TestAdapter[_PythonContext]):
             self._julia_version = str(raw_jl).strip()
             # Try to get xAct package version
             try:
-                raw_xa = self._jl.seval("string(pkgversion(xAct))")
+                raw_xa = self._jl.seval("string(pkgversion(XAct))")
                 self._xact_version = str(raw_xa).strip()
             except Exception:
                 self._xact_version = "dev"

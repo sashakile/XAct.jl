@@ -1,6 +1,6 @@
 # Tests for XTensor.jl — split into subfiles for modularity
 using Test
-using xAct
+using XAct
 
 include("xtensor/test_core.jl")
 include("xtensor/test_christoffel.jl")

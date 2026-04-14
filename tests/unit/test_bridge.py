@@ -140,8 +140,8 @@ class TestJlCall:
                 calls.append(expr)
                 return "ok"
 
-        jl_call(MockJl(), "xAct.def_manifold!", ":M", "4", "[:a, :b]")
-        assert calls == ["xAct.def_manifold!(:M, 4, [:a, :b])"]
+        jl_call(MockJl(), "XAct.def_manifold!", ":M", "4", "[:a, :b]")
+        assert calls == ["XAct.def_manifold!(:M, 4, [:a, :b])"]
 
     def test_call_wraps_errors(self) -> None:
         class FailJl:
@@ -149,7 +149,7 @@ class TestJlCall:
                 raise Exception("Julia boom")
 
         with pytest.raises(RuntimeError, match="Julia call failed"):
-            jl_call(FailJl(), "xAct.ToCanonical", '"T[-a,-b]"')
+            jl_call(FailJl(), "XAct.ToCanonical", '"T[-a,-b]"')
 
     def test_call_composes_with_builders(self) -> None:
         """End-to-end: builders + jl_call produce correct seval string."""
@@ -162,12 +162,12 @@ class TestJlCall:
 
         jl_call(
             MockJl(),
-            "xAct.def_manifold!",
+            "XAct.def_manifold!",
             jl_sym("M", "manifold"),
             jl_int(4),
             jl_sym_list(["a", "b", "c", "d"], "indices"),
         )
-        assert calls == ["xAct.def_manifold!(:M, 4, [:a, :b, :c, :d])"]
+        assert calls == ["XAct.def_manifold!(:M, 4, [:a, :b, :c, :d])"]
 
 
 # ---------------------------------------------------------------------------

@@ -8,7 +8,7 @@ using InteractiveUtils
 begin
     import Pkg
     Pkg.activate(joinpath(@__DIR__, "..", ".."))
-    using xAct
+    using XAct
 end
 
 # ╔═╡ a1000002-0000-0000-0000-000000000002

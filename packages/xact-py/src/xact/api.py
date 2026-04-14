@@ -40,7 +40,7 @@ def _ensure_init() -> tuple[Any, Any]:
             from xact.xcore._runtime import get_julia
 
             _jl = get_julia()
-            _xAct = _jl.xAct
+            _xAct = _jl.XAct
     return _jl, _xAct
 
 

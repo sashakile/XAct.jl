@@ -79,10 +79,10 @@ def _init_julia() -> None:
 
     # Attempt to load xAct. If juliapkg.json worked, it should be available.
     try:
-        jl.seval("using xAct")
+        jl.seval("using XAct")
         # Only set globals after full success
         _jl = jl
-        _xcore = jl.xAct
+        _xcore = jl.XAct
         _init_pid = os.getpid()
     except Exception:
         # Fallback for development if juliapkg hasn't resolved it yet,
@@ -94,14 +94,14 @@ def _init_julia() -> None:
             if (julia_dir / "Project.toml").exists():
                 escaped_dir = jl_escape(str(julia_dir))
                 jl.seval(f'import Pkg; Pkg.activate("{escaped_dir}"; io=devnull)')
-                xact_main = julia_dir / "src" / "xAct.jl"
+                xact_main = julia_dir / "src" / "XAct.jl"
                 if xact_main.exists():
                     escaped_main = jl_escape(str(xact_main))
                     jl.seval(f'include("{escaped_main}")')
-                    jl.seval("using .xAct")
+                    jl.seval("using .XAct")
                     # Only set globals after full success
                     _jl = jl
-                    _xcore = jl.xAct
+                    _xcore = jl.XAct
                     _init_pid = os.getpid()
                 else:
                     raise ImportError(f"xAct.jl not found at {xact_main}")

@@ -27,7 +27,7 @@ def _make_mock_runtime() -> tuple[MagicMock, MagicMock]:
     """Create mock Julia runtime (jl_Main, xAct_module)."""
     mock_jl = MagicMock(name="jl_Main")
     mock_xact = MagicMock(name="xAct_module")
-    mock_jl.xAct = mock_xact
+    mock_jl.XAct = mock_xact
 
     # Wire up xAct function returns
     mock_xact.reset_state_b.return_value = None
@@ -153,7 +153,7 @@ class TestConcurrentInit:
 
             mock_jl = MagicMock(name="jl_Main")
             mock_xact = MagicMock(name="xAct")
-            mock_jl.xAct = mock_xact
+            mock_jl.XAct = mock_xact
             mock_jl.seval.return_value = None
 
             def counting_init() -> None:

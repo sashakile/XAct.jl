@@ -1,31 +1,31 @@
 using Test
-using xAct
+using XAct
 
 @testset "Validation" begin
     @testset "validate_identifier" begin
         # Valid identifiers
-        @test xAct.validate_identifier(:M) == :M
-        @test xAct.validate_identifier(:MyTensor) == :MyTensor
-        @test xAct.validate_identifier(:_private) == :_private
-        @test xAct.validate_identifier(:T123) == :T123
-        @test xAct.validate_identifier("abc") == :abc
+        @test XAct.validate_identifier(:M) == :M
+        @test XAct.validate_identifier(:MyTensor) == :MyTensor
+        @test XAct.validate_identifier(:_private) == :_private
+        @test XAct.validate_identifier(:T123) == :T123
+        @test XAct.validate_identifier("abc") == :abc
 
         # Invalid: code injection
-        @test_throws ArgumentError xAct.validate_identifier(Symbol("M; evil()"))
-        @test_throws ArgumentError xAct.validate_identifier(Symbol("rm -rf /"))
+        @test_throws ArgumentError XAct.validate_identifier(Symbol("M; evil()"))
+        @test_throws ArgumentError XAct.validate_identifier(Symbol("rm -rf /"))
         # Invalid: special characters
-        @test_throws ArgumentError xAct.validate_identifier(Symbol("a b"))
-        @test_throws ArgumentError xAct.validate_identifier(Symbol("a.b"))
-        @test_throws ArgumentError xAct.validate_identifier(Symbol("a[0]"))
+        @test_throws ArgumentError XAct.validate_identifier(Symbol("a b"))
+        @test_throws ArgumentError XAct.validate_identifier(Symbol("a.b"))
+        @test_throws ArgumentError XAct.validate_identifier(Symbol("a[0]"))
         # Invalid: empty / starts with digit
-        @test_throws ArgumentError xAct.validate_identifier(Symbol(""))
-        @test_throws ArgumentError xAct.validate_identifier(Symbol("1abc"))
+        @test_throws ArgumentError XAct.validate_identifier(Symbol(""))
+        @test_throws ArgumentError XAct.validate_identifier(Symbol("1abc"))
         # Invalid: Unicode (ASCII-only by design)
-        @test_throws ArgumentError xAct.validate_identifier(Symbol("α"))
+        @test_throws ArgumentError XAct.validate_identifier(Symbol("α"))
 
         # Context appears in error message
         try
-            xAct.validate_identifier(Symbol("bad name"); context="manifold name")
+            XAct.validate_identifier(Symbol("bad name"); context="manifold name")
             @test false  # should not reach
         catch e
             @test e isa ArgumentError
@@ -35,55 +35,55 @@ using xAct
 
     @testset "validate_perm" begin
         # Valid permutations
-        @test xAct.validate_perm([1, 2, 3]) === nothing
-        @test xAct.validate_perm([2, 1]) === nothing
-        @test xAct.validate_perm([3, 1, 2]) === nothing
-        @test xAct.validate_perm(Int[]) === nothing  # empty is valid
+        @test XAct.validate_perm([1, 2, 3]) === nothing
+        @test XAct.validate_perm([2, 1]) === nothing
+        @test XAct.validate_perm([3, 1, 2]) === nothing
+        @test XAct.validate_perm(Int[]) === nothing  # empty is valid
 
         # Invalid: duplicate
-        @test_throws ArgumentError xAct.validate_perm([1, 1, 3])
-        @test_throws ArgumentError xAct.validate_perm([2, 2])
+        @test_throws ArgumentError XAct.validate_perm([1, 1, 3])
+        @test_throws ArgumentError XAct.validate_perm([2, 2])
         # Invalid: out of range
-        @test_throws ArgumentError xAct.validate_perm([1, 4, 3])
-        @test_throws ArgumentError xAct.validate_perm([0, 1, 2])
+        @test_throws ArgumentError XAct.validate_perm([1, 4, 3])
+        @test_throws ArgumentError XAct.validate_perm([0, 1, 2])
     end
 
     @testset "validate_disjoint_cycles" begin
         # Valid: disjoint
-        @test xAct.validate_disjoint_cycles([[1, 2], [3, 4]]) === nothing
-        @test xAct.validate_disjoint_cycles([[1, 2, 3]]) === nothing
-        @test xAct.validate_disjoint_cycles(Vector{Int}[]) === nothing  # empty
+        @test XAct.validate_disjoint_cycles([[1, 2], [3, 4]]) === nothing
+        @test XAct.validate_disjoint_cycles([[1, 2, 3]]) === nothing
+        @test XAct.validate_disjoint_cycles(Vector{Int}[]) === nothing  # empty
 
         # Invalid: overlapping element
-        @test_throws ArgumentError xAct.validate_disjoint_cycles([[1, 2], [2, 3]])
-        @test_throws ArgumentError xAct.validate_disjoint_cycles([[1], [1]])
-        @test_throws ArgumentError xAct.validate_disjoint_cycles([[1, 2], [3, 4], [4, 5]])
+        @test_throws ArgumentError XAct.validate_disjoint_cycles([[1, 2], [2, 3]])
+        @test_throws ArgumentError XAct.validate_disjoint_cycles([[1], [1]])
+        @test_throws ArgumentError XAct.validate_disjoint_cycles([[1, 2], [3, 4], [4, 5]])
     end
 
     @testset "validate_order" begin
         # Valid orders
-        @test xAct.validate_order(1) === nothing
-        @test xAct.validate_order(2) === nothing
-        @test xAct.validate_order(100) === nothing
+        @test XAct.validate_order(1) === nothing
+        @test XAct.validate_order(2) === nothing
+        @test XAct.validate_order(100) === nothing
 
         # Invalid: zero and negative
-        @test_throws ArgumentError xAct.validate_order(0)
-        @test_throws ArgumentError xAct.validate_order(-1)
-        @test_throws ArgumentError xAct.validate_order(-100)
+        @test_throws ArgumentError XAct.validate_order(0)
+        @test_throws ArgumentError XAct.validate_order(-1)
+        @test_throws ArgumentError XAct.validate_order(-100)
     end
 
     @testset "validate_deriv_orders" begin
         # Valid: sorted non-decreasing, non-negative
-        @test xAct.validate_deriv_orders([0]) === nothing
-        @test xAct.validate_deriv_orders([0, 0, 2]) === nothing
-        @test xAct.validate_deriv_orders([0, 2, 4]) === nothing
-        @test xAct.validate_deriv_orders(Int[]) === nothing  # empty
+        @test XAct.validate_deriv_orders([0]) === nothing
+        @test XAct.validate_deriv_orders([0, 0, 2]) === nothing
+        @test XAct.validate_deriv_orders([0, 2, 4]) === nothing
+        @test XAct.validate_deriv_orders(Int[]) === nothing  # empty
 
         # Invalid: unsorted
-        @test_throws ArgumentError xAct.validate_deriv_orders([2, 0])
-        @test_throws ArgumentError xAct.validate_deriv_orders([0, 2, 1])
+        @test_throws ArgumentError XAct.validate_deriv_orders([2, 0])
+        @test_throws ArgumentError XAct.validate_deriv_orders([0, 2, 1])
         # Invalid: negative
-        @test_throws ArgumentError xAct.validate_deriv_orders([-1, 0])
+        @test_throws ArgumentError XAct.validate_deriv_orders([-1, 0])
     end
 
     @testset "Integration: Cycles cross-cycle disjointness" begin

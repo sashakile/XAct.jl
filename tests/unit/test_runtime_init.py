@@ -53,7 +53,7 @@ def test_successful_init_sets_both():
 
         mock_main = MagicMock()
         mock_xact = MagicMock()
-        mock_main.xAct = mock_xact
+        mock_main.XAct = mock_xact
         mock_main.seval.return_value = None
 
         with patch.dict("sys.modules", {"juliacall": MagicMock(Main=mock_main)}):

@@ -62,13 +62,13 @@ def _action_to_julia(ad: ActionDict) -> str:
         dim = args.get("dimension", 0)
         indices = args.get("indices", [])
         idx_jl = "[" + ", ".join(f":{i}" for i in indices) + "]"
-        return f"xAct.def_manifold!(:{name}, {dim}, {idx_jl})"
+        return f"XAct.def_manifold!(:{name}, {dim}, {idx_jl})"
 
     if action == "DefMetric":
         signdet = args.get("signdet", 0)
         metric = args.get("metric", "")
         covd = args.get("covd", "")
-        return f'xAct.def_metric!({signdet}, "{metric}", :{covd})'
+        return f'XAct.def_metric!({signdet}, "{metric}", :{covd})'
 
     if action == "DefTensor":
         name = args.get("name", "")
@@ -79,14 +79,14 @@ def _action_to_julia(ad: ActionDict) -> str:
         parts = [f":{name}", idx_jl, f":{manifold}"]
         if sym:
             parts.append(f'symmetry_str="{sym}"')
-        return f"xAct.def_tensor!({', '.join(parts)})"
+        return f"XAct.def_tensor!({', '.join(parts)})"
 
     if action == "DefBasis":
         name = args.get("name", "")
         vbundle = args.get("vbundle", "")
         cnumbers = args.get("cnumbers", [])
         cn_jl = "[" + ", ".join(str(c) for c in cnumbers) + "]"
-        return f"xAct.def_basis!(:{name}, :{vbundle}, {cn_jl})"
+        return f"XAct.def_basis!(:{name}, :{vbundle}, {cn_jl})"
 
     if action == "DefChart":
         name = args.get("name", "")
@@ -95,137 +95,137 @@ def _action_to_julia(ad: ActionDict) -> str:
         scalars = args.get("scalars", [])
         cn_jl = "[" + ", ".join(str(c) for c in cnumbers) + "]"
         sc_jl = "[" + ", ".join(f":{s}" for s in scalars) + "]"
-        return f"xAct.def_chart!(:{name}, :{manifold}, {cn_jl}, {sc_jl})"
+        return f"XAct.def_chart!(:{name}, :{manifold}, {cn_jl}, {sc_jl})"
 
     if action == "DefPerturbation":
         name = args.get("name", "")
         metric = args.get("metric", "")
         param = args.get("parameter", "")
-        return f"xAct.def_perturbation!(:{name}, :{metric}, :{param})"
+        return f"XAct.def_perturbation!(:{name}, :{metric}, :{param})"
 
     if action == "ToCanonical":
-        return f'xAct.ToCanonical("{_jl_esc(args.get("expression", ""))}")'
+        return f'XAct.ToCanonical("{_jl_esc(args.get("expression", ""))}")'
 
     if action == "Simplify":
         expr = _jl_esc(args.get("expression", ""))
-        return f'xAct.Simplify("{expr}")'
+        return f'XAct.Simplify("{expr}")'
 
     if action == "Contract":
-        return f'xAct.Contract("{_jl_esc(args.get("expression", ""))}")'
+        return f'XAct.Contract("{_jl_esc(args.get("expression", ""))}")'
 
     if action == "CommuteCovDs":
         expr = _jl_esc(args.get("expression", ""))
         covd = args.get("covd", "")
         indices = args.get("indices", "")
-        return f'xAct.CommuteCovDs("{expr}", :{covd}, {indices})'
+        return f'XAct.CommuteCovDs("{expr}", :{covd}, {indices})'
 
     if action == "SortCovDs":
         expr = _jl_esc(args.get("expression", ""))
         covd = args.get("covd", "")
-        return f'xAct.SortCovDs("{expr}", :{covd})'
+        return f'XAct.SortCovDs("{expr}", :{covd})'
 
     if action == "Perturb":
         expr = _jl_esc(args.get("expression", ""))
         order = args.get("order", 1)
-        return f'xAct.perturb("{expr}", {order})'
+        return f'XAct.perturb("{expr}", {order})'
 
     if action == "PerturbCurvature":
         key = args.get("key")
         if key:
             covd = args.get("covd", "")
-            return f"xAct.perturb_curvature(:{key}, :{covd})"
+            return f"XAct.perturb_curvature(:{key}, :{covd})"
         expr = _jl_esc(args.get("expression", ""))
         order = args.get("order", 1)
-        return f'xAct.perturb_curvature("{expr}", {order})'
+        return f'XAct.perturb_curvature("{expr}", {order})'
 
     if action == "PerturbationOrder":
-        return f'xAct.PerturbationOrder("{_jl_esc(args.get("expression", ""))}")'
+        return f'XAct.PerturbationOrder("{_jl_esc(args.get("expression", ""))}")'
 
     if action == "PerturbationAtOrder":
         expr = args.get("expression", "")
         order = args.get("order", 1)
-        return f"xAct.PerturbationAtOrder(:{expr}, {order})"
+        return f"XAct.PerturbationAtOrder(:{expr}, {order})"
 
     if action == "CheckMetricConsistency":
         metric = args.get("metric", "")
-        return f"xAct.check_metric_consistency(:{metric})"
+        return f"XAct.check_metric_consistency(:{metric})"
 
     if action == "IntegrateByParts":
         expr = _jl_esc(args.get("expression", ""))
         covd = args.get("covd", "")
-        return f'xAct.IBP("{expr}", :{covd})'
+        return f'XAct.IBP("{expr}", :{covd})'
 
     if action == "TotalDerivativeQ":
         expr = _jl_esc(args.get("expression", ""))
         covd = args.get("covd", "")
-        return f'xAct.TotalDerivativeQ("{expr}", :{covd})'
+        return f'XAct.TotalDerivativeQ("{expr}", :{covd})'
 
     if action == "VarD":
         var = _jl_esc(args.get("variable", ""))
         expr = _jl_esc(args.get("expression", ""))
-        return f'xAct.VarD("{var}", "{expr}")'
+        return f'XAct.VarD("{var}", "{expr}")'
 
     if action == "SetBasisChange":
         b1 = args.get("basis1", "")
         b2 = args.get("basis2", "")
         mat = args.get("matrix", "")
-        return f"xAct.SetBasisChange(:{b1}, :{b2}, {mat})"
+        return f"XAct.SetBasisChange(:{b1}, :{b2}, {mat})"
 
     if action == "ChangeBasis":
         expr = _jl_esc(args.get("expression", ""))
         basis = args.get("target_basis", "")
-        return f'xAct.ChangeBasis("{expr}", :{basis})'
+        return f'XAct.ChangeBasis("{expr}", :{basis})'
 
     if action == "GetJacobian":
         b1 = args.get("basis1", "")
         b2 = args.get("basis2", "")
-        return f"xAct.GetJacobian(:{b1}, :{b2})"
+        return f"XAct.GetJacobian(:{b1}, :{b2})"
 
     if action == "BasisChangeQ":
         b1 = args.get("basis1", "")
         b2 = args.get("basis2", "")
-        return f"xAct.BasisChangeQ(:{b1}, :{b2})"
+        return f"XAct.BasisChangeQ(:{b1}, :{b2})"
 
     if action == "SetComponents":
         tensor = args.get("tensor", "")
         components = args.get("components", "")
-        return f'xAct.SetComponents("{tensor}", {components})'
+        return f'XAct.SetComponents("{tensor}", {components})'
 
     if action == "GetComponents":
         tensor = args.get("tensor", "")
         basis = args.get("basis", "")
-        return f'xAct.GetComponents("{tensor}", :{basis})'
+        return f'XAct.GetComponents("{tensor}", :{basis})'
 
     if action == "ComponentValue":
         tensor = args.get("tensor", "")
         indices = args.get("indices", [])
-        return f'xAct.ComponentValue("{tensor}", {indices})'
+        return f'XAct.ComponentValue("{tensor}", {indices})'
 
     if action == "CTensorQ":
-        return f'xAct.CTensorQ("{args.get("tensor", "")}")'
+        return f'XAct.CTensorQ("{args.get("tensor", "")}")'
 
     if action == "ToBasis":
         basis = args.get("basis", "")
         expr = _jl_esc(args.get("expression", ""))
-        return f'xAct.ToBasis(:{basis}, "{expr}")'
+        return f'XAct.ToBasis(:{basis}, "{expr}")'
 
     if action == "FromBasis":
         basis = args.get("basis", "")
         expr = _jl_esc(args.get("expression", ""))
-        return f'xAct.FromBasis(:{basis}, "{expr}")'
+        return f'XAct.FromBasis(:{basis}, "{expr}")'
 
     if action == "TraceBasisDummy":
-        return f'xAct.TraceBasisDummy("{_jl_esc(args.get("expression", ""))}")'
+        return f'XAct.TraceBasisDummy("{_jl_esc(args.get("expression", ""))}")'
 
     if action == "Christoffel":
         covd = args.get("covd", "")
-        return f"xAct.Christoffel(:{covd})"
+        return f"XAct.Christoffel(:{covd})"
 
     if action == "Assert":
         return f"@assert {args.get('condition', '')}"
 
     # Evaluate / fallback
-    return f'xAct.eval("{_jl_esc(args.get("expression", ""))}")'
+    return f'XAct.eval("{_jl_esc(args.get("expression", ""))}")'
 
 
 def _jl_esc(s: str) -> str:

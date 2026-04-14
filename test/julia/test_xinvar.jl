@@ -1,6 +1,6 @@
 # Tests for XInvar.jl — InvariantCase, RPerm, RInv, MaxIndex, InvarCases.
 using Test
-using xAct
+using XAct
 
 @testset "XInvar" begin
 
@@ -380,8 +380,8 @@ using xAct
     # Module loading
     # ================================================================
 
-    @testset "XInvar loaded via xAct" begin
-        @test isdefined(xAct, :XInvar)
+    @testset "XInvar loaded via XAct" begin
+        @test isdefined(XAct, :XInvar)
         @test InvariantCase isa DataType
         @test RPerm isa DataType
         @test RInv isa DataType
@@ -394,19 +394,19 @@ using xAct
     @testset "InvarDB" begin
 
         # Access internal functions via the XInvar module
-        _case_to_filename = xAct.XInvar._case_to_filename
-        _rinv_filename = xAct.XInvar._rinv_filename
-        _dinv_filename = xAct.XInvar._dinv_filename
-        _cycles_to_images = xAct.XInvar._cycles_to_images
-        _parse_maple_perm_line = xAct.XInvar._parse_maple_perm_line
-        _parse_mma_rule = xAct.XInvar._parse_mma_rule
-        _parse_nested_intlist = xAct.XInvar._parse_nested_intlist
-        _parse_int_csv = xAct.XInvar._parse_int_csv
-        _parse_linear_combination = xAct.XInvar._parse_linear_combination
-        _parse_coefficient = xAct.XInvar._parse_coefficient
-        _extract_inv_index = xAct.XInvar._extract_inv_index
-        _extract_inv_case = xAct.XInvar._extract_inv_case
-        _step_subdir = xAct.XInvar._step_subdir
+        _case_to_filename = XAct.XInvar._case_to_filename
+        _rinv_filename = XAct.XInvar._rinv_filename
+        _dinv_filename = XAct.XInvar._dinv_filename
+        _cycles_to_images = XAct.XInvar._cycles_to_images
+        _parse_maple_perm_line = XAct.XInvar._parse_maple_perm_line
+        _parse_mma_rule = XAct.XInvar._parse_mma_rule
+        _parse_nested_intlist = XAct.XInvar._parse_nested_intlist
+        _parse_int_csv = XAct.XInvar._parse_int_csv
+        _parse_linear_combination = XAct.XInvar._parse_linear_combination
+        _parse_coefficient = XAct.XInvar._parse_coefficient
+        _extract_inv_index = XAct.XInvar._extract_inv_index
+        _extract_inv_case = XAct.XInvar._extract_inv_case
+        _step_subdir = XAct.XInvar._step_subdir
 
         # ============================================================
         # _case_to_filename
@@ -833,25 +833,25 @@ using xAct
 
         @testset "lazy loading" begin
             # Reset should clear the cached DB
-            xAct.XInvar._reset_invar_db!()
-            @test isempty(xAct.XInvar._invar_db_cache)
+            XAct.XInvar._reset_invar_db!()
+            @test isempty(XAct.XInvar._invar_db_cache)
 
             # _ensure_invar_db with a temp dir containing a Riemann subdirectory
             tmpdir = mktempdir()
             try
                 mkpath(joinpath(tmpdir, "Riemann"))
-                db = xAct.XInvar._ensure_invar_db(tmpdir)
+                db = XAct.XInvar._ensure_invar_db(tmpdir)
                 @test db isa InvarDB
-                @test haskey(xAct.XInvar._invar_db_cache, 4)
-                @test xAct.XInvar._invar_db_cache[4] === db
+                @test haskey(XAct.XInvar._invar_db_cache, 4)
+                @test XAct.XInvar._invar_db_cache[4] === db
 
                 # Calling again returns the same cached instance
-                db2 = xAct.XInvar._ensure_invar_db(tmpdir)
+                db2 = XAct.XInvar._ensure_invar_db(tmpdir)
                 @test db2 === db
 
                 # Reset clears it
-                xAct.XInvar._reset_invar_db!()
-                @test isempty(xAct.XInvar._invar_db_cache)
+                XAct.XInvar._reset_invar_db!()
+                @test isempty(XAct.XInvar._invar_db_cache)
             finally
                 rm(tmpdir; recursive=true)
             end
@@ -865,17 +865,17 @@ using xAct
             # Load a DB using a temp dir with Riemann subdirectory
             tmpdir = mktempdir()
             mkpath(joinpath(tmpdir, "Riemann"))
-            xAct.XInvar._ensure_invar_db(tmpdir)
+            XAct.XInvar._ensure_invar_db(tmpdir)
             rm(tmpdir; recursive=true)
-            @test !isempty(xAct.XInvar._invar_db_cache)
+            @test !isempty(XAct.XInvar._invar_db_cache)
 
             # reset_state! should clear it
-            xAct.reset_state!()
-            @test isempty(xAct.XInvar._invar_db_cache)
+            XAct.reset_state!()
+            @test isempty(XAct.XInvar._invar_db_cache)
         end
 
         @testset "RiemannSimplify input validation" begin
-            xAct.XInvar._reset_invar_db!()
+            XAct.XInvar._reset_invar_db!()
             # Invalid level
             @test_throws ArgumentError RiemannSimplify(
                 "RiemannCD[-a,-b,-c,-d]", :g; covd=:CD, level=0
@@ -902,13 +902,13 @@ using xAct
     # ================================================================
 
     # Access internal functions
-    _parse_invar_monomial = xAct.XInvar._parse_invar_monomial
-    _parse_invar_sum = xAct.XInvar._parse_invar_sum
-    _ricci_to_riemann = xAct.XInvar._ricci_to_riemann
-    _classify_case = xAct.XInvar._classify_case
-    _extract_contraction_perm = xAct.XInvar._extract_contraction_perm
-    _canonicalize_contraction_perm = xAct.XInvar._canonicalize_contraction_perm
-    _riemann_to_ricci = xAct.XInvar._riemann_to_ricci
+    _parse_invar_monomial = XAct.XInvar._parse_invar_monomial
+    _parse_invar_sum = XAct.XInvar._parse_invar_sum
+    _ricci_to_riemann = XAct.XInvar._ricci_to_riemann
+    _classify_case = XAct.XInvar._classify_case
+    _extract_contraction_perm = XAct.XInvar._extract_contraction_perm
+    _canonicalize_contraction_perm = XAct.XInvar._canonicalize_contraction_perm
+    _riemann_to_ricci = XAct.XInvar._riemann_to_ricci
 
     @testset "Phase 3: String Parsing" begin
         @testset "_parse_invar_monomial: plain tensor" begin
@@ -1138,10 +1138,10 @@ using xAct
     end
 
     @testset "Phase 3: _canonicalize_contraction_perm backtracking (n ≥ 5)" begin
-        _all_block_permutations = xAct.XInvar._all_block_permutations
-        _apply_block_perm_to_contraction = xAct.XInvar._apply_block_perm_to_contraction
-        _backtrack_riemann_syms! = xAct.XInvar._backtrack_riemann_syms!
-        _swap_slots! = xAct.XInvar._swap_slots!
+        _all_block_permutations = XAct.XInvar._all_block_permutations
+        _apply_block_perm_to_contraction = XAct.XInvar._apply_block_perm_to_contraction
+        _backtrack_riemann_syms! = XAct.XInvar._backtrack_riemann_syms!
+        _swap_slots! = XAct.XInvar._swap_slots!
 
         @testset "backtracking matches brute force at n=4 boundary" begin
             case = InvariantCase([0, 0, 0, 0])
@@ -1546,27 +1546,27 @@ using xAct
         @testset "dispatch cache is built and reused" begin
             db = _make_test_db()
             # Reset dispatch cache
-            empty!(xAct.XInvar._perm_dispatch)
+            empty!(XAct.XInvar._perm_dispatch)
 
             rperm = RPerm(:CD, InvariantCase([0]), [2, 1, 4, 3])
             PermToInv(rperm; db=db)
 
             # Cache should now be populated for the requested case
-            @test !isempty(xAct.XInvar._perm_dispatch)
-            @test haskey(xAct.XInvar._perm_dispatch, [0])
+            @test !isempty(XAct.XInvar._perm_dispatch)
+            @test haskey(XAct.XInvar._perm_dispatch, [0])
 
             # Clean up
-            empty!(xAct.XInvar._perm_dispatch)
+            empty!(XAct.XInvar._perm_dispatch)
         end
 
         @testset "reset_state! clears dispatch cache" begin
             db = _make_test_db()
-            empty!(xAct.XInvar._perm_dispatch)
+            empty!(XAct.XInvar._perm_dispatch)
             PermToInv(RPerm(:CD, InvariantCase([0]), [2, 1, 4, 3]); db=db)
-            @test !isempty(xAct.XInvar._perm_dispatch)
+            @test !isempty(XAct.XInvar._perm_dispatch)
 
-            xAct.reset_state!()
-            @test isempty(xAct.XInvar._perm_dispatch)
+            XAct.reset_state!()
+            @test isempty(XAct.XInvar._perm_dispatch)
         end
 
         @testset "different metrics preserved" begin
@@ -1584,14 +1584,14 @@ using xAct
 
         @testset "full pipeline: RiemannToPerm → PermToInv → InvToPerm → PermToRiemann" begin
             db = _make_test_db()
-            empty!(xAct.XInvar._perm_dispatch)
+            empty!(XAct.XInvar._perm_dispatch)
 
             # Kretschner scalar
             terms = RiemannToPerm("RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]", :g; covd=:CD)
             rperm = terms[1][2]
 
             # This should match one of the 3 invariants in case [0,0]
-            case_dispatch = xAct.XInvar._ensure_case_dispatch(
+            case_dispatch = XAct.XInvar._ensure_case_dispatch(
                 db, rperm.case.deriv_orders, false
             )
             if haskey(case_dispatch, rperm.perm)
@@ -1863,7 +1863,7 @@ using xAct
         # for known expressions, then build the DB around those.
         function _make_riemann_simplify_db()
             # Get canonical perms for known expressions, convert to Invar convention
-            _to_invar = xAct.XInvar._involution_to_invar_perm
+            _to_invar = XAct.XInvar._involution_to_invar_perm
             r_scalar_terms = RiemannToPerm("RicciScalarCD[]", :g; covd=:CD)
             r_kretschner_terms = RiemannToPerm(
                 "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]", :g; covd=:CD
@@ -1912,7 +1912,7 @@ using xAct
         @testset "RicciScalar passthrough" begin
             db = _make_riemann_simplify_db()
             # Clear dispatch cache from previous tests
-            empty!(xAct.XInvar._perm_dispatch)
+            empty!(XAct.XInvar._perm_dispatch)
 
             result = RiemannSimplify("RicciScalarCD[]", :g; covd=:CD, db=db, dim=4)
             # Should produce a tensor expression for case [0], inv 1
@@ -1923,7 +1923,7 @@ using xAct
 
         @testset "Kretschner scalar" begin
             db = _make_riemann_simplify_db()
-            empty!(xAct.XInvar._perm_dispatch)
+            empty!(XAct.XInvar._perm_dispatch)
 
             result = RiemannSimplify(
                 "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]", :g; covd=:CD, db=db, dim=4
@@ -1935,7 +1935,7 @@ using xAct
 
         @testset "same expression relabeled cancels" begin
             db = _make_riemann_simplify_db()
-            empty!(xAct.XInvar._perm_dispatch)
+            empty!(XAct.XInvar._perm_dispatch)
 
             # Two Kretschner expressions with different dummy labels → same RPerm
             # Their difference should be "0"
@@ -1951,7 +1951,7 @@ using xAct
 
         @testset "curvature_relations flag" begin
             db = _make_riemann_simplify_db()
-            empty!(xAct.XInvar._perm_dispatch)
+            empty!(XAct.XInvar._perm_dispatch)
 
             result_no_cr = RiemannSimplify("RicciScalarCD[]", :g; covd=:CD, db=db, dim=4)
             result_cr = RiemannSimplify(
@@ -1966,7 +1966,7 @@ using xAct
 
         @testset "level 1: no simplification" begin
             db = _make_riemann_simplify_db()
-            empty!(xAct.XInvar._perm_dispatch)
+            empty!(XAct.XInvar._perm_dispatch)
 
             result = RiemannSimplify(
                 "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]", :g; covd=:CD, db=db, level=1
@@ -1983,7 +1983,7 @@ using xAct
         end
 
         @testset "_format_rational" begin
-            fmt = xAct.XInvar._format_rational
+            fmt = XAct.XInvar._format_rational
             @test fmt(1 // 1) == "1"
             @test fmt(-3 // 1) == "-3"
             @test fmt(3 // 2) == "(3/2)"
@@ -1992,8 +1992,8 @@ using xAct
 
         @testset "_inv_expr_to_string" begin
             db = _make_riemann_simplify_db()
-            empty!(xAct.XInvar._perm_dispatch)
-            to_str = xAct.XInvar._inv_expr_to_string
+            empty!(XAct.XInvar._perm_dispatch)
+            to_str = XAct.XInvar._inv_expr_to_string
 
             # Single term with coefficient 1
             expr1 = Tuple{Rational{Int},RInv}[(1 // 1, RInv(:g, InvariantCase([0]), 1))]
@@ -2091,8 +2091,8 @@ using xAct
 
         @testset "PermToInv: dual case [0]" begin
             db = _make_dual_db()
-            empty!(xAct.XInvar._perm_dispatch)
-            empty!(xAct.XInvar._dual_perm_dispatch)
+            empty!(XAct.XInvar._perm_dispatch)
+            empty!(XAct.XInvar._dual_perm_dispatch)
 
             dual_case = InvariantCase([0], 1)
             rperm = RPerm(:CD, dual_case, [2, 1, 4, 3, 6, 5, 8, 7])
@@ -2104,7 +2104,7 @@ using xAct
 
         @testset "PermToInv: dual case [0,0] — all 4 invariants" begin
             db = _make_dual_db()
-            empty!(xAct.XInvar._dual_perm_dispatch)
+            empty!(XAct.XInvar._dual_perm_dispatch)
 
             dual_case = InvariantCase([0, 0], 1)
             r1 = PermToInv(
@@ -2130,7 +2130,7 @@ using xAct
 
         @testset "PermToInv: dual unknown perm" begin
             db = _make_dual_db()
-            empty!(xAct.XInvar._dual_perm_dispatch)
+            empty!(XAct.XInvar._dual_perm_dispatch)
 
             dual_case = InvariantCase([0], 1)
             rperm = RPerm(:CD, dual_case, [1, 2, 3, 4, 5, 6, 7, 8])
@@ -2139,7 +2139,7 @@ using xAct
 
         @testset "PermToInv: dual unknown case" begin
             db = _make_dual_db()
-            empty!(xAct.XInvar._dual_perm_dispatch)
+            empty!(XAct.XInvar._dual_perm_dispatch)
 
             dual_case = InvariantCase([2], 1)
             rperm = RPerm(:CD, dual_case, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
@@ -2187,7 +2187,7 @@ using xAct
 
         @testset "round-trip: dual PermToInv → InvToPerm" begin
             db = _make_dual_db()
-            empty!(xAct.XInvar._dual_perm_dispatch)
+            empty!(XAct.XInvar._dual_perm_dispatch)
             dual_case = InvariantCase([0, 0], 1)
 
             for idx in 1:4
@@ -2202,7 +2202,7 @@ using xAct
 
         @testset "round-trip: dual InvToPerm → PermToInv" begin
             db = _make_dual_db()
-            empty!(xAct.XInvar._dual_perm_dispatch)
+            empty!(XAct.XInvar._dual_perm_dispatch)
             dual_case = InvariantCase([0, 0], 1)
 
             for idx in 1:4
@@ -2316,38 +2316,38 @@ using xAct
 
         @testset "dispatch cache: dual separate from non-dual" begin
             db = _make_dual_db()
-            empty!(xAct.XInvar._perm_dispatch)
-            empty!(xAct.XInvar._dual_perm_dispatch)
+            empty!(XAct.XInvar._perm_dispatch)
+            empty!(XAct.XInvar._dual_perm_dispatch)
 
             # Non-dual lookup builds _perm_dispatch but not _dual_perm_dispatch
             rperm = RPerm(:CD, InvariantCase([0]), [2, 1, 4, 3])
             PermToInv(rperm; db=db)
-            @test !isempty(xAct.XInvar._perm_dispatch)
-            @test isempty(xAct.XInvar._dual_perm_dispatch)
+            @test !isempty(XAct.XInvar._perm_dispatch)
+            @test isempty(XAct.XInvar._dual_perm_dispatch)
 
             # Dual lookup builds _dual_perm_dispatch
             dual_rperm = RPerm(:CD, InvariantCase([0], 1), [2, 1, 4, 3, 6, 5, 8, 7])
             PermToInv(dual_rperm; db=db)
-            @test !isempty(xAct.XInvar._dual_perm_dispatch)
+            @test !isempty(XAct.XInvar._dual_perm_dispatch)
 
             # Clean up
-            empty!(xAct.XInvar._perm_dispatch)
-            empty!(xAct.XInvar._dual_perm_dispatch)
+            empty!(XAct.XInvar._perm_dispatch)
+            empty!(XAct.XInvar._dual_perm_dispatch)
         end
 
         @testset "reset_state! clears dual dispatch cache" begin
             db = _make_dual_db()
-            empty!(xAct.XInvar._perm_dispatch)
-            empty!(xAct.XInvar._dual_perm_dispatch)
+            empty!(XAct.XInvar._perm_dispatch)
+            empty!(XAct.XInvar._dual_perm_dispatch)
 
             PermToInv(RPerm(:CD, InvariantCase([0]), [2, 1, 4, 3]); db=db)
             PermToInv(RPerm(:CD, InvariantCase([0], 1), [2, 1, 4, 3, 6, 5, 8, 7]); db=db)
-            @test !isempty(xAct.XInvar._perm_dispatch)
-            @test !isempty(xAct.XInvar._dual_perm_dispatch)
+            @test !isempty(XAct.XInvar._perm_dispatch)
+            @test !isempty(XAct.XInvar._dual_perm_dispatch)
 
-            xAct.reset_state!()
-            @test isempty(xAct.XInvar._perm_dispatch)
-            @test isempty(xAct.XInvar._dual_perm_dispatch)
+            XAct.reset_state!()
+            @test isempty(XAct.XInvar._perm_dispatch)
+            @test isempty(XAct.XInvar._dual_perm_dispatch)
         end
     end
 
@@ -2467,7 +2467,7 @@ using xAct
             end
 
             @testset "InvToPerm→PermToInv round-trip: case [0]" begin
-                empty!(xAct.XInvar._perm_dispatch)
+                empty!(XAct.XInvar._perm_dispatch)
                 rinv = RInv(:CD, InvariantCase([0]), 1)
                 rperm = InvToPerm(rinv; db=db)
                 rinv2 = PermToInv(rperm; db=db)
@@ -2475,7 +2475,7 @@ using xAct
             end
 
             @testset "InvToPerm→PermToInv round-trip: case [0,0] all 3" begin
-                empty!(xAct.XInvar._perm_dispatch)
+                empty!(XAct.XInvar._perm_dispatch)
                 for idx in 1:3
                     rinv = RInv(:CD, InvariantCase([0, 0]), idx)
                     rperm = InvToPerm(rinv; db=db)
@@ -2485,7 +2485,7 @@ using xAct
             end
 
             @testset "InvSimplify level 2: case [0,0]" begin
-                empty!(xAct.XInvar._perm_dispatch)
+                empty!(XAct.XInvar._perm_dispatch)
                 # inv 3 is dependent: inv3 → (1/2)*inv2
                 rinv3 = RInv(:CD, InvariantCase([0, 0]), 3)
                 result = InvSimplify(rinv3, 2; db=db)
@@ -2495,7 +2495,7 @@ using xAct
             end
 
             @testset "InvSimplify level 2: case [0,0] independent unchanged" begin
-                empty!(xAct.XInvar._perm_dispatch)
+                empty!(XAct.XInvar._perm_dispatch)
                 for idx in [1, 2]
                     rinv = RInv(:CD, InvariantCase([0, 0]), idx)
                     result = InvSimplify(rinv, 2; db=db)
@@ -2505,7 +2505,7 @@ using xAct
             end
 
             @testset "InvSimplify level 2: case [0,0,0]" begin
-                empty!(xAct.XInvar._perm_dispatch)
+                empty!(XAct.XInvar._perm_dispatch)
                 # inv 7 → (1/4)*inv 5
                 rinv7 = RInv(:CD, InvariantCase([0, 0, 0]), 7)
                 result = InvSimplify(rinv7, 2; db=db)
@@ -2521,11 +2521,11 @@ using xAct
             end
 
             @testset "performance: PermToInv dispatch build" begin
-                empty!(xAct.XInvar._perm_dispatch)
+                empty!(XAct.XInvar._perm_dispatch)
                 # Get a valid canonical involution via InvToPerm
                 rinv = RInv(:CD, InvariantCase([0]), 1)
                 rperm = InvToPerm(rinv; db=db)
-                empty!(xAct.XInvar._perm_dispatch)
+                empty!(XAct.XInvar._perm_dispatch)
                 t = @elapsed PermToInv(rperm; db=db)
                 @test t < 5.0  # first call builds dispatch for this case
                 # Second call should be fast (cached)
@@ -2538,14 +2538,14 @@ using xAct
             # ===========================================================
 
             @testset "RiemannSimplify: RicciScalar (order 2)" begin
-                empty!(xAct.XInvar._perm_dispatch)
+                empty!(XAct.XInvar._perm_dispatch)
                 r = RiemannSimplify("RicciScalarCD[]", :g; covd=:CD, db=db, dim=4)
                 @test r != "0"
                 @test contains(r, "RiemannCD[")
             end
 
             @testset "RiemannSimplify: Kretschner (order 4)" begin
-                empty!(xAct.XInvar._perm_dispatch)
+                empty!(XAct.XInvar._perm_dispatch)
                 r = RiemannSimplify(
                     "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d]", :g; covd=:CD, db=db, dim=4
                 )
@@ -2554,7 +2554,7 @@ using xAct
             end
 
             @testset "RiemannSimplify: Ricci² (order 4)" begin
-                empty!(xAct.XInvar._perm_dispatch)
+                empty!(XAct.XInvar._perm_dispatch)
                 r = RiemannSimplify(
                     "RicciCD[-a,-b] RicciCD[a,b]", :g; covd=:CD, db=db, dim=4
                 )
@@ -2563,7 +2563,7 @@ using xAct
             end
 
             @testset "RiemannSimplify: relabeling cancels" begin
-                empty!(xAct.XInvar._perm_dispatch)
+                empty!(XAct.XInvar._perm_dispatch)
                 r = RiemannSimplify(
                     "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d] - RiemannCD[-e,-f,-g,-h] RiemannCD[e,f,g,h]",
                     :g;
@@ -2575,7 +2575,7 @@ using xAct
             end
 
             @testset "RiemannSimplify: curvature_relations roundtrip" begin
-                empty!(xAct.XInvar._perm_dispatch)
+                empty!(XAct.XInvar._perm_dispatch)
                 r = RiemannSimplify(
                     "RicciScalarCD[]", :g; covd=:CD, db=db, dim=4, curvature_relations=true
                 )
@@ -2583,7 +2583,7 @@ using xAct
             end
 
             @testset "RiemannSimplify: cubic Riemann (order 6)" begin
-                empty!(xAct.XInvar._perm_dispatch)
+                empty!(XAct.XInvar._perm_dispatch)
                 r = RiemannSimplify(
                     "RiemannCD[-a,-b,-c,-d] RiemannCD[a,-e,c,-f] RiemannCD[b,e,d,f]",
                     :g;
@@ -2603,9 +2603,9 @@ using xAct
                     "RiemannCD[-a,-b,-c,-d] RiemannCD[a,-e,c,-f] RiemannCD[b,e,d,f]",
                 ]
                 for expr in exprs
-                    empty!(xAct.XInvar._perm_dispatch)
+                    empty!(XAct.XInvar._perm_dispatch)
                     r1 = RiemannSimplify(expr, :g; covd=:CD, db=db, dim=4)
-                    empty!(xAct.XInvar._perm_dispatch)
+                    empty!(XAct.XInvar._perm_dispatch)
                     r2 = RiemannSimplify(r1, :g; covd=:CD, db=db, dim=4)
                     @test r1 == r2
                 end
@@ -2625,7 +2625,7 @@ using xAct
                     case = InvariantCase(case_key)
                     n_inv = MaxIndex(case_key)
                     for idx in 1:n_inv
-                        empty!(xAct.XInvar._perm_dispatch)
+                        empty!(XAct.XInvar._perm_dispatch)
                         rinv = RInv(:CD, case, idx)
                         rperm = InvToPerm(rinv; db=db)
                         expr = PermToRiemann(rperm; covd=:CD)
@@ -2648,24 +2648,24 @@ using xAct
     @testset "Dimension-aware InvarDB cache" begin
         if isdir(_INVAR_DB_DIR)
             # Reset to clear any cached state
-            xAct.XInvar._reset_invar_db!()
+            XAct.XInvar._reset_invar_db!()
 
             # Load dim=4, then dim=3 — must get different instances
-            db4 = xAct.XInvar._ensure_invar_db(dim=4)
-            db3 = xAct.XInvar._ensure_invar_db(dim=3)
+            db4 = XAct.XInvar._ensure_invar_db(dim=4)
+            db3 = XAct.XInvar._ensure_invar_db(dim=3)
             @test db4 !== db3  # different DB objects
 
             # Second call with dim=4 returns cached instance
-            db4b = xAct.XInvar._ensure_invar_db(dim=4)
+            db4b = XAct.XInvar._ensure_invar_db(dim=4)
             @test db4 === db4b  # same cached instance
 
             # Second call with dim=3 returns cached instance
-            db3b = xAct.XInvar._ensure_invar_db(dim=3)
+            db3b = XAct.XInvar._ensure_invar_db(dim=3)
             @test db3 === db3b
 
             # After reset, cache is empty
-            xAct.XInvar._reset_invar_db!()
-            db4c = xAct.XInvar._ensure_invar_db(dim=4)
+            XAct.XInvar._reset_invar_db!()
+            db4c = XAct.XInvar._ensure_invar_db(dim=4)
             @test db4c !== db4  # fresh instance after reset
         else
             @info "Skipping dim-aware cache tests: DB not found"
@@ -2696,7 +2696,7 @@ using xAct
     end
 
     @testset "_format_rational edge cases" begin
-        fr = xAct.XInvar._format_rational
+        fr = XAct.XInvar._format_rational
         @test fr(0 // 1) == "0"
         @test fr(1 // 1) == "1"
         @test fr(-1 // 1) == "-1"

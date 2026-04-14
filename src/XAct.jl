@@ -15,12 +15,12 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-    xAct
+    XAct
 
 The primary entry point for the Julia port of the xAct suite.
 Bundles XCore, XPerm, and XTensor into a unified namespace.
 """
-module xAct
+module XAct
 
 using Reexport
 
@@ -52,4 +52,4 @@ function reset_state!()
     XInvar._reset_invar_db!()
 end
 
-end # module xAct
+end # module XAct

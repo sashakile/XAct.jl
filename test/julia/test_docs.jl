@@ -1,5 +1,5 @@
 using Test
-using xAct
+using XAct
 
 # Literate is a test-extra; skip doc tests when unavailable (e.g. direct julia invocation)
 _has_literate = try
@@ -31,7 +31,7 @@ end
                 # We then include it to execute the code.
                 m = Module(gensym())
                 # Inject xAct into the anonymous module
-                Core.eval(m, :(using xAct))
+                Core.eval(m, :(using XAct))
 
                 # Use mktemp to avoid leaving artifacts
                 mktempdir() do tmp

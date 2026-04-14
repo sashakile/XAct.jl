@@ -49,4 +49,4 @@ CHRISTOFFEL = "XTensor.christoffel!"
 RIEMANN_SIMPLIFY = "XTensor.RiemannSimplify"
 
 # XCore / state management
-RESET_STATE = "xAct.reset_state!()"
+RESET_STATE = "XAct.reset_state!()"

@@ -63,27 +63,27 @@ class TestJulia:
     def test_def_manifold(self) -> None:
         actions = wl_to_actions("DefManifold[M, 4, {a,b,c,d}]")
         result = to_julia(actions)
-        assert "xAct.def_manifold!" in result
+        assert "XAct.def_manifold!" in result
         assert ":M" in result
         assert "4" in result
 
     def test_def_metric(self) -> None:
         actions = wl_to_actions("DefMetric[-1, g[-a,-b], CD]")
         result = to_julia(actions)
-        assert "xAct.def_metric!" in result
+        assert "XAct.def_metric!" in result
         assert ":CD" in result
 
     def test_def_tensor(self) -> None:
         actions = wl_to_actions("DefTensor[T[-a,-b], M, Symmetric[{-a,-b}]]")
         result = to_julia(actions)
-        assert "xAct.def_tensor!" in result
+        assert "XAct.def_tensor!" in result
         assert ":T" in result
         assert "Symmetric" in result
 
     def test_to_canonical(self) -> None:
         actions = wl_to_actions("ToCanonical[T[-a,-b]]")
         result = to_julia(actions)
-        assert "xAct.ToCanonical" in result
+        assert "XAct.ToCanonical" in result
 
     def test_assignment(self) -> None:
         actions = wl_to_actions("result = ToCanonical[T[-a,-b]]")
@@ -98,13 +98,13 @@ class TestJulia:
     def test_christoffel(self) -> None:
         actions = wl_to_actions("ChristoffelP[CD]")
         result = to_julia(actions)
-        assert "xAct.Christoffel" in result
+        assert "XAct.Christoffel" in result
         assert ":CD" in result
 
     def test_ibp(self) -> None:
         actions = wl_to_actions("IBP[expr, CD]")
         result = to_julia(actions)
-        assert "xAct.IBP" in result
+        assert "XAct.IBP" in result
 
     def test_full_session(self, actions: list[dict]) -> None:
         result = to_julia(actions)
@@ -188,7 +188,7 @@ class TestRenderDispatch:
     def test_julia(self) -> None:
         actions = wl_to_actions("ToCanonical[x]")
         result = render(actions, "julia")
-        assert "xAct.ToCanonical" in result
+        assert "XAct.ToCanonical" in result
 
     def test_toml(self) -> None:
         actions = wl_to_actions("ToCanonical[x]")
@@ -237,7 +237,7 @@ class TestCLI:
             timeout=10,
         )
         assert result.returncode == 0
-        assert "xAct.ToCanonical" in result.stdout
+        assert "XAct.ToCanonical" in result.stdout
 
     def test_stdin_toml(self) -> None:
         session = "DefManifold[M, 4, {a,b}]; ToCanonical[T[-a,-b]]"

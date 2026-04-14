@@ -10,7 +10,7 @@ Usage::
 
     jl_call(
         jl,
-        "xAct.def_manifold!",
+        "XAct.def_manifold!",
         jl_sym(name, "manifold name"),
         jl_int(dim),
         jl_sym_list(indices, "index labels"),

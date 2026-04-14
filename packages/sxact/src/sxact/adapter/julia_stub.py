@@ -137,7 +137,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
     _DEFERRED_ACTIONS: frozenset[str] = frozenset()
 
     # XCore module-level mutable state to reset on teardown
-    _RESET_STMTS: ClassVar[list[str]] = ["xAct.reset_state!()"]
+    _RESET_STMTS: ClassVar[list[str]] = ["XAct.reset_state!()"]
 
     def __init__(self) -> None:
         self._jl: Any = None
@@ -197,7 +197,7 @@ class JuliaAdapter(TestAdapter[_JuliaContext]):
             self._julia_version = str(raw).strip()
             # Try to get xAct package version
             try:
-                raw_xa = self._jl.seval("string(pkgversion(xAct))")
+                raw_xa = self._jl.seval("string(pkgversion(XAct))")
                 self._xact_version = str(raw_xa).strip()
             except Exception:
                 self._xact_version = "dev"

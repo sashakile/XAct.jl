@@ -45,8 +45,8 @@
 project_root = joinpath(@__DIR__, "..", "..")
 using Pkg: Pkg
 Pkg.activate(project_root; io=devnull)
-include(joinpath(project_root, "src", "xAct.jl"))
-using .xAct
+include(joinpath(project_root, "src", "XAct.jl"))
+using .XAct
 
 using Test
 using Random

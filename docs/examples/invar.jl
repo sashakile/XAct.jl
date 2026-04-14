@@ -8,7 +8,7 @@
 # We'll need a manifold and a metric to work with.
 
 # **Julia**
-using xAct
+using XAct
 reset_state!()
 def_manifold!(:M, 4, [:a, :b, :c, :d, :e, :f, :g, :h])
 def_metric!(-1, "g[-a,-b]", :CD)

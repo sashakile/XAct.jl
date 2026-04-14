@@ -6,8 +6,8 @@ Run: julia --project=. test/julia/test_texpr.jl
 using Test
 
 # Bootstrap — load via xAct (same as all other test files)
-include(joinpath(@__DIR__, "../../src/xAct.jl"))
-using .xAct
+include(joinpath(@__DIR__, "../../src/XAct.jl"))
+using .XAct
 
 @testset "TExpr" begin
 

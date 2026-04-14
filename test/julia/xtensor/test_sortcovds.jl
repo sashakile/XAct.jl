@@ -236,7 +236,7 @@
     # ==========================================================
 
     @testset "_swap_indices" begin
-        _swap = xAct.XTensor._swap_indices
+        _swap = XAct.XTensor._swap_indices
 
         # Basic swap inside brackets
         @test _swap("T[-a,-b]", "a", "b") == "T[-b,-a]"

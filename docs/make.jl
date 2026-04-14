@@ -3,7 +3,7 @@
 
 using Documenter
 using Literate
-using xAct
+using XAct
 using Plots
 
 # Headless plotting for CI/builds
@@ -78,7 +78,7 @@ for (subdir, lang_label) in [("julia", "Julia"), ("python", "Python")]
 end
 
 makedocs(;
-    sitename="xAct.jl",
+    sitename="XAct.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", nothing) == "true",
         canonical="https://saxa.xyz/sxAct/",
@@ -88,7 +88,7 @@ makedocs(;
         inventory_version="0.4.0",
     ),
     warnonly=[:cross_references, :example_block],
-    modules=[xAct, xAct.XCore, xAct.XPerm, xAct.XTensor, xAct.XInvar],
+    modules=[XAct, XAct.XCore, XAct.XPerm, XAct.XTensor, XAct.XInvar],
     pages=[
         "Home" => "index.md",
         "Status" => "status.md",

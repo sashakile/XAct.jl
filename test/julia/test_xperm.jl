@@ -1,7 +1,7 @@
 # Tests for XPerm.jl — permutation utilities and canonicalization.
 using Test
-using xAct
-using xAct.XPerm
+using XAct
+using XAct.XPerm
 
 @testset "XPerm" begin
     @testset "Permutation utilities" begin

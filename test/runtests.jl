@@ -1,7 +1,7 @@
 using Test
 using Aqua
 using JET
-using xAct
+using XAct
 
 # Helper: reset shared state between tests that modify the registry.
 function reset_registry!()
@@ -730,19 +730,19 @@ end
 
 @testset "Aqua quality checks" begin
     Aqua.test_all(
-        xAct;
-        ambiguities=false,   # xAct intentionally defers to caller dispatch
+        XAct;
+        ambiguities=false,   # XAct intentionally defers to caller dispatch
         deps_compat=false,   # no [deps] to check (test-only extras)
         stale_deps=false,    # skips check for dev-only dependencies in Project.toml
     )
 end
 
 @testset "JET static analysis" begin
-    # Purge stale pkgimage caches for xAct before running JET.
+    # Purge stale pkgimage caches for XAct before running JET.
     # Multiple valid-but-outdated .ji files accumulate over development sessions;
     # Revise (used internally by JET) may pick a broken one that is missing the
     # source-text section, causing a false "not stored in source-text cache" error.
-    let xact_id = Base.PkgId(xAct),
+    let xact_id = Base.PkgId(XAct),
         candidates = Base.find_all_in_cache_path(xact_id),
         newest = isempty(candidates) ? nothing : first(sort(candidates; by=mtime, rev=true))
 
@@ -752,7 +752,7 @@ end
             rm(replace(c, ".ji" => ".so"); force=true)
         end
     end
-    JET.test_package(xAct; target_modules=(xAct,))
+    JET.test_package(XAct; target_modules=(XAct,))
 end
 
 @testset "JuliaFormatter" begin

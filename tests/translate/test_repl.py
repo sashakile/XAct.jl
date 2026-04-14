@@ -21,11 +21,11 @@ class TestREPLSessionNoEval:
     def test_execute_def_manifold(self, session: REPLSession) -> None:
         output = session.execute_line("DefManifold[M, 4, {a, b, c, d}]")
         assert len(output) == 1
-        assert "xAct.def_manifold!" in output[0]
+        assert "XAct.def_manifold!" in output[0]
 
     def test_execute_to_canonical(self, session: REPLSession) -> None:
         output = session.execute_line("ToCanonical[T[-a,-b]]")
-        assert any("xAct.ToCanonical" in line for line in output)
+        assert any("XAct.ToCanonical" in line for line in output)
 
     def test_counter_increments(self, session: REPLSession) -> None:
         session.execute_line("DefManifold[M, 4, {a,b}]")
@@ -60,8 +60,8 @@ class TestREPLSessionNoEval:
         session.execute_line("DefManifold[M, 4, {a,b,c,d}]")
         session.execute_line("ToCanonical[T[-a,-b]]")
         result = session.export_session("julia")
-        assert "xAct.def_manifold!" in result
-        assert "xAct.ToCanonical" in result
+        assert "XAct.def_manifold!" in result
+        assert "XAct.ToCanonical" in result
 
     def test_export_toml(self, session: REPLSession) -> None:
         session.execute_line("DefManifold[M, 4, {a,b}]")
@@ -106,4 +106,4 @@ class TestREPLCLI:
             timeout=10,
         )
         assert result.returncode == 0
-        assert "xAct.def_manifold!" in result.stdout
+        assert "XAct.def_manifold!" in result.stdout

@@ -13,7 +13,7 @@
 # First, we load the `xAct` module.
 
 # **Julia**
-using xAct
+using XAct
 reset_state!()
 
 # **Python**
