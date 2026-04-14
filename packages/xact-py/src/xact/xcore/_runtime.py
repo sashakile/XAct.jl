@@ -104,10 +104,10 @@ def _init_julia() -> None:
                     _xcore = jl.XAct
                     _init_pid = os.getpid()
                 else:
-                    raise ImportError(f"xAct.jl not found at {xact_main}")
+                    raise ImportError(f"XAct.jl not found at {xact_main}")
             else:
                 raise ImportError(
-                    "xAct Julia package not found. Ensure juliapkg.json is respected "
+                    "XAct Julia package not found. Ensure juliapkg.json is respected "
                     "or Project.toml is present at root."
                 )
         except ImportError:
@@ -116,4 +116,4 @@ def _init_julia() -> None:
             # Reset to clean state so retries don't see a half-initialized runtime
             _jl = None
             _xcore = None
-            raise ImportError(f"Failed to load xAct Julia package: {exc}") from exc
+            raise ImportError(f"Failed to load XAct Julia package: {exc}") from exc

@@ -44,7 +44,11 @@ def convert(qmd_path: str) -> None:
     text = json.dumps(nb, indent=1, ensure_ascii=False) + "\n"
     ipynb_path.write_text(text)
 
-    # Format Python cells so ruff-format won't modify the output on commit.
+    # Lint + format Python cells so ruff won't modify the output on commit.
+    subprocess.run(
+        ["uv", "run", "ruff", "check", "--fix", str(ipynb_path)],
+        capture_output=True,
+    )
     subprocess.run(
         ["uv", "run", "ruff", "format", str(ipynb_path)],
         capture_output=True,

@@ -2115,7 +2115,7 @@ end
     _reset_invar_db!()
 
 Clear all cached InvarDB instances and dispatch tables.
-Called by `reset_state!` in xAct.jl.
+Called by `reset_state!` in XAct.jl.
 """
 function _reset_invar_db!()
     empty!(_invar_db_cache)

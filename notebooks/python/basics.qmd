@@ -17,25 +17,22 @@ Expressions are written using the **typed API** — index objects and operator
 overloading — which validates slot counts and manifold membership at
 construction time rather than deep inside the engine.
 
-**Requirements:** Python 3.10+, Julia 1.12+.
+**Requirements:** Python 3.10+, Julia 1.10+.
 
 ## 1. Setup
 
 If running on Google Colab, install the package first.
 
 ```{python}
-#| eval: false
-import importlib, sys
-if "google.colab" in sys.modules or "BINDER_SERVICE_HOST" in __import__("os").environ:
-    !pip install -q xact-py
-    # juliacall 0.9.x caps Julia at 1.11 via OpenSSL_jll — remove the constraint
-    import json, site
-    from pathlib import Path
-    for p in Path(site.getsitepackages()[0]).rglob("juliacall/juliapkg.json"):
-        d = json.loads(p.read_text())
-        d.get("packages", {}).pop("OpenSSL_jll", None)
-        p.write_text(json.dumps(d, indent=4))
-elif importlib.util.find_spec("xact") is None:
+# | eval: false
+import importlib
+import sys
+
+if (
+    "google.colab" in sys.modules
+    or "BINDER_SERVICE_HOST" in __import__("os").environ
+    or importlib.util.find_spec("xact") is None
+):
     !pip install -q xact-py
 ```
 
@@ -69,7 +66,7 @@ g = xact.Metric(M, "g", signature=-1, covd="CD")
 
 # Grab tensor handles for use throughout the notebook.
 Riem = xact.tensor("RiemannCD")
-Ric  = xact.tensor("RicciCD")
+Ric = xact.tensor("RicciCD")
 ```
 
 ## 4. Canonicalization
@@ -81,7 +78,7 @@ and manifold membership immediately.
 Symmetric metric: $g_{ba} - g_{ab} = 0$:
 
 ```{python}
-xact.canonicalize(g[-b,-a] - g[-a,-b])
+xact.canonicalize(g[-b, -a] - g[-a, -b])
 ```
 
 Define a symmetric rank-2 tensor $T_{ab}$ and verify symmetry:
@@ -89,7 +86,7 @@ Define a symmetric rank-2 tensor $T_{ab}$ and verify symmetry:
 ```{python}
 T = xact.Tensor("T", ["-a", "-b"], M, symmetry="Symmetric[{-a,-b}]")
 T_h = xact.tensor("T")
-xact.canonicalize(T_h[-b,-a] - T_h[-a,-b])
+xact.canonicalize(T_h[-b, -a] - T_h[-a, -b])
 ```
 
 > **String API:** `xact.canonicalize("T[-b,-a] - T[-a,-b]")` is equivalent.
@@ -102,7 +99,7 @@ Lower an index with the metric:
 ```{python}
 V = xact.Tensor("V", ["a"], M)
 V_h = xact.tensor("V")
-xact.contract(V_h[a] * g[-a,-b])
+xact.contract(V_h[a] * g[-a, -b])
 ```
 
 ## 6. Riemann Identities
@@ -110,19 +107,19 @@ xact.contract(V_h[a] * g[-a,-b])
 First Bianchi identity — $R_{abcd} + R_{acdb} + R_{adbc} = 0$:
 
 ```{python}
-xact.canonicalize(Riem[-a,-b,-c,-d] + Riem[-a,-c,-d,-b] + Riem[-a,-d,-b,-c])
+xact.canonicalize(Riem[-a, -b, -c, -d] + Riem[-a, -c, -d, -b] + Riem[-a, -d, -b, -c])
 ```
 
 Antisymmetry in the first pair — $R_{abcd} + R_{bacd} = 0$:
 
 ```{python}
-xact.canonicalize(Riem[-a,-b,-c,-d] + Riem[-b,-a,-c,-d])
+xact.canonicalize(Riem[-a, -b, -c, -d] + Riem[-b, -a, -c, -d])
 ```
 
 Pair symmetry — $R_{abcd} = R_{cdab}$:
 
 ```{python}
-xact.canonicalize(Riem[-a,-b,-c,-d] - Riem[-c,-d,-a,-b])
+xact.canonicalize(Riem[-a, -b, -c, -d] - Riem[-c, -d, -a, -b])
 ```
 
 ## 7. Perturbation Theory
@@ -130,7 +127,7 @@ xact.canonicalize(Riem[-a,-b,-c,-d] - Riem[-c,-d,-a,-b])
 ```{python}
 h = xact.Tensor("h", ["-a", "-b"], M, symmetry="Symmetric[{-a,-b}]")
 xact.Perturbation(h, g, order=1)
-xact.perturb(g[-a,-b], order=1)
+xact.perturb(g[-a, -b], order=1)
 ```
 
 ## 8. Validation
@@ -140,7 +137,7 @@ The typed API catches mistakes at construction time:
 ```{python}
 # Wrong slot count — raised before reaching the engine
 try:
-    Riem[-a,-b]     # IndexError: RiemannCD has 4 slots, got 2
+    Riem[-a, -b]  # IndexError: RiemannCD has 4 slots, got 2
 except IndexError as err:
     print(err)
 ```

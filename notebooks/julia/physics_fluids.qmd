@@ -25,7 +25,7 @@ If running on Google Colab or a fresh environment, install the required packages
 Load the required modules.
 
 ```{julia}
-using xAct
+using XAct
 using Plots
 using LinearAlgebra
 
