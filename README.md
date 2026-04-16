@@ -29,6 +29,28 @@ T = xact.Tensor("T", ["-a", "-b"], M, symmetry="Symmetric[{-a,-b}]")
 xact.canonicalize("T[-b,-a] - T[-a,-b]")  # returns "0"
 ```
 
+## Status
+
+> [!NOTE]
+> **Early adopter stage.** XAct.jl has parity-level test coverage against the Wolfram engine (1200+ Julia tests, 900+ Python tests) but has only been used by the author so far. If you try it on a real problem and something breaks, please [open an issue](https://github.com/sashakile/sxAct/issues) — that's the most valuable contribution right now.
+
+### What's ported
+
+| Wolfram xAct | XAct.jl | Status |
+|:-------------|:--------|:-------|
+| xCore, xPerm, xTensor, xCoba, Invar | XCore, XPerm, XTensor, XInvar | **Ported** |
+| xPert (perturbation theory) | In XTensor | **Partial** — `perturb()`, `PerturbCurvature` done |
+| xTras (utilities) | In XTensor | **Partial** — `CollectTensors`, `AllContractions`, etc. |
+| Spinors, xTerior, Harmonics, TexAct | — | Not yet started |
+
+### Known architectural limitation
+
+The engine currently operates on **string representations** of tensor expressions — every `ToCanonical`, `Contract`, `Simplify` call parses a string, operates, and serializes back. This mirrors the original Wolfram design but is not idiomatic Julia. The TExpr typed layer (`@indices`, `tensor()`, `T[-a,-b]`) adds validated input/output but still serializes internally. Making TExpr the native engine representation is the top priority refactor.
+
+### Python wrapper
+
+The [`xact-py`](https://pypi.org/project/xact-py/) package provides a Pythonic API backed by the Julia engine via [juliacall](https://github.com/JuliaPy/PythonCall.jl), making XAct.jl accessible without writing Julia.
+
 ## Try It
 
 - [Julia notebook](notebooks/julia/basics.ipynb) — open in JupyterLab or Google Colab
@@ -37,7 +59,7 @@ xact.canonicalize("T[-b,-a] - T[-a,-b]")  # returns "0"
 
 ## Components
 
-- **XAct.jl** (Julia): The computational engine — canonicalization, contraction, covariant derivatives, perturbation theory, coordinate components (xCoba), and more. Native rewrite of the Wolfram [xAct](http://xact.es/) modules xPerm, xTensor, xCoba, and Invar.
+- **XAct.jl** (Julia): The computational engine — canonicalization, contraction, covariant derivatives, perturbation theory, coordinate components (xCoba), Riemann invariants (Invar). Native rewrite of the Wolfram [xAct](http://xact.es/) modules xPerm, xTensor, xCoba, and Invar.
 - **sxact** (Python): Automated parity testing against the Wolfram Engine using TOML test cases and oracle snapshots.
 
 ### Related Projects
@@ -47,7 +69,7 @@ xact.canonicalize("T[-b,-a] - T[-a,-b]")  # returns "0"
 
 ## Documentation
 
-Full documentation at [saxa.xyz/sxAct](https://saxa.xyz/sxAct).
+Full documentation at [saxa.xyz/sxAct](https://saxa.xyz/sxAct), including the full [status and roadmap](https://saxa.xyz/sxAct/status/).
 
 ## AI Attribution
 
