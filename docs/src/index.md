@@ -1,11 +1,12 @@
 # XAct.jl
 
 !!! info "Project Profile for AI Agents (LLM TL;DR)"
-    - **Name**: XAct.jl (repository: `sxAct`)
+    - **Name**: XAct.jl (Repository: `XAct.jl`)
     - **Primary language**: Julia
     - **Purpose**: Symbolic tensor algebra and curvature calculus for general relativity
     - **Python package**: `xact-py` (import as `xact`)
     - **Verification**: Oracle-based parity tests via `sxact`
+    - **License**: GNU General Public License v3.0 (GPL-3.0)
 
 XAct.jl is the native Julia port of the Wolfram [xAct](http://xact.es/) suite. Start here if you want the project overview, the newcomer path, and the map of names used across the repository, Julia package, Python package, and verification tooling.
 
@@ -35,7 +36,7 @@ Choose one path and follow it in order:
 
 | Name | Kind | Meaning |
 | :--- | :--- | :--- |
-| `sxAct` | Repository | The Git repository you clone and browse |
+| `XAct.jl` | Repository | The Git repository you clone and browse |
 | `XAct.jl` / `XAct` | Julia package and module | The native Julia tensor algebra engine |
 | `xact-py` | Python package | The distribution published to PyPI |
 | `xact` | Python import | The Python API imported in user code |

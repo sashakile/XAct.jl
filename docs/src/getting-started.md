@@ -2,6 +2,7 @@
 
 !!! info "LLM TL;DR"
     - Complete [Installation](installation.md) first
+    - Install from GitHub: `Pkg.add(url="https://github.com/sashakile/XAct.jl")`
     - Julia entry point: `using XAct`, then `def_manifold!`, `def_metric!`, `@indices`, `tensor()`
     - Typed API is recommended; string API also works
     - Python entry point: `import xact`
@@ -96,6 +97,8 @@ Expected result:
 ```python
 "0"
 ```
+
+For a full walkthrough, see the [Python notebook](https://github.com/sashakile/XAct.jl/blob/main/notebooks/python/basics.ipynb).
 
 ## Continue to the right follow-up document
 

@@ -1,6 +1,6 @@
 !!! tip "Run this notebook"
-    - [Download the Jupyter notebook](https://github.com/sashakile/sxAct/blob/main/notebooks/julia/basics.ipynb)
-    - [Open in Google Colab](https://colab.research.google.com/github/sashakile/sxAct/blob/main/notebooks/julia/basics.ipynb)
+    - [Download the Jupyter notebook](https://github.com/sashakile/XAct.jl/blob/main/notebooks/julia/basics.ipynb)
+    - [Open in Google Colab](https://colab.research.google.com/github/sashakile/XAct.jl/blob/main/notebooks/julia/basics.ipynb)
 
 # sxAct.jl — Getting Started
 
@@ -27,7 +27,7 @@ In the Docker image or a local dev checkout this cell is a no-op.
 ```@example basics_julia
 # Uncomment the lines below if running on Google Colab:
 # using Pkg
-# Pkg.add(url="https://github.com/sashakile/sxAct.git")
+# Pkg.add(url="https://github.com/sashakile/XAct.jl.git")
 ```
 
 ## 2. Setup
@@ -152,4 +152,4 @@ end
 - **Coordinate components (xCoba):** assign a basis, compute Christoffel symbols numerically
 - **Covariant derivatives:** commute CovDs, integration by parts
 - **Invariant simplification:** `RiemannSimplify` for scalar polynomial identities
-- Full documentation: [sashakile.github.io/sxAct](../index.md)
+- Full documentation: [saxa.xyz/XAct.jl](../index.md)

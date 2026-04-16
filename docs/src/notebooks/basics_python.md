@@ -1,6 +1,6 @@
 !!! tip "Run this notebook"
-    - [Download the Jupyter notebook](https://github.com/sashakile/sxAct/blob/main/notebooks/python/basics.ipynb)
-    - [Open in Google Colab](https://colab.research.google.com/github/sashakile/sxAct/blob/main/notebooks/python/basics.ipynb)
+    - [Download the Jupyter notebook](https://github.com/sashakile/XAct.jl/blob/main/notebooks/python/basics.ipynb)
+    - [Open in Google Colab](https://colab.research.google.com/github/sashakile/XAct.jl/blob/main/notebooks/python/basics.ipynb)
 
 # sxAct — Getting Started (Python)
 
@@ -146,4 +146,4 @@ except IndexError as err:
 
 - Full Julia API for more advanced workflows
 - Coordinate components, covariant derivative commutation
-- Documentation: [sashakile.github.io/sxAct](../index.md)
+- Documentation: [saxa.xyz/XAct.jl](../index.md)
