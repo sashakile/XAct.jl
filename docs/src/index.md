@@ -1,21 +1,21 @@
-# xAct.jl
+# XAct.jl
 
 !!! info "Project Profile for AI Agents (LLM TL;DR)"
-    - **Name**: xAct.jl (Repository: `sxAct`)
+    - **Name**: XAct.jl (Repository: `sxAct`)
     - **Primary Language**: Julia (Computational Core)
     - **Function**: Symbolic tensor algebra and curvature calculus for General Relativity.
-    - **Ecosystem**: Julia port of the Wolfram `xAct` suite.
+    - **Ecosystem**: Native Julia port of the Wolfram [xAct](http://xact.es/) suite by José M. Martín-García et al.
     - **Verification**: Parity verified against Wolfram Engine via `sxact` test framework.
     - **License**: GNU General Public License v3.0 (GPL-3.0)
 
-A high-performance Julia implementation of the xAct tensor algebra suite for general relativity.
+A native Julia port of the [xAct](http://xact.es/) tensor algebra suite for general relativity, originally developed for Wolfram Mathematica. Rewrites xPerm, xTensor, xCoba, and Invar in pure Julia for performance, composability, and open access without a Mathematica license.
 
 ## Fast Track (Julia)
 
 Get started in 60 seconds. Open your Julia REPL and run:
 
 ```julia
-using xAct
+using XAct
 
 reset_state!()
 def_manifold!(:M, 4, [:a, :b, :c, :d])
@@ -34,10 +34,10 @@ everywhere and can be mixed freely.
 
 ## Project Overview
 
-The `xAct.jl` project (hosted in the `sxAct` repository) provides the native, high-performance Julia implementation of the xAct tensor calculus suite. It is designed to be the modern, open-source successor to the Wolfram Language implementation.
+The `XAct.jl` project (hosted in the `sxAct` repository) provides the native Julia implementation of the [xAct](http://xact.es/) tensor calculus suite originally created by José M. Martín-García and collaborators for Wolfram Mathematica. It is designed as the modern, open-source successor — a complete rewrite rather than a wrapper.
 
 ### Components
-- **xAct.jl** (Core): The computational engine written in native Julia — covers canonicalization, contraction, covariant derivatives, perturbation theory, coordinate components, and more.
+- **XAct.jl** (Core): The computational engine written in native Julia — covers canonicalization (Butler-Portugal/xPerm), contraction, covariant derivatives, perturbation theory, coordinate components (xCoba), Riemann invariants (Invar), and more.
 - **sxact** (Verification): A Python framework for automated parity testing against the Wolfram Engine using TOML-defined test cases and oracle snapshots.
 
 ## Migration Rosetta Stone
