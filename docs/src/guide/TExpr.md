@@ -44,7 +44,7 @@ typical expressions; the engine dominates runtime at any meaningful expression s
 ## Quick Start (Julia)
 
 ```julia
-using xAct
+using XAct
 
 reset_state!()
 def_manifold!(:M, 4, [:a, :b, :c, :d, :e, :f])

@@ -9,7 +9,7 @@ specifically **Electromagnetism**. We will define the electromagnetic
 vector potential, construct the Faraday tensor, and verify Maxwell's equations
 in an arbitrary curved background.
 
-## 1. Dependencies
+## 1. Setup
 
 If running on Google Colab or a fresh environment, install the required packages first.
 
@@ -25,7 +25,7 @@ If running on Google Colab or a fresh environment, install the required packages
 Load the required modules.
 
 ```@example physics_em_julia
-using xAct
+using XAct
 using Plots
 using LinearAlgebra
 
@@ -38,7 +38,7 @@ ENV["GKSwstype"] = "100"
     - **Key Symbols**: Potential $A_a$, Faraday Tensor $F_{ab}$, Current $J^a$.
     - **Physics**: $F_{ab} = \nabla_a A_b - \nabla_b A_a$, verify $\nabla_a F^{ab} = J^b$.
 
-## 3. Define the Manifold and Metric
+## 2. Define the Manifold and Metric
 
 We start with a general 4D manifold and metric.
 
@@ -51,7 +51,7 @@ M = def_manifold!(:M4, 4, [:alpha, :beta, :gamma, :delta, :mu, :nu])
 g = def_metric!(-1, "g[-mu,-nu]", :CD)
 ```
 
-## 4. The Faraday Tensor
+## 3. The Faraday Tensor
 
 The electromagnetic field is described by the **vector potential** $A_\mu$.
 The **Faraday tensor** (or field strength tensor) $F_{\mu\nu}$ is defined as the
@@ -71,7 +71,7 @@ println("Faraday tensor F_{μν}:")
 F_expr
 ```
 
-## 5. Maxwell's Equations
+## 4. Maxwell's Equations
 
 In vacuum (or with a source current $J^\mu$), the inhomogeneous Maxwell equations are:
 $\nabla_\mu F^{\mu\nu} = J^\nu$
@@ -86,7 +86,7 @@ println("Divergence of F_{μν}:")
 div_F
 ```
 
-## 6. Wave Equation in the Lorenz Gauge
+## 5. Wave Equation in the Lorenz Gauge
 
 In the **Lorenz gauge** ($\nabla_\mu A^\mu = 0$), the Maxwell equations reduce to a
 wave equation for the potential. However, in curved spacetime, a coupling
@@ -106,7 +106,7 @@ maxwell_lhs
 Notice the term involving the commutation of covariant derivatives, which
 results in the curvature coupling.
 
-## 7. Summary
+## 6. Summary
 
 This tutorial demonstrated:
 1. Defining vector fields and higher-rank tensors for field theory.

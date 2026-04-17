@@ -2,7 +2,7 @@
 
 !!! info "LLM TL;DR"
     - Install: `Pkg.add(url="https://github.com/sashakile/sxAct")`
-    - Julia entry point: `using xAct`, then `def_manifold!`, `def_metric!`, `@indices`, `tensor()`
+    - Julia entry point: `using XAct`, then `def_manifold!`, `def_metric!`, `@indices`, `tensor()`
     - Typed API recommended; string API (`ToCanonical("expr")`) works everywhere
     - Python: `import xact`, snake_case wrappers, same semantics as Julia
 
@@ -36,7 +36,7 @@ The **typed API** is the recommended workflow: it validates your expressions at
 construction time and integrates with standard Julia operator syntax.
 
 ```julia
-using xAct
+using XAct
 
 reset_state!()
 def_manifold!(:M, 4, [:a, :b, :c, :d])

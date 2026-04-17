@@ -18,7 +18,7 @@ The `uv run xact-test translate` command parses standard Wolfram xAct expression
 
 ```bash
 uv run xact-test translate -e 'DefManifold[M, 4, {a, b, c, d}]' --to julia
-# => xAct.def_manifold!(:M, 4, [:a, :b, :c, :d])
+# => XAct.def_manifold!(:M, 4, [:a, :b, :c, :d])
 ```
 
 ### Supported Output Formats
@@ -43,9 +43,9 @@ uv run xact-test translate -e \
 Output:
 
 ```julia
-xAct.def_manifold!(:M, 4, [:a, :b, :c, :d])
-xAct.def_metric!(-1, "g[-a, -b]", :CD)
-xAct.ToCanonical("g[-b, -a]")
+XAct.def_manifold!(:M, 4, [:a, :b, :c, :d])
+XAct.def_metric!(-1, "g[-a, -b]", :CD)
+XAct.ToCanonical("g[-b, -a]")
 ```
 
 ### Translating a `.wl` File
@@ -76,13 +76,13 @@ In **translate-only** mode (`--no-eval`), each expression shows the Julia transl
 
 ```
 In[1]: DefManifold[M, 4, {a, b, c, d}]
-  → xAct.def_manifold!(:M, 4, [:a, :b, :c, :d])
+  → XAct.def_manifold!(:M, 4, [:a, :b, :c, :d])
 
 In[2]: DefMetric[-1, g[-a,-b], CD]
-  → xAct.def_metric!(-1, "g[-a, -b]", :CD)
+  → XAct.def_metric!(-1, "g[-a, -b]", :CD)
 
 In[3]: ToCanonical[g[-b,-a] - g[-a,-b]]
-  → xAct.ToCanonical("g[-b, -a] - g[-a, -b]")
+  → XAct.ToCanonical("g[-b, -a] - g[-a, -b]")
 ```
 
 In **full mode** (default), expressions are also evaluated and results are displayed:
@@ -202,7 +202,7 @@ uv run xact-test translate -e \
 Or write the equivalent Julia directly:
 
 ```julia
-using xAct
+using XAct
 reset_state!()
 
 M = def_manifold!(:M, 4, [:a, :b, :c, :d, :e, :f])

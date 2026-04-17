@@ -8,7 +8,7 @@ This tutorial follows **Misner, Thorne, and Wheeler's *Gravitation* (Chapter 18)
 We explore the weak-field limit of General Relativity, where gravity is treated
 as a small perturbation $h_{ab}$ propagating on a flat Minkowski background $\eta_{ab}$.
 
-## 1. Dependencies
+## 1. Setup
 
 If running on Google Colab or a fresh environment, install the required packages first.
 
@@ -24,7 +24,7 @@ If running on Google Colab or a fresh environment, install the required packages
 Load the required modules.
 
 ```@example mtw_gravitational_waves_julia
-using xAct
+using XAct
 using Plots
 using LinearAlgebra
 
@@ -38,7 +38,7 @@ ENV["GKSwstype"] = "100"
     - **Key Symbols**: Background `:eta`, Perturbation `:h`, Trace-reversed `:hbar`.
     - **Physics**: Derive $\square \bar{h}_{ab} = 0$, plot 'plus' and 'cross' modes.
 
-## 3. Define the Flat Background
+## 2. Define the Flat Background
 
 We start with a 4D Minkowski spacetime.
 
@@ -51,7 +51,7 @@ M = def_manifold!(:M4, 4, [:a, :b, :c, :d, :e, :f])
 eta = def_metric!(1, "eta[-a,-b]", :PD) # PD: Partial Derivative (flat)
 ```
 
-## 4. Linearized Perturbations
+## 3. Linearized Perturbations
 
 We define a symmetric rank-2 tensor $h_{ab}$ representing the perturbation.
 
@@ -80,7 +80,7 @@ pert_results["Ricci1"]
 Using the Lorenz gauge and vacuum conditions, these equations reduce to the
 standard gravitational wave equation $\square \bar{h}_{ab} = 0$.
 
-## 5. Visualization: Gravitational Wave Polarizations
+## 4. Visualization: Gravitational Wave Polarizations
 A gravitational wave propagating in the $z$-direction has two independent
 polarization modes: **Plus (+)** and **Cross ($\times$)**.
 
@@ -130,7 +130,7 @@ p3x = plot_gw_effect(:cross, π)
 plot(p1x, p2x, p3x, layout=(1, 3), size=(900, 300))
 ```
 
-## 6. Summary
+## 5. Summary
 
 This tutorial demonstrated:
 1. Setting up a linearized perturbation on a flat background.
@@ -141,4 +141,4 @@ This tutorial demonstrated:
 
 - **Black Holes**: Review [Carroll: Schwarzschild Geodesics](carroll_schwarzschild_julia.md).
 - **Cosmology**: Review [Wald: FLRW Cosmology](wald_cosmology_julia.md).
-- **Advanced**: Explore the [Oracle Quirks](../theory/oracle-quirks.md) for verification details.
+- **Advanced**: Explore the [Oracle Quirks](../theory/oracle-quirks/) for verification details.

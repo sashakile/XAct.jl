@@ -15,7 +15,7 @@ a familiar 2D Euclidean space. We will define the Euclidean metric in Cartesian
 coordinates, transform it to Polar coordinates, and calculate the resulting
 Christoffel symbols.
 
-## 1. Dependencies
+## 1. Setup
 
 If running on Google Colab or a fresh environment, install the required packages first.
 
@@ -31,7 +31,7 @@ If running on Google Colab or a fresh environment, install the required packages
 Load the required modules.
 
 ```@example foundations_2d_polar_julia
-using xAct
+using XAct
 using Plots
 using LinearAlgebra
 ```
@@ -41,7 +41,7 @@ using LinearAlgebra
     you will get a "Symbol already exists" error. Always include `reset_state!()`
     at the start of your exploration.
 
-## 3. Define the Manifold and Charts
+## 2. Define the Manifold and Charts
 
 We start by defining a 2D manifold $R^2$ with abstract indices.
 
@@ -60,7 +60,7 @@ def_chart!(:Cart, :M, [1, 2], [:x, :y])
 def_chart!(:Polar, :M, [1, 2], [:r, :th])
 ```
 
-## 4. Define the Metric
+## 3. Define the Metric
 
 In Cartesian coordinates, the Euclidean metric is simply $\delta_{ij} = \text{diag}(1, 1)$.
 
@@ -71,7 +71,7 @@ def_metric!(1, "g[-a,-b]", :CD)
 set_components!(:g, [1 0; 0 1], [:Cart, :Cart])
 ```
 
-## 5. Visualization: Coordinate Grids
+## 4. Visualization: Coordinate Grids
 
 Let's visualize how the Cartesian grid transforms into the Polar grid. This
 helps build intuition for why the metric components change in different
@@ -104,7 +104,7 @@ end
 plot_grids()
 ```
 
-## 6. Computing the Metric in Polar Coordinates
+## 5. Computing the Metric in Polar Coordinates
 
 To transform to Polar coordinates, we need the Jacobian matrix $J^i{}_{j'}$
 representing the partial derivatives $\frac{\partial x^i}{\partial x^{j'}}$.
@@ -138,7 +138,7 @@ g_polar
 The metric in polar coordinates is $ds^2 = dr^2 + r^2 d\theta^2$, which matches
 the $\text{diag}(1, 4)$ result above for $r=2$.
 
-## 7. Metric Determinant and Volume Form
+## 6. Metric Determinant and Volume Form
 
 The determinant of the polar metric is $\sqrt{|g|} = r$.
 This is the familiar factor in polar integration: $dA = r dr d\theta$.
@@ -160,4 +160,4 @@ This tutorial demonstrated:
 
 - **3D Geometry**: Extend these concepts to 3D in [Curvilinear Coordinates](foundations_3d_coords_julia.md).
 - **Curvature**: Explore intrinsic curvature in [The 2-Sphere](foundations_sphere_julia.md).
-- **Core Guide**: See the [Typed Expressions (TExpr)](../guide/TExpr.md) guide.
+- **Core Guide**: See the [Typed Expressions (TExpr)](../guide/TExpr/) guide.

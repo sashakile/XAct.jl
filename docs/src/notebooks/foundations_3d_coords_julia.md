@@ -15,7 +15,7 @@ space ($R^3$). We will compare Cartesian, Cylindrical, and Spherical
 coordinate systems and demonstrate how standard vector calculus operators
 (Gradient, Divergence) are represented in the language of tensors.
 
-## 1. Dependencies
+## 1. Setup
 
 If running on Google Colab or a fresh environment, install the required packages first.
 
@@ -29,7 +29,7 @@ If running on Google Colab or a fresh environment, install the required packages
 ## 2. Setup
 
 ```@example foundations_3d_coords_julia
-using xAct
+using XAct
 using Plots
 using LinearAlgebra
 ```
@@ -39,7 +39,7 @@ using LinearAlgebra
     without calling `reset_state!()`, you will encounter "Symbol already exists"
     errors.
 
-## 3. Define the Manifold and Charts
+## 2. Define the Manifold and Charts
 
 We define a 3D manifold $R^3$ with abstract indices.
 
@@ -60,7 +60,7 @@ def_chart!(:Cyl,  :M, [1, 2, 3], [:r, :ph, :z])
 def_chart!(:Sph,  :M, [1, 2, 3], [:r, :th, :ph])
 ```
 
-## 4. The Euclidean Metric
+## 3. The Euclidean Metric
 
 In Cartesian coordinates, the Euclidean metric is simply $\delta_{ij} = \text{diag}(1, 1, 1)$.
 
@@ -69,7 +69,7 @@ def_metric!(1, "g[-a,-b]", :CD)
 set_components!(:g, [1 0 0; 0 1 0; 0 0 1], [:Cart, :Cart])
 ```
 
-## 5. Visualization: Spherical Coordinate Surfaces
+## 4. Visualization: Spherical Coordinate Surfaces
 
 In 3D, each coordinate defines a family of surfaces:
 - $r = \text{const}$ (Spheres)
@@ -94,7 +94,7 @@ end
 plot_spherical_surface(1.5)
 ```
 
-## 6. Metric in Spherical Coordinates
+## 5. Metric in Spherical Coordinates
 
 For a point $(r, \theta, \phi)$, the metric is:
 $ds^2 = dr^2 + r^2 d\theta^2 + r^2 \sin^2\theta d\phi^2$
@@ -113,7 +113,7 @@ println("Metric in Spherical coordinates at (r=$r_val, θ=$th_val, φ=$ph_val):"
 g_sph
 ```
 
-## 7. Vector Calculus as Tensor Algebra
+## 6. Vector Calculus as Tensor Algebra
 
 In abstract index notation, standard operators are elegantly expressed:
 
@@ -133,7 +133,7 @@ Phi = tensor(:Phi)
 # Divergence: Contract(CD[-a](V[a]))
 # Laplacian: Contract(g[a,b] * CD[-a](CD[-b](Phi[])))
 ```
-## 8. Volume Element
+## 7. Volume Element
 
 The 3D volume element in spherical coordinates is $dV = \sqrt{|g|} dr d\theta d\phi = r^2 \sin\theta dr d\theta d\phi$.
 
@@ -145,7 +145,7 @@ println("Metric volume factor: ", sqrt_det_g)
 println("Textbook value (r^2 sin θ): ", textbook_val)
 ```
 
-## 9. Symbolic Identities: Ricci and Riemann
+## 8. Symbolic Identities: Ricci and Riemann
 
 In 3 Dimensions, the Riemann tensor is entirely determined by the Ricci tensor.
 While we can't show the full 3D-specific vanishing of the Weyl tensor here without
@@ -170,7 +170,7 @@ Using these abstract tools, we can manipulate high-rank tensor equations
 (like the decomposition of the Riemann tensor into Ricci and Weyl parts)
 with complete mathematical rigor.
 
-## 10. Summary
+## 9. Summary
 
 ## Key Takeaways: 3D Curvilinear Systems
 
@@ -183,4 +183,4 @@ This tutorial showed:
 
 - **Curvature**: Explore intrinsic curvature in [The 2-Sphere](foundations_sphere_julia.md).
 - **Basics**: Review 2D transformations in [Polar vs. Cartesian](foundations_2d_polar_julia.md).
-- **Core Guide**: See the [Typed Expressions (TExpr)](../guide/TExpr.md) guide.
+- **Core Guide**: See the [Typed Expressions (TExpr)](../guide/TExpr/) guide.

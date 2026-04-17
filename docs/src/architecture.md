@@ -48,7 +48,7 @@ To ensure mathematical correctness, `xAct.jl` is verified against the original W
 
 ```text
 Julia REPL / Notebook
-  └── using xAct
+  └── using XAct
         ├── XCore.jl    (symbol registry, session state)
         ├── XPerm.jl    (Butler-Portugal canonicalization)
         ├── XTensor.jl  (tensor algebra, xCoba, xTras)

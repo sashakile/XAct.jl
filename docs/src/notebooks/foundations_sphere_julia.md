@@ -15,7 +15,7 @@ embedded in 3D Euclidean space. We will calculate the induced metric on the
 sphere and compute its Riemann curvature tensor and Ricci scalar to show that
 the surface is curved even though the ambient space is flat.
 
-## 1. Dependencies
+## 1. Setup
 
 If running on Google Colab or a fresh environment, install the required packages first.
 
@@ -31,7 +31,7 @@ If running on Google Colab or a fresh environment, install the required packages
 Load the required modules.
 
 ```@example foundations_sphere_julia
-using xAct
+using XAct
 using Plots
 using LinearAlgebra
 ```
@@ -40,7 +40,7 @@ using LinearAlgebra
     Always call `reset_state!()` before defining a manifold to avoid "Symbol
     already exists" errors when re-running cells.
 
-## 3. Define the Manifold and Chart
+## 2. Define the Manifold and Chart
 
 We define a 2D manifold $S^2$ with abstract indices.
 
@@ -53,7 +53,7 @@ M = def_manifold!(:S2, 2, [:a, :b, :c, :d, :th, :ph])
 def_chart!(:Sph, :S2, [1, 2], [:th, :ph])
 ```
 
-## 4. Induced Metric on the 2-Sphere
+## 3. Induced Metric on the 2-Sphere
 
 For a sphere of radius $R$ embedded in $R^3$, the induced metric in spherical
 coordinates is:
@@ -77,7 +77,7 @@ println("Induced metric components at θ = π/4 (R=1):")
 g_comp
 ```
 
-## 5. Visualization: The 2-Sphere
+## 4. Visualization: The 2-Sphere
 
 Let's visualize the surface we are analyzing.
 
@@ -96,7 +96,7 @@ end
 
 plot_sphere(R_val)
 ```
-## 6. Intrinsic Curvature
+## 5. Intrinsic Curvature
 
 The Riemann tensor $R^a{}_{bcd}$ measures the intrinsic curvature of the
 manifold. For a sphere of radius $R$, the Ricci scalar $R = g^{ab} R_{ab}$
@@ -114,7 +114,7 @@ val = Contract(RS[])
 println("Ricci Scalar (expected 2.0): ", val)
 ```
 
-## 7. Symbolic Algebra: Leveraging the Engine
+## 6. Symbolic Algebra: Leveraging the Engine
 
 The real power of `xAct.jl` lies in its ability to manipulate tensor expressions
 abstractly. Instead of just calculating numbers, we can verify geometric identities
@@ -141,7 +141,7 @@ trace_G
 By leveraging `ToCanonical` and `Contract`, we can prove complex identities
 without ever choosing a coordinate system.
 
-## 8. Summary
+## 7. Summary
 
 ## Key Takeaways: Intrinsic Geometry
 
@@ -153,6 +153,6 @@ This tutorial demonstrated:
 
 ## Next Steps
 
-- **Schwarzschild**: Move to 4D Spacetime in the [Schwarzschild Geodesics](../examples/basics.md) tutorial.
+- **Schwarzschild**: Move to 4D Spacetime in the [Schwarzschild Geodesics](../examples/basics/) tutorial.
 - **3D Geometry**: Review 3D coordinate systems in [Curvilinear Coordinates](foundations_3d_coords_julia.md).
-- **Core Guide**: See the [Typed Expressions (TExpr)](../guide/TExpr.md) guide.
+- **Core Guide**: See the [Typed Expressions (TExpr)](../guide/TExpr/) guide.

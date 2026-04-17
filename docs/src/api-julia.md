@@ -3,18 +3,18 @@
 ## Modules
 
 ```@docs
-xAct
-xAct.XCore
-xAct.XPerm
-xAct.XTensor
-xAct.XInvar
-xAct.TExprLayer
+XAct
+XAct.XCore
+XAct.XPerm
+XAct.XTensor
+XAct.XInvar
+XAct.TExprLayer
 ```
 
 ## Functions and Types
 
 ```@autodocs
-Modules = [xAct, xAct.XCore, xAct.XPerm, xAct.XTensor, xAct.XInvar, xAct.TExprLayer]
+Modules = [XAct, XAct.XCore, XAct.XPerm, XAct.XTensor, XAct.XInvar, XAct.TExprLayer]
 Order = [:function, :type, :constant, :macro]
 ```
 

@@ -19,7 +19,7 @@ Pkg.add(url="https://github.com/sashakile/sxAct.git")
 
 Wait for the installation to finish, then you can start using it:
 ```julia
-using xAct
+using XAct
 ```
 
 ## 2. Python Wrapper (xact-py)

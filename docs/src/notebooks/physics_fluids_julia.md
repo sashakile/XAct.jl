@@ -8,7 +8,7 @@ This tutorial explores **Relativistic Fluid Dynamics** using `xAct.jl`.
 We will define the energy-momentum tensor for a **perfect fluid**, verify its
 conservation laws, and derive the relativistic Euler equations.
 
-## 1. Dependencies
+## 1. Setup
 
 If running on Google Colab or a fresh environment, install the required packages first.
 
@@ -24,7 +24,7 @@ If running on Google Colab or a fresh environment, install the required packages
 Load the required modules.
 
 ```@example physics_fluids_julia
-using xAct
+using XAct
 using Plots
 using LinearAlgebra
 
@@ -37,7 +37,7 @@ ENV["GKSwstype"] = "100"
     - **Key Symbols**: Velocity $u^a$, Density $\rho$, Pressure $p$.
     - **Physics**: $T_{ab} = (\rho + p)u_a u_b + p g_{ab}$, verify $\nabla_a T^{ab} = 0$.
 
-## 3. Define the Manifold and Metric
+## 2. Define the Manifold and Metric
 
 ```@example physics_fluids_julia
 reset_state!()
@@ -48,7 +48,7 @@ M = def_manifold!(:M4, 4, [:alpha, :beta, :gamma, :delta, :mu, :nu])
 g = def_metric!(-1, "g[-mu,-nu]", :CD)
 ```
 
-## 4. The Perfect Fluid Energy-Momentum Tensor
+## 3. The Perfect Fluid Energy-Momentum Tensor
 
 A perfect fluid is characterized by its **energy density** $\rho$,
 **pressure** $p$, and **4-velocity** $u^\mu$. The energy-momentum tensor is:
@@ -73,7 +73,7 @@ println("Energy-Momentum Tensor T_{μν}:")
 T_expr
 ```
 
-## 5. Conservation Laws
+## 4. Conservation Laws
 
 The physical evolution of the fluid is governed by the conservation of
 energy and momentum:
@@ -87,7 +87,7 @@ println("Divergence of T_{μν} (Conservation Law):")
 div_T
 ```
 
-## 6. Deriving Continuity and Euler Equations
+## 5. Deriving Continuity and Euler Equations
 
 The conservation equations $\nabla_\mu T^{\mu\nu} = 0$ contain both the energy
 conservation (continuity) and momentum conservation (Euler) equations.
@@ -104,7 +104,7 @@ energy_cons = ToCanonical(Contract(u[nu] * div_T))
 println("Energy Conservation Equation (u_ν \nabla_μ T^{μν}):")
 energy_cons
 ```
-## 7. Summary
+## 6. Summary
 
 This tutorial demonstrated:
 1. Constructing complex physical tensors from fundamental fields.

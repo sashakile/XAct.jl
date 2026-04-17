@@ -9,7 +9,7 @@ We will implement the Friedmann-Lemaître-Robertson-Walker (FLRW) metric—the
 standard model for a homogeneous and isotropic universe—and explore its
 curvature and the resulting Friedmann equations.
 
-## 1. Dependencies
+## 1. Setup
 
 If running on Google Colab or a fresh environment, install the required packages first.
 
@@ -25,7 +25,7 @@ If running on Google Colab or a fresh environment, install the required packages
 Load the required modules.
 
 ```@example wald_cosmology_julia
-using xAct
+using XAct
 using Plots
 using LinearAlgebra
 
@@ -39,7 +39,7 @@ ENV["GKSwstype"] = "100"
     - **Key Symbols**: Manifold `:M4`, Metric `:g`, Scale factor `a(t)`.
     - **Physics**: Compute $R_{\mu\nu}$, plot scale factor $a(t)$ for $k \in \{1, 0, -1\}$.
 
-## 3. Define the Manifold and Chart
+## 2. Define the Manifold and Chart
 
 We define a 4D manifold $M$ with cosmological coordinates $(t, r, \theta, \phi)$.
 
@@ -52,7 +52,7 @@ M = def_manifold!(:M4, 4, [:a, :b, :c, :d, :t, :r, :th, :ph])
 def_chart!(:Cosmo, :M4, [1, 2, 3, 4], [:t, :r, :th, :ph])
 ```
 
-## 4. The FLRW Metric
+## 3. The FLRW Metric
 
 The FLRW metric in coordinates $(t, r, \theta, \phi)$ is:
 $ds^2 = -dt^2 + a^2(t) \left[ \frac{dr^2}{1-kr^2} + r^2 (d\theta^2 + \sin^2\theta d\phi^2) \right]$
@@ -79,7 +79,7 @@ println("FLRW metric components (k=$k_val, a=$a_val):")
 g_comp
 ```
 
-## 5. Friedmann Equations
+## 4. Friedmann Equations
 
 From the Einstein Field Equations $G_{\mu\nu} = 8\pi G T_{\mu\nu}$, we derive the
 Friedmann equations for the scale factor $a(t)$:
@@ -89,7 +89,7 @@ Friedmann equations for the scale factor $a(t)$:
 
 Where $\rho$ is the energy density and $p$ is the pressure.
 
-## 6. Visualization: Evolution of the Scale Factor
+## 5. Visualization: Evolution of the Scale Factor
 
 Let's visualize the evolution of $a(t)$ for a matter-dominated universe
 ($p=0$) with different spatial curvatures $k$.
@@ -123,7 +123,7 @@ p
 - **Closed ($k=1$)**: The universe eventually stops expanding and collapses (Big Crunch).
 - **Open ($k=-1$)**: The universe expands forever at a faster rate than the flat case.
 
-## 7. Summary
+## 6. Summary
 
 This tutorial demonstrated:
 1. Implementing the FLRW metric used in modern cosmology.

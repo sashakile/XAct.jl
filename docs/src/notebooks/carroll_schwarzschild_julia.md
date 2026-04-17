@@ -9,7 +9,7 @@ We will implement the Schwarzschild metric—the unique spherically symmetric
 vacuum solution to Einstein's field equations—and explore its curvature and
 geodesic structure.
 
-## 1. Dependencies
+## 1. Setup
 
 If running on Google Colab or a fresh environment, install the required packages first.
 
@@ -25,7 +25,7 @@ If running on Google Colab or a fresh environment, install the required packages
 Load the required modules.
 
 ```@example carroll_schwarzschild_julia
-using xAct
+using XAct
 using Plots
 using LinearAlgebra
 
@@ -39,7 +39,7 @@ ENV["GKSwstype"] = "100"
     - **Key Symbols**: Manifold `:M4`, Metric `:g`, CovD `:CD`.
     - **Physics**: Verify $R_{\mu\nu} = 0$, plot effective potential $V_{\text{eff}}$.
 
-## 3. Define the Manifold and Chart
+## 2. Define the Manifold and Chart
 
 We define a 4D manifold $M$ with Schwarzschild coordinates $(t, r, \theta, \phi)$.
 
@@ -52,7 +52,7 @@ M = def_manifold!(:M4, 4, [:a, :b, :c, :d, :t, :r, :th, :ph])
 def_chart!(:Schw, :M4, [1, 2, 3, 4], [:t, :r, :th, :ph])
 ```
 
-## 4. The Schwarzschild Metric
+## 3. The Schwarzschild Metric
 
 The Schwarzschild metric in coordinates $(t, r, \theta, \phi)$ is:
 $ds^2 = -\left(1 - \frac{2GM}{r}\right) dt^2 + \left(1 - \frac{2GM}{r}\right)^{-1} dr^2 + r^2 d\theta^2 + r^2 \sin^2\theta d\phi^2$
@@ -81,7 +81,7 @@ println("Schwarzschild metric at r=$r_val, θ=π/2:")
 g_comp
 ```
 
-## 5. Curvature and Field Equations
+## 4. Curvature and Field Equations
 
 The Schwarzschild metric is a vacuum solution, meaning the Ricci tensor $R_{ab}$
 must vanish everywhere outside the source ($r > r_s$).
@@ -108,7 +108,7 @@ G_derived
 The output shows the derived expression for $G_{ab}$ in terms of the Ricci
 tensor and scalar, exactly matching the definition $G_{ab} = R_{ab} - \frac{1}{2}g_{ab}R$.
 
-## 6. Geodesics and Effective Potential
+## 5. Geodesics and Effective Potential
 
 
 Geodesics in Schwarzschild spacetime are governed by the effective potential:
@@ -144,7 +144,7 @@ p
 - **Photon Sphere**: Located at $r = 3M$ (the peak of the null potential).
 - **Event Horizon**: Located at $r = 2M$.
 
-## 7. Summary
+## 6. Summary
 
 This tutorial demonstrated:
 1. Implementing a complex 4D metric from a standard textbook.
