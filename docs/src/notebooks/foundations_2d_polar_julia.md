@@ -160,4 +160,4 @@ This tutorial demonstrated:
 
 - **3D Geometry**: Extend these concepts to 3D in [Curvilinear Coordinates](foundations_3d_coords_julia.md).
 - **Curvature**: Explore intrinsic curvature in [The 2-Sphere](foundations_sphere_julia.md).
-- **Core Guide**: See the [Typed Expressions (TExpr)](../guide/TExpr/) guide.
+- **Core Guide**: See the [Typed Expressions (TExpr)](../guide/TExpr.md) guide.

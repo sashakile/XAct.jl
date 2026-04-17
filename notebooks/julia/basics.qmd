@@ -152,4 +152,4 @@ end
 - **Coordinate components (xCoba):** assign a basis, compute Christoffel symbols numerically
 - **Covariant derivatives:** commute CovDs, integration by parts
 - **Invariant simplification:** `RiemannSimplify` for scalar polynomial identities
-- Full documentation: [sashakile.github.io/sxAct](https://sashakile.github.io/sxAct/)
+- Full documentation: [sashakile.github.io/sxAct](../index.md)

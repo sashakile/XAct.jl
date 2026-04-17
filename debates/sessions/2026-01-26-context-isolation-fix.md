@@ -330,7 +330,7 @@ pytest tests/integration/test_xact_basics.py -v
 
 - [xAct mailing list: How to apply first Bianchi identity?](https://groups.google.com/g/xact/c/0ZJHUmFj7WI)
 - [xTras documentation](https://github.com/xAct-contrib/xTras)
-- [docs/theory/oracle-quirks.md](../theory/oracle-quirks.md) - Original issue documentation
+- [docs/src/theory/oracle-quirks.md](../../docs/src/theory/oracle-quirks.md) - Original issue documentation
 - [Commit 9cc21fa](https://github.com/sashakile/sxAct/commit/9cc21fa) - Implementation commit
 
 ---

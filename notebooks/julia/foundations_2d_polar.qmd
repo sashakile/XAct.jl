@@ -161,4 +161,4 @@ This tutorial demonstrated:
 
 - **3D Geometry**: Extend these concepts to 3D in [Curvilinear Coordinates](foundations_3d_coords.ipynb).
 - **Curvature**: Explore intrinsic curvature in [The 2-Sphere](foundations_sphere.ipynb).
-- **Core Guide**: See the [Typed Expressions (TExpr)](https://sashakile.github.io/sxAct/guide/TExpr/) guide.
+- **Core Guide**: See the [Typed Expressions (TExpr)](../guide/TExpr.md) guide.

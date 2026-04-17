@@ -153,6 +153,6 @@ This tutorial demonstrated:
 
 ## Next Steps
 
-- **Schwarzschild**: Move to 4D Spacetime in the [Schwarzschild Geodesics](../examples/basics/) tutorial.
+- **Schwarzschild**: Move to 4D Spacetime in the [Schwarzschild Geodesics](../getting-started.md) tutorial.
 - **3D Geometry**: Review 3D coordinate systems in [Curvilinear Coordinates](foundations_3d_coords_julia.md).
-- **Core Guide**: See the [Typed Expressions (TExpr)](../guide/TExpr/) guide.
+- **Core Guide**: See the [Typed Expressions (TExpr)](../guide/TExpr.md) guide.

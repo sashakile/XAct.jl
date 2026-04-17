@@ -141,4 +141,4 @@ This tutorial demonstrated:
 
 - **Black Holes**: Review [Carroll: Schwarzschild Geodesics](carroll_schwarzschild_julia.md).
 - **Cosmology**: Review [Wald: FLRW Cosmology](wald_cosmology_julia.md).
-- **Advanced**: Explore the [Oracle Quirks](../theory/oracle-quirks/) for verification details.
+- **Advanced**: Explore the [Oracle Quirks](../theory/oracle-quirks.md) for verification details.

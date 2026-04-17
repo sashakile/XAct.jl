@@ -53,7 +53,7 @@ def_manifold!(:M, 4, [:a, :b, :c, :d])
 | `TTensor` | Tensor with indices applied | `T[-a, -b]` |
 | `TProd` | Product with rational coefficient | `2 * T[-a] * V[a]` |
 | `TSum` | Sum of expressions | `T[-a,-b] + S[-a,-b]` |
-| `TCovD` | Covariant derivative applied to expression | `CD[-a](phi[])` |
+| `TCovD` | Covariant derivative applied to an expression, e.g. a scalar field | `CD[-a]` acting on a scalar tensor |
 
 ### Handles (not TExpr)
 
@@ -97,7 +97,7 @@ scl  = 2 * T[-a, -b]                 # TProd(coeff=2, ...)
 # Covariant derivative
 CD = covd(:CD)
 phi = tensor(:phi)
-deriv = CD[-a](phi[])                 # TCovD
+deriv = CD[-a](scalar_field)          # TCovD over a scalar expression
 ```
 
 ### Validation at Construction Time

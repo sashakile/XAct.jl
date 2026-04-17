@@ -1,5 +1,6 @@
 !!! tip "Run this notebook"
-    Download the [Jupyter notebook](https://github.com/sashakile/sxAct/blob/main/notebooks/python/basics.ipynb) or open it in Google Colab.
+    - [Download the Jupyter notebook](https://github.com/sashakile/sxAct/blob/main/notebooks/python/basics.ipynb)
+    - [Open in Google Colab](https://colab.research.google.com/github/sashakile/sxAct/blob/main/notebooks/python/basics.ipynb)
 
 # sxAct — Getting Started (Python)
 
@@ -12,14 +13,32 @@ This notebook walks through the same workflow as the Julia version,
 using the `xact` Python package. Under the hood, all computation
 is performed by the Julia engine — but the API is fully Pythonic.
 
-**Requirements:** Python 3.10+, Julia 1.12+.
+Expressions are written using the **typed API** — index objects and operator
+overloading — which validates slot counts and manifold membership at
+construction time rather than deep inside the engine.
+
+**Requirements:** Python 3.10+, Julia 1.10+.
 
 ## 1. Setup
 
-```python
-# Uncomment if running on Google Colab (not yet on PyPI, install from GitHub):
-# !pip install "git+https://github.com/sashakile/sxAct.git#subdirectory=packages/xact-py"
+If running on Google Colab, install the package first.
 
+```python
+# | eval: false
+import importlib
+import sys
+
+if (
+    "google.colab" in sys.modules
+    or "BINDER_SERVICE_HOST" in __import__("os").environ
+    or importlib.util.find_spec("xact") is None
+):
+    !pip install -q xact-py
+```
+
+Load the module.
+
+```python
 import xact
 
 xact.reset()
@@ -29,8 +48,12 @@ xact.reset()
 
 A 4-dimensional spacetime manifold with abstract indices.
 
+`xact.indices()` returns typed index objects bound to the manifold — `-a`
+then gives a covariant (down) index.
+
 ```python
 M = xact.Manifold("M", 4, ["a", "b", "c", "d", "e", "f"])
+a, b, c, d, e, f = xact.indices(M)
 ```
 
 ## 3. Define a Metric
@@ -40,22 +63,34 @@ Automatically creates Riemann, Ricci, Weyl, Einstein, Christoffel.
 
 ```python
 g = xact.Metric(M, "g", signature=-1, covd="CD")
+
+# Grab tensor handles for use throughout the notebook.
+Riem = xact.tensor("RiemannCD")
+Ric = xact.tensor("RicciCD")
 ```
 
 ## 4. Canonicalization
 
-Symmetric metric: $g_{ba} - g_{ab} = 0$.
+The Butler-Portugal algorithm brings tensor expressions into a canonical form.
+Build expressions with `[]` — the tensor handle validates the slot count
+and manifold membership immediately.
+
+Symmetric metric: $g_{ba} - g_{ab} = 0$:
 
 ```python
-xact.canonicalize("g[-b,-a] - g[-a,-b]")
+xact.canonicalize(g[-b, -a] - g[-a, -b])
 ```
 
-Define a symmetric tensor and canonicalize:
+Define a symmetric rank-2 tensor $T_{ab}$ and verify symmetry:
 
 ```python
 T = xact.Tensor("T", ["-a", "-b"], M, symmetry="Symmetric[{-a,-b}]")
-xact.canonicalize("T[-b,-a] - T[-a,-b]")
+T_h = xact.tensor("T")
+xact.canonicalize(T_h[-b, -a] - T_h[-a, -b])
 ```
+
+> **String API:** `xact.canonicalize("T[-b,-a] - T[-a,-b]")` is equivalent.
+> Strings still work everywhere; the typed API adds upfront validation.
 
 ## 5. Contraction
 
@@ -63,23 +98,28 @@ Lower an index with the metric:
 
 ```python
 V = xact.Tensor("V", ["a"], M)
-xact.contract("V[a] * g[-a,-b]")
+V_h = xact.tensor("V")
+xact.contract(V_h[a] * g[-a, -b])
 ```
 
 ## 6. Riemann Identities
 
-First Bianchi identity:
+First Bianchi identity — $R_{abcd} + R_{acdb} + R_{adbc} = 0$:
 
 ```python
-xact.canonicalize(
-    "RiemannCD[-a,-b,-c,-d] + RiemannCD[-a,-c,-d,-b] + RiemannCD[-a,-d,-b,-c]"
-)
+xact.canonicalize(Riem[-a, -b, -c, -d] + Riem[-a, -c, -d, -b] + Riem[-a, -d, -b, -c])
+```
+
+Antisymmetry in the first pair — $R_{abcd} + R_{bacd} = 0$:
+
+```python
+xact.canonicalize(Riem[-a, -b, -c, -d] + Riem[-b, -a, -c, -d])
 ```
 
 Pair symmetry — $R_{abcd} = R_{cdab}$:
 
 ```python
-xact.canonicalize("RiemannCD[-a,-b,-c,-d] - RiemannCD[-c,-d,-a,-b]")
+xact.canonicalize(Riem[-a, -b, -c, -d] - Riem[-c, -d, -a, -b])
 ```
 
 ## 7. Perturbation Theory
@@ -87,76 +127,23 @@ xact.canonicalize("RiemannCD[-a,-b,-c,-d] - RiemannCD[-c,-d,-a,-b]")
 ```python
 h = xact.Tensor("h", ["-a", "-b"], M, symmetry="Symmetric[{-a,-b}]")
 xact.Perturbation(h, g, order=1)
-xact.perturb("g[-a,-b]", order=1)
+xact.perturb(g[-a, -b], order=1)
 ```
 
-## 8. Typed Expression API
+## 8. Validation
 
-String arguments work well but mistakes (wrong index count, wrong manifold) only
-surface inside the engine. The `xact.expr` module adds typed index objects and
-operator overloading to catch these errors at construction time.
-
-### Index objects
+The typed API catches mistakes at construction time:
 
 ```python
-# indices() returns one Idx per registered label, in definition order.
-a, b, c, d, e, f = xact.indices(M)
-
-# -a produces a DnIdx (covariant / down)
-print(-a)   # "-a"
-```
-
-### Tensor handles
-
-```python
-# tensor() validates the name and caches slot count.
-Riem = xact.tensor("RiemannCD")
-gT   = xact.tensor("g")
-T_h  = xact.tensor("T")
-```
-
-### Building expressions
-
-```python
-# Riemann first Bianchi identity — typed vs string:
-
-# String API (original)
-xact.canonicalize(
-    "RiemannCD[-a,-b,-c,-d] + RiemannCD[-a,-c,-d,-b] + RiemannCD[-a,-d,-b,-c]"
-)
-
-# Typed API — equivalent, validated at construction
-expr = Riem[-a,-b,-c,-d] + Riem[-a,-c,-d,-b] + Riem[-a,-d,-b,-c]
-xact.canonicalize(expr)    # "0"
-
-# Arithmetic: scalar multiplication, negation, subtraction
-pair_sym = Riem[-a,-b,-c,-d] - Riem[-c,-d,-a,-b]
-xact.canonicalize(pair_sym)   # "0"
-
-two_ricci = 2 * xact.tensor("RicciCD")[-a,-b]
-print(two_ricci)   # "2 * RicciCD[-a,-b]"
-```
-
-### Validation errors
-
-```python
-# Wrong slot count — raised at construction, not inside the engine
+# Wrong slot count — raised before reaching the engine
 try:
-    Riem[-a,-b]     # IndexError: RiemannCD has 4 slots, got 2
-except IndexError as e:
-    print(e)
-```
-
-### Tensor and Metric objects support `[]` directly
-
-```python
-# g[-a,-b] is shorthand for xact.tensor("g")[-a,-b]
-print(g[-a,-b])    # "g[-a,-b]"
-xact.contract(g[-a,-b] * xact.tensor("V")[a])   # "V[-b]"
+    Riem[-a, -b]  # IndexError: RiemannCD has 4 slots, got 2
+except IndexError as err:
+    print(err)
 ```
 
 ## Next Steps
 
 - Full Julia API for more advanced workflows
 - Coordinate components, covariant derivative commutation
-- Documentation: [sashakile.github.io/sxAct](https://sashakile.github.io/sxAct/)
+- Documentation: [sashakile.github.io/sxAct](../index.md)

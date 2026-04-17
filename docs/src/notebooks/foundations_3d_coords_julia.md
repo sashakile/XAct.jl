@@ -183,4 +183,4 @@ This tutorial showed:
 
 - **Curvature**: Explore intrinsic curvature in [The 2-Sphere](foundations_sphere_julia.md).
 - **Basics**: Review 2D transformations in [Polar vs. Cartesian](foundations_2d_polar_julia.md).
-- **Core Guide**: See the [Typed Expressions (TExpr)](../guide/TExpr/) guide.
+- **Core Guide**: See the [Typed Expressions (TExpr)](../guide/TExpr.md) guide.
