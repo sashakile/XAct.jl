@@ -14,7 +14,7 @@ We'll need a manifold and a metric to work with.
 **Julia**
 
 ````@example invar
-using xAct
+using XAct
 reset_state!()
 def_manifold!(:M, 4, [:a, :b, :c, :d, :e, :f, :g, :h])
 def_metric!(-1, "g[-a,-b]", :CD)
@@ -22,11 +22,10 @@ def_metric!(-1, "g[-a,-b]", :CD)
 
 **Python**
 ```python
-from xact.xcore import get_julia
-jl = get_julia()
-jl.xAct.reset_state_b()
-jl.xAct.def_manifold_b("M", 4, ["a", "b", "c", "d", "e", "f", "g", "h"])
-jl.xAct.def_metric_b(-1, "g[-a,-b]", "CD")
+import xact
+xact.reset()
+M = xact.Manifold("M", 4, ["a", "b", "c", "d", "e", "f", "g", "h"])
+g = xact.Metric(M, "g", signature=-1, covd="CD")
 ```
 
 ## 2. RiemannToPerm
@@ -49,8 +48,8 @@ println("Permutation form: ", rperm.perm)
 
 **Python**
 ```python
-rperm = jl.xAct.RiemannToPerm("RiemannCD[-a, -b, b, a]", "CD")
-print(f"Permutation: {rperm.perm}")
+rperm = xact.riemann_to_perm("RiemannCD[-a, -b, b, a]", "CD")
+print(f"Permutation: {rperm}")
 ```
 
 ## 3. Loading the Invar Database
@@ -88,7 +87,7 @@ _has_invar_db && println("Difference simplified: ", RiemannSimplify(diff, :CD))
 **Python**
 ```python
 diff = "RiemannCD[-a,-b,-c,-d] RiemannCD[a,b,c,d] - RiemannCD[-c,-d,-a,-b] RiemannCD[c,d,a,b]"
-result = jl.xAct.RiemannSimplify(diff, "CD")
+result = xact.riemann_simplify(diff, "CD")
 print(f"Result: {result}")
 ```
 

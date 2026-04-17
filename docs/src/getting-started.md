@@ -1,31 +1,26 @@
 # Getting Started with xAct.jl
 
 !!! info "LLM TL;DR"
-    - Install: `Pkg.add(url="https://github.com/sashakile/sxAct")`
+    - Prerequisite: complete [Installation](installation.md) first
     - Julia entry point: `using XAct`, then `def_manifold!`, `def_metric!`, `@indices`, `tensor()`
     - Typed API recommended; string API (`ToCanonical("expr")`) works everywhere
     - Python: `import xact`, snake_case wrappers, same semantics as Julia
+    - Next deep dive: [Typed Expressions (TExpr)](guide/TExpr.md)
 
-This guide covers installation, quick-start usage for Julia and Python, and a
-Wolfram-to-Julia migration reference.
+This page assumes your environment is already set up. Use [Installation](installation.md)
+for package setup, then return here for the first working Julia and Python workflows
+plus a Wolfram-to-Julia reference.
 
 ---
 
-## 1. Installation (Julia)
+## 1. Before You Begin
 
-Open the Julia REPL and run:
-
-```julia
-using Pkg
-Pkg.add(url="https://github.com/sashakile/sxAct")
-```
+If you have not installed the project yet, go to [Installation](installation.md).
+That page is the source of truth for Julia, Python, and verification setup.
 
 !!! note "Julia General Registry"
     `xAct.jl` is not yet registered in the Julia General Registry (planned for a future release).
-    Until then, install via the GitHub URL above.
-
-
-For Python installation, see [Installation Guide](installation.md).
+    Until then, install via the GitHub URL documented in [Installation](installation.md).
 
 ---
 
@@ -68,7 +63,7 @@ The typed API serializes to strings internally — the same engine runs either w
     The **string API** is convenient for short one-liners and when pasting
     expressions from the Wolfram documentation.
 
-For a detailed guide including covariant derivatives and Python, see
+For a detailed guide including covariant derivatives and the Python typed API, see
 [Typed Expressions (TExpr)](guide/TExpr.md).
 
 ### With a Metric

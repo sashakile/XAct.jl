@@ -2,6 +2,8 @@
 
 This guide covers how to install the `xAct.jl` package for research use, as well as the optional verification framework for developers.
 
+Canonical onboarding path: README → Installation → [Getting Started](getting-started.md) → [Typed Expressions (TExpr)](guide/TExpr.md).
+
 ## 1. Quick Install (Research Use)
 
 If you just want to use `xAct` for tensor calculus in Julia, you only need the Julia package.
@@ -21,6 +23,8 @@ Wait for the installation to finish, then you can start using it:
 ```julia
 using XAct
 ```
+
+Next: continue to [Getting Started](getting-started.md) for the first working examples.
 
 ## 2. Python Wrapper (xact-py)
 
@@ -47,6 +51,8 @@ uv pip install packages/xact-py
 ```
 
 *Note: The wrapper automatically manages its Julia dependencies using `juliapkg`.*
+
+Next: continue to [Getting Started](getting-started.md#3-quick-start-python) for the first Python workflow.
 
 ---
 
@@ -82,6 +88,8 @@ docker compose up -d oracle
 ```bash
 uv run pytest
 ```
+
+Once the environment is ready, use [Getting Started](getting-started.md) for user-facing workflows and [Contributing](contributing.md) for development guidance.
 
 ---
 

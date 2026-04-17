@@ -10,6 +10,25 @@
 
 A native Julia port of the [xAct](http://xact.es/) tensor algebra suite for general relativity, originally developed for Wolfram Mathematica. Rewrites xPerm, xTensor, xCoba, and Invar in pure Julia for performance, composability, and open access without a Mathematica license.
 
+## Start Here
+
+Follow this newcomer path:
+
+1. [Installation](installation.md) — set up Julia, Python, or the verification stack
+2. [Getting Started](getting-started.md) — run the first working Julia or Python examples
+3. [Typed Expressions (TExpr)](guide/TExpr.md) — learn the recommended expression API
+4. [Basics tutorial](examples/basics.md) or [notebooks](notebooks/basics_julia.md) — continue with guided examples
+
+## What is what?
+
+| Name | Kind | Meaning |
+| :--- | :--- | :--- |
+| `sxAct` | Repository | The Git repository you clone and browse |
+| `XAct.jl` / `XAct` | Julia package and module | The native Julia tensor algebra engine |
+| `xact-py` | Python package | The distribution published to PyPI |
+| `xact` | Python import | The Python API imported in user code |
+| `sxact` | Verification framework | The Python tooling for oracle-based parity tests |
+
 ## Fast Track (Julia)
 
 Get started in 60 seconds. Open your Julia REPL and run:
@@ -42,22 +61,13 @@ The `XAct.jl` project (hosted in the `sxAct` repository) provides the native Jul
 
 ## Migration Rosetta Stone
 
-For the full table, see [Getting Started](getting-started.md#4-reference-migration-rosetta-stone).
-
-| Operation | Wolfram (xAct) | Julia (xAct.jl) | Status |
-| :--- | :--- | :--- | :--- |
-| **DefManifold** | `DefManifold[M, 4, {a,b}]` | `def_manifold!(:M, 4, [:a, :b])` | ✅ Verified |
-| **DefMetric** | `DefMetric[-1, g[-a,-b], CD]` | `def_metric!(-1, "g[-a,-b]", :CD) ` | ✅ Verified |
-| **ToCanonical** | `ToCanonical[expr]` | `ToCanonical(expr)` | ✅ Verified |
-| **Contract** | `ContractMetric[expr]` | `Contract(expr)` | ✅ Verified |
-| **RiemannSimplify** | `RiemannSimplify[expr, CD]` | `RiemannSimplify(expr, :CD)` | ✅ Verified |
-| **RiemannToPerm** | `RiemannToPerm[expr]` | `RiemannToPerm(expr)` | ✅ Verified |
+For the full Wolfram-to-Julia mapping table, see [Getting Started](getting-started.md#4-reference-migration-rosetta-stone). For translation tooling and migration workflow, see [Wolfram Migration Guide](wolfram-migration.md).
 
 ## Coming from Wolfram xAct?
 Use the [Wolfram Migration Guide](wolfram-migration.md) to automatically translate your existing Wolfram code to Julia with the `xact-test translate` CLI.
 
 ## Installation
-See the [Installation Guide](installation.md) for details on setting up the Julia package. Docker and the Wolfram Oracle are only required for running the verification suite.
+See the [Installation Guide](installation.md) for environment setup details. After installation, continue to [Getting Started](getting-started.md).
 
 ## Architecture
 The implementation follows a layered approach, described in the [Architecture](architecture.md) section.

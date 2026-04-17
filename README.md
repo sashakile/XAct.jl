@@ -9,16 +9,35 @@
 
 A native Julia port of the [xAct](http://xact.es/) tensor algebra suite for general relativity, originally developed by [Jos&eacute; M. Mart&iacute;n-Garc&iacute;a](http://www.xact.es/credits.html) and collaborators for Wolfram Mathematica. This project rewrites the xAct engine in pure Julia for performance, composability, and open access without a Mathematica license.
 
-## Quick Start
+## Start Here
+
+For the canonical newcomer path, follow:
+
+1. [Installation](https://saxa.xyz/sxAct/installation/) — set up Julia, Python, or the verification stack
+2. [Getting Started](https://saxa.xyz/sxAct/getting-started/) — first successful tensor workflow in Julia or Python
+3. [Typed Expressions (TExpr)](https://saxa.xyz/sxAct/guide/TExpr/) — recommended expression-building API
+4. [Tutorials and notebooks](https://saxa.xyz/sxAct/examples/basics/) — longer guided examples
+
+## Quick Start (Julia)
 
 ```julia
 using XAct
-M = def_manifold!(:M, 4, [:a, :b, :c, :d])
-T = def_tensor!(:T, ["-a", "-b"], :M; symmetry_str="Symmetric[{-a,-b}]")
-ToCanonical("T[-b,-a] - T[-a,-b]")  # returns "0"
+
+reset_state!()
+def_manifold!(:M, 4, [:a, :b, :c, :d])
+def_tensor!(:T, ["-a", "-b"], :M; symmetry_str="Symmetric[{-a,-b}]")
+
+@indices M a b c d
+T_h = tensor(:T)
+
+ToCanonical(T_h[-b,-a] - T_h[-a,-b])  # returns "0"
 ```
 
-### Python
+The typed API (`@indices`, `tensor()`, `T_h[...]`) validates slot counts and manifold
+membership at construction time. The string API (`ToCanonical("T[-b,-a] - T[-a,-b]")`)
+still works everywhere.
+
+### Quick Start (Python)
 
 Install the latest Python wrapper with `pip install xact-py`, then:
 
@@ -28,8 +47,23 @@ import xact
 xact.reset()
 M = xact.Manifold("M", 4, ["a", "b", "c", "d"])
 T = xact.Tensor("T", ["-a", "-b"], M, symmetry="Symmetric[{-a,-b}]")
-xact.canonicalize("T[-b,-a] - T[-a,-b]")  # returns "0"
+a, b, c, d = xact.indices(M)
+T_h = xact.tensor("T")
+
+xact.canonicalize(T_h[-b,-a] - T_h[-a,-b])  # returns "0"
 ```
+
+## What Is What?
+
+| Name | Kind | Meaning |
+|:--|:--|:--|
+| `sxAct` | Git repository | The repository you clone from GitHub |
+| `XAct.jl` / `XAct` | Julia package and module | The native Julia tensor algebra engine |
+| `xact-py` | Python package name | The package published to PyPI |
+| `xact` | Python import name | The public Python API you write in code |
+| `sxact` | Python verification framework | The parity-testing and oracle-comparison tooling |
+
+The docs landing page has the same map in the ["What is what?"](https://saxa.xyz/sxAct/#what-is-what) section.
 
 ## Status
 

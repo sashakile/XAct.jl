@@ -25,16 +25,16 @@
 <!--
     # This information is used for caching.
     [PlutoStaticHTML.State]
-    input_sha = "036b90f24a7ffbbbd35ecb9d3ebc9ead1817f26580c237386e7f3840d5fe71b8"
+    input_sha = "09bc10f8ebd362edc861ea50e6eda5c7c49b6e135ddc442dcc34c297af7fa3d2"
     julia_version = "1.12.5"
 -->
 
-<div class="markdown"><h1 id="sxAct.jl-—-Interactive-Tutorial">sxAct.jl — Interactive Tutorial</h1><p>This Pluto notebook introduces the core workflow of <code>xAct.jl</code>: manifolds, metrics, canonicalization, and curvature.</p><p>Each cell is <strong>reactive</strong> — editing a definition automatically re-evaluates all dependent cells.</p></div>
+<div class="markdown"><h1 id="sxAct.jl-—-Interactive-Tutorial">sxAct.jl — Interactive Tutorial</h1><p>This Pluto notebook introduces the core workflow of <code>xAct.jl</code>: manifolds, metrics, canonicalization, and curvature.</p><p>Expressions are written using the <strong>typed API</strong> — <code>@indices</code> declares index objects, <code>tensor()</code> looks up handles, and <code>T[-a,-b]</code> builds expressions with slot-count and manifold validation at construction time.</p><p>Each cell is <strong>reactive</strong> — editing a definition automatically re-evaluates all dependent cells.</p></div>
 
 <pre class='language-julia'><code class='language-julia'>begin
     import Pkg
     Pkg.activate(joinpath(@__DIR__, "..", ".."))
-    using xAct
+    using XAct
 end</code></pre>
 
 
@@ -44,41 +44,58 @@ end</code></pre>
 <pre class='language-julia'><code class='language-julia'>begin
     reset_state!()
     M = def_manifold!(:M, 4, [:a, :b, :c, :d, :e, :f])
+    @indices M a b c d e f
 end</code></pre>
-<pre class="code-output documenter-example-output" id="var-M">ManifoldObj(:M, 4, [:a, :b, :c, :d, :e, :f])</pre>
+
 
 
 <div class="markdown"><h2 id="2.-Define-a-Metric">2. Define a Metric</h2><p>Lorentzian signature <span class="tex">\((-,+,+,+)\)</span>. This automatically creates Riemann, Ricci, RicciScalar, Weyl, Einstein, and Christoffel tensors.</p></div>
 
-<pre class='language-julia'><code class='language-julia'>g = def_metric!(-1, "g[-a,-b]", :CD)</code></pre>
-<pre class="code-output documenter-example-output" id="var-g">MetricObj(:g, :M, :CD, -1)</pre>
+<pre class='language-julia'><code class='language-julia'>begin
+    g = def_metric!(-1, "g[-a,-b]", :CD)
+    Riem = tensor(:RiemannCD)
+    Ric  = tensor(:RicciCD)
+    g_h  = tensor(:g)
+end</code></pre>
+<pre class="code-output documenter-example-output" id="var-Ric">TensorHead(:g)</pre>
 
 
-<div class="markdown"><h2 id="3.-Canonicalization">3. Canonicalization</h2><p>The Butler-Portugal algorithm brings tensor expressions to canonical form.</p></div>
+<div class="markdown"><h2 id="3.-Canonicalization">3. Canonicalization</h2><p>The Butler-Portugal algorithm brings tensor expressions to canonical form. Expressions are built with <code>[]</code> — wrong slot count or manifold raises an error immediately, before reaching the engine.</p></div>
 
-<pre class='language-julia'><code class='language-julia'>ToCanonical("g[-b,-a] - g[-a,-b]")</code></pre>
-<pre class="code-output documenter-example-output" id="var-hash744834">"0"</pre>
+<pre class='language-julia'><code class='language-julia'>ToCanonical(g_h[-b,-a] - g_h[-a,-b])</code></pre>
+<p class="tex">$$0$$</p>
 
 <pre class='language-julia'><code class='language-julia'>begin
     def_tensor!(:T, ["-a", "-b"], :M; symmetry_str="Symmetric[{-a,-b}]")
-    ToCanonical("T[-b,-a] - T[-a,-b]")
+    T_h = tensor(:T)
+    ToCanonical(T_h[-b,-a] - T_h[-a,-b])
 end</code></pre>
-<pre class="code-output documenter-example-output" id="var-hash147095">"0"</pre>
+<p class="tex">$$0$$</p>
 
 
 <div class="markdown"><h2 id="4.-Contraction">4. Contraction</h2><p>Lower an index with the metric — <span class="tex">\(V_b = V^a g_{ab}\)</span>:</p></div>
 
 <pre class='language-julia'><code class='language-julia'>begin
     def_tensor!(:V, ["a"], :M)
-    Contract("V[a] * g[-a,-b]")
+    V_h = tensor(:V)
+    Contract(V_h[a] * g_h[-a,-b])
 end</code></pre>
-<pre class="code-output documenter-example-output" id="var-hash165220">"V[a]"</pre>
+<p class="tex">$$\V_{\b}$$</p>
 
 
-<div class="markdown"><h2 id="5.-Riemann-Tensor-Identities">5. Riemann Tensor Identities</h2><p>First Bianchi identity — should vanish:</p></div>
+<div class="markdown"><h2 id="5.-Riemann-Tensor-Identities">5. Riemann Tensor Identities</h2><p>The Riemann tensor satisfies well-known symmetries that the canonicalizer automatically recognizes.</p></div>
 
-<pre class='language-julia'><code class='language-julia'>ToCanonical("RiemannCD[-a,-b,-c,-d] + RiemannCD[-a,-c,-d,-b] + RiemannCD[-a,-d,-b,-c]")</code></pre>
-<pre class="code-output documenter-example-output" id="var-hash668741">"0"</pre>
+<pre class='language-julia'><code class='language-julia'># First Bianchi identity — R_{abcd} + R_{acdb} + R_{adbc} = 0
+ToCanonical(Riem[-a,-b,-c,-d] + Riem[-a,-c,-d,-b] + Riem[-a,-d,-b,-c])</code></pre>
+<p class="tex">$$0$$</p>
+
+<pre class='language-julia'><code class='language-julia'># Antisymmetry in the first pair — R_{abcd} + R_{bacd} = 0
+ToCanonical(Riem[-a,-b,-c,-d] + Riem[-b,-a,-c,-d])</code></pre>
+<p class="tex">$$0$$</p>
+
+<pre class='language-julia'><code class='language-julia'># Pair symmetry — R_{abcd} = R_{cdab}
+ToCanonical(Riem[-a,-b,-c,-d] - Riem[-c,-d,-a,-b])</code></pre>
+<p class="tex">$$0$$</p>
 
 
 <div class="markdown"><h2 id="6.-Perturbation-Theory">6. Perturbation Theory</h2><p>Perturb the metric to first order:</p></div>
@@ -86,9 +103,19 @@ end</code></pre>
 <pre class='language-julia'><code class='language-julia'>begin
     def_tensor!(:h, ["-a", "-b"], :M; symmetry_str="Symmetric[{-a,-b}]")
     def_perturbation!(:h, :g, 1)
-    perturb("g[-a,-b]", 1)
+    perturb(g_h[-a,-b], 1)
 end</code></pre>
-<pre class="code-output documenter-example-output" id="var-hash414671">"h"</pre>
+<p class="tex">$$\h$$</p>
+
+
+<div class="markdown"><h2 id="7.-Validation">7. Validation</h2><p>The typed API raises errors at construction time — before the expression reaches the engine:</p></div>
+
+<pre class='language-julia'><code class='language-julia'>try
+    Riem[-a,-b]     # ERROR: RiemannCD has 4 slots, got 2
+catch e
+    e
+end</code></pre>
+<pre class="code-output documenter-example-output" id="var-hash904103">ErrorException("RiemannCD has 4 slots, got 2")</pre>
 
 <!-- PlutoStaticHTML.End -->
 ```
