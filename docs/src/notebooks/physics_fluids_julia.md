@@ -79,12 +79,13 @@ The physical evolution of the fluid is governed by the conservation of
 energy and momentum:
 $\nabla_\mu T^{\mu\nu} = 0$
 
-```@example physics_fluids_julia
-# Compute the divergence: g^{αμ} \nabla_α T_{μν}
-div_T = ToCanonical(Contract(tensor(:g)[alpha, mu] * covd(:CD)[-alpha](T_expr)))
-
-println("Divergence of T_{μν} (Conservation Law):")
-div_T
+```julia
+# Compute the divergence: g^{αμ} ∇_α T_{μν}
+div_T = ToCanonical(
+    Contract(tensor(:g)[alpha, mu] * covd(:CD)[-alpha](rho[] * u[-mu] * u[-nu]))
+    + Contract(tensor(:g)[alpha, mu] * covd(:CD)[-alpha](p_tensor[] * u[-mu] * u[-nu]))
+    + Contract(tensor(:g)[alpha, mu] * covd(:CD)[-alpha](p_tensor[] * tensor(:g)[-mu, -nu]))
+)
 ```
 
 ## 5. Deriving Continuity and Euler Equations
@@ -97,12 +98,9 @@ Projecting along the 4-velocity ($u_\nu \nabla_\mu T^{\mu\nu} = 0$) yields the
 continuity equation:
 $u^\mu \nabla_\mu \rho + (\rho + p) \nabla_\mu u^\mu = 0$
 
-```@example physics_fluids_julia
+```julia
 # Project divergence onto u^nu
 energy_cons = ToCanonical(Contract(u[nu] * div_T))
-
-println("Energy Conservation Equation (u_ν \nabla_μ T^{μν}):")
-energy_cons
 ```
 ## 6. Summary
 

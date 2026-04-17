@@ -1,38 +1,43 @@
-# Migrating from Wolfram xAct
+# Migrate a Wolfram xAct workflow to XAct.jl
 
-This guide is for researchers who already use the Wolfram Language `xAct` suite and want to migrate their workflows to `xAct.jl`. It covers the **Wolfram Expression Translator** — a CLI tool that automatically converts your existing Wolfram code into Julia, TOML, or Python.
+!!! info "LLM TL;DR"
+    - Use `uv run xact-test translate` to convert Wolfram xAct expressions into Julia, Python, TOML, or JSON
+    - Use `uv run xact-test repl` for interactive translation
+    - This page is the migration workflow guide
+    - For command mappings and function tables, use [Wolfram Translation Reference](wolfram-translation-reference.md)
 
-!!! tip "Already familiar with the Julia API?"
-    If you just need a quick reference, see the [Rosetta Stone](getting-started.md#4-reference-migration-rosetta-stone) table.
+This guide shows how to move an existing Wolfram xAct workflow into the sxAct ecosystem. You should already have completed [Installation](installation.md) and have a Wolfram expression, notebook, or `.wl` file ready to translate.
 
-!!! info "Prerequisites"
-    Install sxAct following the [Installation Guide](installation.md). The translator CLI (`xact-test translate`) is included — no Wolfram license required.
+## Choose the migration mode
 
----
+Use the mode that matches your starting point:
 
-## The Translator
+| Starting point | Best tool |
+| :--- | :--- |
+| One or two expressions | `uv run xact-test translate -e ...` |
+| A whole `.wl` file | `uv run xact-test translate --file ...` |
+| Interactive exploration | `uv run xact-test repl` |
+| Need function mappings first | [Wolfram Translation Reference](wolfram-translation-reference.md) |
 
-The `uv run xact-test translate` command parses standard Wolfram xAct expressions and emits equivalent sxAct code. The parser runs entirely locally.
+## Translate a single Wolfram expression
 
-### Quick Example
+Use `translate -e` when you want a quick, explicit conversion.
 
 ```bash
 uv run xact-test translate -e 'DefManifold[M, 4, {a, b, c, d}]' --to julia
-# => XAct.def_manifold!(:M, 4, [:a, :b, :c, :d])
 ```
 
-### Supported Output Formats
+Expected output:
 
-| Format | Flag | Use Case |
-|:-------|:-----|:---------|
-| JSON | `--to json` | Machine-readable action dicts (default) |
-| Julia | `--to julia` | Drop into a Julia REPL or script |
-| TOML | `--to toml` | sxAct verification test files |
-| Python | `--to python` | Python adapter scripts |
+```julia
+XAct.def_manifold!(:M, 4, [:a, :b, :c, :d])
+```
 
-### Translating Multiple Expressions
+You can switch the output format with `--to json`, `--to python`, or `--to toml`.
 
-Separate expressions with semicolons:
+## Translate a short Wolfram session
+
+Separate expressions with semicolons when you want a small script translated in one shot.
 
 ```bash
 uv run xact-test translate -e \
@@ -40,181 +45,52 @@ uv run xact-test translate -e \
   --to julia
 ```
 
-Output:
+This is the fastest way to bootstrap a REPL session or draft Julia script.
 
-```julia
-XAct.def_manifold!(:M, 4, [:a, :b, :c, :d])
-XAct.def_metric!(-1, "g[-a, -b]", :CD)
-XAct.ToCanonical("g[-b, -a]")
-```
+## Translate an existing `.wl` file
 
-### Translating a `.wl` File
-
-If you have an existing Wolfram script:
+Use `--file` when your Wolfram source is already in a notebook export or script.
 
 ```bash
 uv run xact-test translate --file my_notebook.wl --to julia > my_notebook.jl
 ```
 
-Wolfram comments `(* ... *)` are stripped automatically. For multiline expressions, prefer `--file` over `-e` to avoid shell quoting issues.
+Wolfram comments `(* ... *)` are stripped automatically.
+For multiline material, `--file` is usually easier than `-e` because it avoids shell quoting problems.
 
----
+## Use the interactive migration REPL
 
-## Interactive REPL
-
-For an interactive migration session, use the REPL:
+The REPL is the best fit when you want to translate and inspect results incrementally.
 
 ```bash
-# Full mode: parse, translate, and execute in Julia
+# Parse, translate, and execute in Julia
 uv run xact-test repl
 
-# Translate-only mode: no Julia runtime needed
+# Translate only
 uv run xact-test repl --no-eval
 ```
 
-In **translate-only** mode (`--no-eval`), each expression shows the Julia translation:
+In translate-only mode, each input shows the Julia form that would be emitted.
+In full mode, the translated expression is also evaluated.
 
-```
-In[1]: DefManifold[M, 4, {a, b, c, d}]
-  → XAct.def_manifold!(:M, 4, [:a, :b, :c, :d])
+## Verify the translated result in Julia
 
-In[2]: DefMetric[-1, g[-a,-b], CD]
-  → XAct.def_metric!(-1, "g[-a, -b]", :CD)
-
-In[3]: ToCanonical[g[-b,-a] - g[-a,-b]]
-  → XAct.ToCanonical("g[-b, -a] - g[-a, -b]")
-```
-
-In **full mode** (default), expressions are also evaluated and results are displayed:
-
-```
-In[1]: DefManifold[M, 4, {a, b, c, d}]
-Out[1]=   Manifold M (dim=4)
-
-In[2]: DefMetric[-1, g[-a,-b], CD]
-Out[2]=   Metric g[-a, -b] with covd CD
-
-In[3]: ToCanonical[g[-b,-a] - g[-a,-b]]
-Out[3]= 0
-```
-
-### REPL Commands
-
-| Command | Action |
-|:--------|:-------|
-| `:help` | Show all commands |
-| `:quit` / `:q` | Exit |
-| `:reset` | Clear all definitions (calls `reset_state!()`) |
-| `:history` | Show expression history |
-| `:to julia` | Export session as Julia code |
-| `:to toml` | Export session as TOML test file |
-| `:to python` | Export session as Python adapter calls |
-| `:to json` | Export session as JSON |
-
-Session export is useful for converting an interactive exploration into a reproducible script or test file.
-
----
-
-## Supported Translations
-
-The translator recognizes the following Wolfram xAct functions. Functions not in this list are passed through as `eval(...)` with a warning.
-
-!!! warning "Wolfram name differences"
-    Some Wolfram function names differ from their translator input. Notably, Wolfram's `Simplification` is **not** recognized — use `Simplify` instead. See the [naming differences table](#key-differences-from-wolfram-xact) below.
-
-### Definitions
-
-| Wolfram Input | Julia Output | Notes |
-|:--------------|:-------------|:------|
-| `DefManifold[M, 4, {a,b}]` | `def_manifold!(:M, 4, [:a, :b])` | |
-| `DefMetric[-1, g[-a,-b], CD]` | `def_metric!(-1, "g[-a, -b]", :CD)` | Auto-creates Riemann, Ricci, Weyl, Christoffel |
-| `DefTensor[T[-a,-b], M]` | `def_tensor!(:T, ["-a", "-b"], :M)` | |
-| `DefTensor[T[-a,-b], M, Symmetric[{-a,-b}]]` | `def_tensor!(:T, ..., symmetry_str=...)` | Symmetry kwarg |
-| `DefBasis[e, M, {1,2,3,4}]` | `def_basis!(:e, :M, [1,2,3,4])` | |
-| `DefChart[cart, M, {1,2,3,4}, {x,y,z,t}]` | `def_chart!(:cart, :M, ..., [:x,:y,:z,:t])` | |
-| `DefPerturbation[pert, g]` | `def_perturbation!(:pert, :g)` | |
-
-### Computation
-
-| Wolfram Input | Julia Output | Notes |
-|:--------------|:-------------|:------|
-| `ToCanonical[expr]` | `ToCanonical("expr")` | Butler-Portugal canonicalization |
-| `ContractMetric[expr]` | `Contract("expr")` | Metric contraction |
-| `Simplify[expr]` | `Simplify("expr")` | Iterative Contract + ToCanonical |
-| `CommuteCovDs[expr]` | `CommuteCovDs("expr")` | Covariant derivative commutation |
-| `SortCovDs[expr]` | `SortCovDs("expr")` | Canonical CovD ordering |
-| `Perturb[expr]` | `perturb("expr", 1)` | Perturbation expansion |
-| `Perturbation[expr]` | `perturb_curvature("expr", 1)` | Curvature perturbation |
-| `PerturbationOrder[expr]` | `PerturbationOrder("expr")` | Query perturbation order |
-| `PerturbationAtOrder[expr, n]` | `PerturbationAtOrder("expr", n)` | Extract specific order |
-| `VarD[field][expr]` | `VarD("field", "expr")` | Euler-Lagrange variation |
-| `IBP[expr, v]` | `IBP("expr", :v)` | Integration by parts |
-| `TotalDerivativeQ[expr]` | `TotalDerivativeQ("expr")` | Check total derivative |
-| `CheckMetricConsistency[g]` | `CheckMetricConsistency("g")` | Validate metric |
-
-### Basis / Components
-
-| Wolfram Input | Julia Output | Notes |
-|:--------------|:-------------|:------|
-| `SetBasisChange[...]` | `SetBasisChange(...)` | Define basis transformation |
-| `ChangeBasis[expr, basis]` | `ChangeBasis("expr", :basis)` | Change basis |
-| `ToBasis[basis][expr]` | `ToBasis(:basis, "expr")` | Convert to basis |
-| `FromBasis[basis][expr]` | `FromBasis(:basis, "expr")` | Convert from basis |
-| `SetComponents[...]` | `SetComponents(...)` | Assign component values |
-| `GetComponents[...]` | `GetComponents(...)` | Retrieve components |
-| `TraceBasisDummy[expr]` | `TraceBasisDummy("expr")` | Trace over basis indices |
-
----
-
-## Complete Migration Walkthrough
-
-Here is a typical Wolfram xAct session and its Julia equivalent.
-
-### Wolfram (original)
-
-```wolfram
-DefManifold[M, 4, {a, b, c, d, e, f}]
-DefMetric[-1, g[-a, -b], CD]
-DefTensor[T[-a, -b], M, Symmetric[{-a, -b}]]
-
-(* Canonicalize a symmetric tensor *)
-ToCanonical[T[-b, -a] - T[-a, -b]]
-(* => 0 *)
-
-(* Contract with the metric *)
-ContractMetric[g[a, b] T[-a, -b]]
-(* => T[a, a] — the trace *)
-
-(* Simplify a Riemann expression *)
-Simplify[RiemannCD[-a, -b, -c, -d] g[a, c]]
-```
-
-### Julia (translated)
-
-Translate the above in one shot:
-
-```bash
-uv run xact-test translate -e \
-  'DefManifold[M, 4, {a,b,c,d,e,f}]; DefMetric[-1, g[-a,-b], CD]; DefTensor[T[-a,-b], M, Symmetric[{-a,-b}]]; ToCanonical[T[-b,-a] - T[-a,-b]]; ContractMetric[g[a,b] T[-a,-b]]; Simplify[RiemannCD[-a,-b,-c,-d] g[a,c]]' \
-  --to julia
-```
-
-Or write the equivalent Julia directly:
+After translation, run the result in a clean Julia session and compare the outcome you expect.
 
 ```julia
 using XAct
 reset_state!()
 
-M = def_manifold!(:M, 4, [:a, :b, :c, :d, :e, :f])
-g = def_metric!(-1, "g[-a,-b]", :CD)
-T = def_tensor!(:T, ["-a", "-b"], :M; symmetry_str="Symmetric[{-a,-b}]")
-
-ToCanonical("T[-b, -a] - T[-a, -b]")   # => "0"
-Contract("g[a, b] T[-a, -b]")           # => trace
-Simplify("RiemannCD[-a, -b, -c, -d] g[a, c]")
+M = def_manifold!(:M, 4, [:a, :b, :c, :d])
+def_metric!(-1, "g[-a,-b]", :CD)
+ToCanonical("g[-b,-a]")
 ```
 
-### As a TOML Test
+For larger migrations, translate first, then normalize the generated code into a repeatable Julia script or TOML test file.
+
+## Turn the migration into a regression test
+
+If the migrated expression matters for future work, convert it into TOML and run it through the verification layer.
 
 ```bash
 uv run xact-test translate -e \
@@ -222,85 +98,28 @@ uv run xact-test translate -e \
   --to toml
 ```
 
-Output:
+Then run the resulting test file with the verification tooling.
+This gives you a reproducible parity check instead of a one-off migration.
 
-```toml
-[meta]
-id = "translated-session"
-description = "Translated from Wolfram xAct"
-tags = ["translated"]
-layer = 1
-oracle_is_axiom = true
+## Troubleshoot common migration failures
 
-[[setup]]
-action = "DefManifold"
-store_as = "M"
-[setup.args]
-name = "M"
-dimension = 4
-indices = ["a", "b", "c", "d"]
+| Symptom | Likely cause | Fix |
+| :--- | :--- | :--- |
+| Translator warns about an unrecognized function | The function is not yet mapped or uses a different accepted name | Check [Wolfram Translation Reference](wolfram-translation-reference.md) and adjust the input |
+| Output uses string expressions where you expected typed ones | The translator targets broadly compatible API forms | Accept the translated output first, then refactor to typed API manually if desired |
+| Shell quoting becomes painful | Multiline or heavily nested Wolfram input | Put the source in a `.wl` file and use `--file` |
+| Translation succeeds but runtime evaluation fails | The translated code still needs setup or ordering fixes | Run in a clean session with `reset_state!()` and add missing definitions |
+| You only need a lookup table, not a workflow | Wrong document | Use [Wolfram Translation Reference](wolfram-translation-reference.md) |
 
-[[setup]]
-action = "DefMetric"
-[setup.args]
-signdet = -1
-metric = "g[-a, -b]"
-covd = "CD"
+## Keep the roles of the migration docs separate
 
-[[tests]]
-id = "test_1"
-description = "ToCanonical: g[-b, -a]"
+Use this page for the migration procedure.
+Use [Wolfram Translation Reference](wolfram-translation-reference.md) for supported function mappings, naming differences, and quick Wolfram-to-Julia lookup.
+Use [Getting Started](getting-started.md) if you are learning the Julia or Python APIs from scratch rather than porting existing Wolfram material.
 
-[[tests.operations]]
-action = "ToCanonical"
-[tests.operations.args]
-expression = "g[-b, -a]"
-```
+## Continue after the first successful translation
 
----
-
-## Key Differences from Wolfram xAct
-
-| Concept | Wolfram | Julia / Translator |
-|:--------|:--------|:-------------------|
-| **Names** | Bare symbols: `M`, `T` | Julia Symbols: `:M`, `:T` |
-| **Indices** | `T[-a, -b]` | Strings: `"-a"`, `"-b"` (in API calls) |
-| **State** | Global kernel | Global registry; `reset_state!()` to clear |
-| **Side effects** | Implicit | Explicit `!` suffix: `def_manifold!`, `def_tensor!` |
-| **Contraction** | `ContractMetric` | `Contract` (translator accepts `ContractMetric`) |
-| **Simplify** | `Simplification` (Wolfram name) | `Simplify` (use `Simplify` in translator, not `Simplification`) |
-| **CovD ordering** | `SortCovDs` | Both `SortCovDs` and `CommuteCovDs` work |
-| **Perturbation** | `Perturbation[expr]` | `Perturb[expr]` for general; `Perturbation[expr]` routes to `perturb_curvature` |
-| **Auto-tensors** | `DefMetric` creates Riemann etc. | Same: `def_metric!` auto-creates all curvature tensors |
-| **Scoping** | `Module`, `Block`, `With` | Not supported — translate procedural code manually |
-| **License** | Wolfram Mathematica license | Free and open source (GPL-3.0) |
-
----
-
-## Tips for a Smooth Migration
-
-1. **Start with the REPL.** Use `uv run xact-test repl` to interactively translate your expressions and verify they produce the same results.
-
-2. **Translate file-by-file.** Use `uv run xact-test translate --file notebook.wl --to julia` to convert existing notebooks.
-
-3. **Check the warnings.** If the translator emits "Unrecognized function" warnings, the function may need manual translation or a different name (e.g., `Simplify` instead of Wolfram's `Simplification`). File an issue if you think it should be supported.
-
-4. **Use `reset_state!()`** at the top of Julia scripts to ensure a clean session — just like restarting the Wolfram kernel.
-
-5. **Stick to ASCII identifiers.** Wolfram special characters like `\[Mu]` or `\[CapitalDelta]` are not supported. Use standard Latin-alphabet names.
-
-6. **Run the verification suite** to confirm parity with Wolfram results:
-
-    ```bash
-    uv run xact-test run tests/xtensor/canonicalization.toml \
-      --adapter julia --oracle-mode snapshot --oracle-dir oracle
-    ```
-
----
-
-## Next Steps
-
-- [Getting Started](getting-started.md) — Full Julia tutorial from scratch
-- [Basics Tutorial](examples/basics.md) — Step-by-step walkthrough with Julia, Python, and Wolfram examples
-- [Feature Status](status.md) — What's implemented and verified
-- [Architecture](architecture.md) — How xAct.jl is structured
+- Learn the native API in [Getting Started](getting-started.md)
+- Practice with the [Basics tutorial](examples/basics.md)
+- Look up function mappings in [Wolfram Translation Reference](wolfram-translation-reference.md)
+- Review implementation status in [Feature Matrix](status.md)

@@ -4,86 +4,39 @@ EditURL = "../../examples/basics.jl"
 
 # Basics Tutorial
 
-This tutorial introduces the core concepts of `xAct.jl` and shows how to perform
-basic tensor algebra operations. We provide examples in **Julia**, **Python**,
-and the original **Wolfram Language (xAct)** to help with migration.
+This tutorial walks through a safe Julia-first session in `XAct.jl`.
+You should already have completed [Installation](../installation.md) and skimmed [Getting Started](../getting-started.md).
 
-Expressions are written using the **typed API** — index objects and operator
-overloading that validates slot counts and manifold membership at construction
-time. The string API (`ToCanonical("T[-a,-b]")`) still works everywhere and is
-noted as an equivalent alternative.
+The goal is to define a manifold, add tensors and a metric, and verify a few core identities with the typed API.
+If you want Python examples or Wolfram translation details, use the linked notebook and migration guides rather than this tutorial.
 
-## 1. Setup
-First, we load the `xAct` module.
-
-**Julia**
+## 1. Start a clean Julia session
+Begin in a fresh session so repeated definitions do not collide.
 
 ````@example basics
 using XAct
 reset_state!()
 ````
 
-**Python**
-```python
-import xact
-xact.reset()
-```
-
-## 2. Defining a Manifold
-In General Relativity, our spacetime is represented as a manifold.
-In `xAct.jl`, we use `def_manifold!`. The `!` indicates that this function
-modifies the global session state.
-
-`@indices` declares typed index variables bound to the manifold.
-`-a` then gives a covariant (down) index.
-
-**Julia**
+## 2. Define the manifold and typed indices
+In General Relativity, spacetime is modeled as a manifold.
+`@indices` creates typed index variables bound to that manifold.
 
 ````@example basics
 M = def_manifold!(:M, 4, [:a, :b, :c, :d, :e, :f])
 @indices M a b c d e f
 ````
 
-**Python**
-```python
-M = xact.Manifold("M", 4, ["a", "b", "c", "d", "e", "f"])
-a, b, c, d, e, f = xact.indices(M)
-```
-
-**Wolfram (xAct)**
-```wolfram
-DefManifold[M, 4, {a, b, c, d, e, f}]
-```
-
-## 3. Defining Tensors
-Now we define a symmetric rank-2 tensor $T_{ab}$.
-After definition, `tensor()` returns a handle for typed expression building.
-
-**Julia**
+## 3. Define a symmetric tensor
+Now define a rank-2 symmetric tensor and fetch a typed handle for expression building.
 
 ````@example basics
 def_tensor!(:T, ["-a", "-b"], :M; symmetry_str="Symmetric[{-a,-b}]")
 T_h = tensor(:T)
 ````
 
-**Python**
-```python
-T = xact.Tensor("T", ["-a", "-b"], M, symmetry="Symmetric[{-a,-b}]")
-T_h = xact.tensor("T")
-```
-
-**Wolfram (xAct)**
-```wolfram
-DefTensor[T[-a, -b], M, Symmetric[{-a, -b}]]
-```
-
-## 4. Canonicalization
-One of the most powerful features of xAct is its ability to canonicalize
-tensor expressions using the Butler-Portugal algorithm.
-
-Since $T$ is symmetric, $T_{ba} - T_{ab} = 0$.
-
-**Julia**
+## 4. Canonicalize a simple symmetry identity
+Because `T` is symmetric, swapping its slots should not change the expression.
 
 ````@example basics
 ToCanonical(T_h[-b, -a] - T_h[-a, -b])
@@ -91,23 +44,8 @@ ToCanonical(T_h[-b, -a] - T_h[-a, -b])
 
 > **String API equivalent:** `ToCanonical("T[-b,-a] - T[-a,-b]")`
 
-**Python**
-```python
-xact.canonicalize(T_h[-b,-a] - T_h[-a,-b])  # or xact.canonicalize("T[-b,-a] - T[-a,-b]")
-```
-
-**Wolfram (xAct)**
-```wolfram
-ToCanonical[T[-b, -a] - T[-a, -b]]
-(* returns 0 *)
-```
-
-## 5. Defining a Metric
-The metric tensor $g_{ab}$ is fundamental to defining geometry and curvature.
-In `xAct.jl`, defining a metric automatically creates its associated
-covariant derivative (`CD`), Riemann, Ricci, Weyl, Einstein, and Christoffel tensors.
-
-**Julia**
+## 5. Add a metric and inspect the induced geometry
+Defining a metric also creates the associated covariant derivative and curvature tensors.
 
 ````@example basics
 g = def_metric!(-1, "g[-a,-b]", :CD)
@@ -115,52 +53,16 @@ Riem = tensor(:RiemannCD)
 g_h = tensor(:g)
 ````
 
-**Python**
-```python
-g = xact.Metric(M, "g", signature=-1, covd="CD")
-Riem = xact.tensor("RiemannCD")
-```
-
-**Wolfram (xAct)**
-```wolfram
-DefMetric[-1, g[-a, -b], CD]
-```
-
-## 6. Riemann Tensor Identities
-The Riemann tensor satisfies well-known symmetries that the canonicalizer
-automatically recognizes.
-
-First Bianchi identity — $R_{abcd} + R_{acdb} + R_{adbc} = 0$:
-
-**Julia**
+## 6. Verify Riemann tensor symmetries
+The canonicalizer recognizes the standard Riemann identities automatically.
 
 ````@example basics
 ToCanonical(Riem[-a, -b, -c, -d] + Riem[-a, -c, -d, -b] + Riem[-a, -d, -b, -c])
-````
-
-**Python**
-```python
-xact.canonicalize(Riem[-a,-b,-c,-d] + Riem[-a,-c,-d,-b] + Riem[-a,-d,-b,-c])
-```
-
-Pair symmetry — $R_{abcd} = R_{cdab}$:
-
-**Julia**
-
-````@example basics
 ToCanonical(Riem[-a, -b, -c, -d] - Riem[-c, -d, -a, -b])
 ````
 
-**Python**
-```python
-xact.canonicalize(Riem[-a,-b,-c,-d] - Riem[-c,-d,-a,-b])
-```
-
-## 7. Contraction
-`Contract` lowers/raises indices via the metric. Define a vector $V^a$
-and lower its index to get $V_b$:
-
-**Julia**
+## 7. Contract a vector with the metric
+Define a vector and lower its index through metric contraction.
 
 ````@example basics
 def_tensor!(:V, ["a"], :M)
@@ -168,45 +70,29 @@ V_h = tensor(:V)
 Contract(V_h[a] * g_h[-a, -b])
 ````
 
-**Python**
-```python
-V = xact.Tensor("V", ["a"], M)
-V_h = xact.tensor("V")
-xact.contract(V_h[a] * g[-a,-b])
-```
-
-## 8. Validation
-The typed API catches mistakes at construction time — before the expression
-reaches the engine:
-
-**Julia**
+## 8. Trigger typed validation on purpose
+The typed API catches invalid tensor applications before evaluation.
 
 ````@example basics
 try
-    Riem[-a, -b]     ## ERROR: RiemannCD has 4 slots, got 2
+    Riem[-a, -b]
 catch e
     println(e)
 end
 ````
 
-**Python**
-```python
-try:
-    Riem[-a,-b]   # IndexError: RiemannCD has 4 slots, got 2
-except IndexError as err:
-    print(err)
-```
+## 9. Troubleshoot common fail states
+- **Symbol already exists**: call `reset_state!()` and rerun the tutorial from the top.
+- **Wrong number of slots**: check the tensor rank before indexing.
+- **Manifold mismatch**: ensure every typed index belongs to the same manifold as the tensor slots.
 
-## 9. Common Pitfalls
-- **Name Collisions**: Defining a manifold or tensor with an existing name throws an error.
-- **Global State**: The `!` functions modify the global session. Re-running a cell
-  in a notebook may trigger a "Symbol already exists" error — call `reset_state!()` first.
-
-## 10. Next Steps
-Now that you've mastered the basics, check out:
-- [Differential Geometry Primer](../differential-geometry-primer.md)
-- [Feature Status](../status.md)
+## 10. Continue with deeper material
+- For the full typed API: [Typed Expressions (TExpr)](../guide/TExpr.md)
+- For notebook-based practice: [Julia notebook](../notebooks/basics_julia.md)
+- For Python usage: [Python notebook](../notebooks/basics_python.md)
+- For Wolfram workflows: [Wolfram Migration Guide](../wolfram-migration.md)
 
 ---
 
 *This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
+

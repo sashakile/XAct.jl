@@ -76,14 +76,14 @@ F_expr
 In vacuum (or with a source current $J^\mu$), the inhomogeneous Maxwell equations are:
 $\nabla_\mu F^{\mu\nu} = J^\nu$
 
-Let's compute the divergence of the Faraday tensor symbolically.
+Let's write the divergence of the Faraday tensor in a form that can be expanded term-by-term:
 
-```@example physics_em_julia
-# Compute the divergence: g^{αμ} \nabla_α F_{μν}
-div_F = ToCanonical(Contract(tensor(:g)[alpha, mu] * covd(:CD)[-alpha](F_expr)))
-
-println("Divergence of F_{μν}:")
-div_F
+```julia
+# Compute the divergence: g^{αμ} ∇_α F_{μν}
+div_F = ToCanonical(
+    Contract(tensor(:g)[alpha, mu] * covd(:CD)[-alpha](covd(:CD)[-mu](A[-nu])))
+    - Contract(tensor(:g)[alpha, mu] * covd(:CD)[-alpha](covd(:CD)[-nu](A[-mu])))
+)
 ```
 
 ## 5. Wave Equation in the Lorenz Gauge
@@ -93,16 +93,16 @@ wave equation for the potential. However, in curved spacetime, a coupling
 term to the Ricci tensor appears:
 $\square A_\mu - R_\mu{}^\nu A_\nu = -J_\mu$
 
-Let's see if we can derive this relation.
+Let's write the expanded form explicitly.
 
-```@example physics_em_julia
-# Maxwell equation: \nabla^\alpha (\nabla_\alpha A_\mu - \nabla_\mu A_\alpha)
-# Let's expand this and use the Lorenz gauge condition.
-maxwell_lhs = ToCanonical(Contract(tensor(:g)[alpha, beta] * covd(:CD)[-alpha](covd(:CD)[-beta](A[-mu]) - covd(:CD)[-mu](A[-beta]))))
-
-println("Maxwell Equation LHS (expanded):")
-maxwell_lhs
+```julia
+# Maxwell equation: ∇^α (∇_α A_μ - ∇_μ A_α)
+maxwell_lhs = ToCanonical(
+    Contract(tensor(:g)[alpha, beta] * covd(:CD)[-alpha](covd(:CD)[-beta](A[-mu])))
+    - Contract(tensor(:g)[alpha, beta] * covd(:CD)[-alpha](covd(:CD)[-mu](A[-beta])))
+)
 ```
+
 Notice the term involving the commutation of covariant derivatives, which
 results in the curvature coupling.
 

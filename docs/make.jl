@@ -98,6 +98,7 @@ makedocs(;
         "Getting Started" => "getting-started.md",
         "Guide" => ["Typed Expressions (TExpr)" => "guide/TExpr.md"],
         "Key Concepts" => "concepts.md",
+        "Naming and product map" => "naming.md",
         "Migrating from Wolfram" => "wolfram-migration.md",
         "Tutorials" =>
             ["Basics" => "examples/basics.md", "Riemann Invariants" => "examples/invar.md"],
@@ -124,6 +125,7 @@ makedocs(;
             "Python API" => "api-python.md",
             "Verification API" => "api-verification.md",
             "Verification Tools" => "verification-tools.md",
+            "Wolfram Translation Reference" => "wolfram-translation-reference.md",
         ],
         "Contributing" => "contributing.md",
     ],
