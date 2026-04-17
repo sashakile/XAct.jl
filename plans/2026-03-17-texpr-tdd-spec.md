@@ -22,7 +22,7 @@ packages/xact-py/src/xact/expr.py      # New Python module
 tests/unit/test_texpr.py               # Python tests
 ```
 
-`src/TExpr.jl` is `include()`d from `src/xAct.jl` after `XTensor.jl`.
+`src/TExpr.jl` is `include()`d from `src/XAct.jl` after `XTensor.jl`.
 Exports: `Idx`, `DnIdx`, `TensorHead`, `CovDHead`, `TExpr`, `TTensor`,
 `TProd`, `TSum`, `TScalar`, `TCovD`, `@indices`, `tensor`, `covd`.
 

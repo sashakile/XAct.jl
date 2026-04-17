@@ -8,7 +8,7 @@
 
 ## 1. Purpose
 
-Provide a Pythonic interface to the Julia xAct.jl engine with **zero juliacall exposure**.
+Provide a Pythonic interface to the Julia XAct.jl engine with **zero juliacall exposure**.
 Users interact with Python classes and functions; all Julia internals (Symbol conversion,
 Vector wrapping, juliacall imports) are hidden.
 

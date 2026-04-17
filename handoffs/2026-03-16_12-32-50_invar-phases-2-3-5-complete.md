@@ -37,7 +37,7 @@ Continuing the Invar migration — porting Wolfram xAct's Invar module (Riemann 
 3. `src/XInvar.jl:1089-1232` — Phase 3: PermToRiemann + curvature relations
 4. `src/XInvar.jl:1234-1263` — Lazy DB loading globals
 5. `src/InvarDB.jl` — Phase 5: Maple/Mathematica format parsers, LoadInvarDB
-6. `src/xAct.jl` — Bundle; includes XInvar.jl, reset_state! calls _reset_invar_db!
+6. `src/XAct.jl` — Bundle; includes XInvar.jl, reset_state! calls _reset_invar_db!
 7. `test/julia/test_xinvar.jl` — 622 tests across all three phases
 8. `plans/2026-03-11-multi-term-symmetry-engine.md` — Full 11-phase implementation plan
 
@@ -45,7 +45,7 @@ Continuing the Invar migration — porting Wolfram xAct's Invar module (Riemann 
 
 - `src/XInvar.jl` — New module: types (Phase 2), RiemannToPerm pipeline (Phase 3), lazy loading
 - `src/InvarDB.jl` — New file: database parsers (Phase 5)
-- `src/xAct.jl` — Added `include("XInvar.jl")`, `@reexport using .XInvar`, `_reset_invar_db!()` in reset
+- `src/XAct.jl` — Added `include("XInvar.jl")`, `@reexport using .XInvar`, `_reset_invar_db!()` in reset
 - `test/julia/test_xinvar.jl` — New file: 622 tests
 
 ## Key Learnings
@@ -109,7 +109,7 @@ Continuing the Invar migration — porting Wolfram xAct's Invar module (Riemann 
 - `test/julia/test_xinvar.jl`
 
 **Modified files:**
-- `src/xAct.jl`
+- `src/XAct.jl`
 
 ## Test Results (all green)
 

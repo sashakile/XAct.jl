@@ -8,7 +8,7 @@
     - **Goal**: Compare 3D coordinate systems and demonstrate tensor vector calculus.
     - **Key Symbols**: Manifold `:M`, Charts `:Cart`, `:Cyl`, `:Sph`.
     - **Calculus**: Gradient ($\nabla_a \Phi$), Divergence ($\nabla_a V^a$).
-    - **Prerequisites**: `xAct.jl`, `Plots.jl`, `LinearAlgebra`.
+    - **Prerequisites**: `XAct.jl`, `Plots.jl`, `LinearAlgebra`.
 
 This tutorial extends our foundational geometry exploration to 3D Euclidean
 space ($R^3$). We will compare Cartesian, Cylindrical, and Spherical
@@ -35,7 +35,7 @@ using LinearAlgebra
 ```
 
 !!! tip "Common Pitfall: Global State"
-    `xAct.jl` maintains a global registry. If you re-run definition cells
+    `XAct.jl` maintains a global registry. If you re-run definition cells
     without calling `reset_state!()`, you will encounter "Symbol already exists"
     errors.
 
@@ -149,7 +149,7 @@ println("Textbook value (r^2 sin θ): ", textbook_val)
 
 In 3 Dimensions, the Riemann tensor is entirely determined by the Ricci tensor.
 While we can't show the full 3D-specific vanishing of the Weyl tensor here without
-coordinate expansion, we can show how `xAct.jl` manages the abstract relations
+coordinate expansion, we can show how `XAct.jl` manages the abstract relations
 between these tensors.
 
 For example, let's verify that the trace of the Ricci tensor is indeed the Ricci Scalar.

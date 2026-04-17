@@ -2,14 +2,14 @@
     - [Download the Jupyter notebook](https://github.com/sashakile/XAct.jl/blob/main/notebooks/julia/basics.ipynb)
     - [Open in Google Colab](https://colab.research.google.com/github/sashakile/XAct.jl/blob/main/notebooks/julia/basics.ipynb)
 
-# sxAct.jl — Getting Started
+# sXAct.jl — Getting Started
 
 > **Note:** Auto-generated from `notebooks/julia/basics.qmd` via Quarto.
 > Edit the source `.qmd` file, not the `.ipynb`.
 
 ## Overview
 
-This notebook walks through the core workflow of `xAct.jl`:
+This notebook walks through the core workflow of `XAct.jl`:
 defining a spacetime manifold, adding a metric, computing curvature tensors,
 and simplifying expressions using the Butler-Portugal canonicalization algorithm.
 

@@ -35,7 +35,7 @@ Porting Wolfram xAct's Invar module (Riemann invariant simplification) to Julia.
 1. `src/XInvar.jl` — Core module: types, RiemannToPerm, PermToInv, InvSimplify, RiemannSimplify, dual routing
 2. `src/InvarDB.jl` — Database parser: Maple/Mathematica format, LoadInvarDB, InvarDB struct
 3. `src/XTensor.jl` — SortCovDs, CommuteCovDs, MultiTermIdentity framework
-4. `src/xAct.jl` — Bundle: includes XInvar, reset_state! clears all caches
+4. `src/XAct.jl` — Bundle: includes XInvar, reset_state! clears all caches
 5. `test/julia/test_xinvar.jl` — 771 tests (types, parsing, conversion, DB, simplification, duals)
 6. `test/julia/test_xtensor.jl` — 441 tests (including 24 SortCovDs)
 7. `plans/2026-03-11-multi-term-symmetry-engine.md` — Full 11-phase plan
@@ -49,7 +49,7 @@ expr (string) → RiemannToPerm → PermToInv → InvSimplify → InvToPerm → 
 
 ### Module structure
 ```
-xAct.jl
+XAct.jl
 ├── XCore.jl
 ├── XTensor.jl (includes XPerm.jl)
 │   ├── MultiTermIdentity framework

@@ -316,7 +316,7 @@ const _identity_registry = Dict{Symbol,Vector{MultiTermIdentity}}()
 # ============================================================
 #
 # XTensor runs standalone (no XCore dependency at module level).
-# When loaded via xAct.jl, set_symbol_hooks! wires in XCore.ValidateSymbol
+# When loaded via XAct.jl, set_symbol_hooks! wires in XCore.ValidateSymbol
 # and XCore.register_symbol so that every def_*! call validates names against
 # the global xAct symbol registry.  In standalone mode, the hooks are no-ops
 # and validation is limited to XTensor's own session-level checks.
@@ -360,7 +360,7 @@ const _default_session = Ref{Session}(
 
 Install XCore symbol-validation and registration hooks.
 
-Called by xAct.jl after loading both XCore and XTensor:
+Called by XAct.jl after loading both XCore and XTensor:
 
     XTensor.set_symbol_hooks!(XCore.ValidateSymbol, XCore.register_symbol)
 """

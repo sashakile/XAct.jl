@@ -91,7 +91,7 @@ In General Relativity, the vacuum field equations $G_{ab} = 0$ can be derived
 from the Einstein-Hilbert action:
 $S = \int d^4x \sqrt{-g} R$
 
-Using `xAct.jl`, we can derive the Einstein tensor by taking the **variational
+Using `XAct.jl`, we can derive the Einstein tensor by taking the **variational
 derivative** of the Ricci Scalar with respect to the metric.
 
 ```{julia}

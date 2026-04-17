@@ -42,7 +42,7 @@ docs/
 ### 3.1 The "Migration Rosetta Stone" (Landing Page)
 The homepage (`index.md`) will feature a high-signal comparison table to immediately orient users arriving from the Wolfram ecosystem.
 
-| Operation | Wolfram (xAct) | Julia (sxAct.jl) | Python (sxact-py) |
+| Operation | Wolfram (xAct) | Julia (sXAct.jl) | Python (sxact-py) |
 | :--- | :--- | :--- | :--- |
 | **DefManifold** | `DefManifold[M, 4, {a,b}]` | `M = Manifold(:M, 4)` | `M = sxact.Manifold("M", 4)` |
 | **DefTensor** | `DefTensor[T[-a,-b], M]` | `T = Tensor(:T, [-a, -b], M)` | `T = sxact.Tensor("T", [-a, -b], M)` |

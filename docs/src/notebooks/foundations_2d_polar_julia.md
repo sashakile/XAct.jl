@@ -8,7 +8,7 @@
     - **Goal**: Teach coordinate transformations and metrics in 2D Euclidean space.
     - **Key Symbols**: Manifold `:M`, Charts `:Cart`, `:Polar`.
     - **Verification**: Metric transforms as $g_{i'j'} = J^i{}_{i'} J^j{}_{j'} g_{ij}$.
-    - **Prerequisites**: `xAct.jl`, `Plots.jl`, `LinearAlgebra`.
+    - **Prerequisites**: `XAct.jl`, `Plots.jl`, `LinearAlgebra`.
 
 This tutorial introduces foundational concepts in differential geometry using
 a familiar 2D Euclidean space. We will define the Euclidean metric in Cartesian
@@ -36,7 +36,7 @@ using Plots
 using LinearAlgebra
 ```
 
-    `xAct.jl` maintains a global registry of manifolds and tensors. If you re-run
+    `XAct.jl` maintains a global registry of manifolds and tensors. If you re-run
     definition cells (like `def_manifold!`) without calling `reset_state!()`,
     you will get a "Symbol already exists" error. Always include `reset_state!()`
     at the start of your exploration.

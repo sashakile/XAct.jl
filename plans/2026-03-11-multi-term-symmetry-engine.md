@@ -83,7 +83,7 @@ XTensor.jl is already large. New code is organized as follows:
 | `src/XTensor.jl` | Multi-term identity framework (`_apply_identities!`, `register_identity!`) | Phase 1 |
 | `src/XInvar.jl` | Invariant types (RPerm, RInv), RiemannToPerm, PermToRiemann, InvSimplify, RiemannSimplify | Phases 2-10 |
 | `src/InvarDB.jl` | Database parser (Maple/Mathematica formats), caching, download | Phase 5 |
-| `src/xAct.jl` | `include("XInvar.jl")` after `include("XTensor.jl")` | Phase 2 |
+| `src/XAct.jl` | `include("XInvar.jl")` after `include("XTensor.jl")` | Phase 2 |
 
 XInvar.jl depends on XTensor.jl (uses `ToCanonical`, `Contract`, tensor registries) but not vice versa.
 
@@ -255,7 +255,7 @@ None — purely internal refactoring.
 - Add `InvarCases(order, degree)` — enumerate cases matching Invar.m:324-357
 - Add `PermDegree(case)` — compute permutation degree from case
 
-**File: `src/xAct.jl`**
+**File: `src/XAct.jl`**
 - Add `include("XInvar.jl")` after `include("XTensor.jl")`
 
 ### Data Structures
@@ -299,7 +299,7 @@ const RINV_MAX_INDEX = Dict{Vector{Int}, Int}(
 - [ ] `InvarCases(order)` partitions correctly by derivative order
 - [ ] `PermDegree` matches Invar.m formula for all cases
 - [ ] RPerm/RInv types are constructible and printable
-- [ ] `xAct.jl` loads XInvar.jl without error
+- [ ] `XAct.jl` loads XInvar.jl without error
 
 ### Dependencies
 None — standalone data types.

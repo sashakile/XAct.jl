@@ -7,7 +7,7 @@
 
 The Python ecosystem consists of two packages:
 
-1. **`xact`** — Python wrapper for the Julia `xAct.jl` core, providing snake_case access to XCore functions.
+1. **`xact`** — Python wrapper for the Julia `XAct.jl` core, providing snake_case access to XCore functions.
 2. **`sxact`** — Verification framework for automated parity testing against the Wolfram Oracle.
 
 ---
@@ -272,7 +272,7 @@ Adapters translate TOML test actions into backend-specific calls and return norm
 
 | Adapter | Backend | Description |
 | :--- | :--- | :--- |
-| `JuliaAdapter` | `xAct.jl` via `juliacall` | Routes actions to XTensor.jl |
+| `JuliaAdapter` | `XAct.jl` via `juliacall` | Routes actions to XTensor.jl |
 | `WolframAdapter` | Dockerized Wolfram Engine | Connects to the Oracle HTTP server |
 
 ### Adapter Lifecycle

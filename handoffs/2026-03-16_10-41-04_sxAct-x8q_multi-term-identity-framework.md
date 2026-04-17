@@ -48,7 +48,7 @@ Working on the Invar migration — porting Wolfram xAct's Invar module (Riemann 
 4. `src/XTensor.jl:861-863` - Auto-registration in `def_tensor!` (multi-manifold variant)
 5. `plans/2026-03-11-multi-term-symmetry-engine.md` - Full 11-phase implementation plan
 6. `test/julia/test_xtensor.jl:1886-1985` - New MultiTermIdentity tests
-7. `src/xAct.jl` - Bundle entry point (will need `include("XInvar.jl")` in Phase 2)
+7. `src/XAct.jl` - Bundle entry point (will need `include("XInvar.jl")` in Phase 2)
 
 ## Recent Changes
 
@@ -81,7 +81,7 @@ Working on the Invar migration — porting Wolfram xAct's Invar module (Riemann 
 
 ## Open Questions
 
-- [ ] Phase 2 file organization: plan says `src/XInvar.jl` — confirm `xAct.jl` include order
+- [ ] Phase 2 file organization: plan says `src/XInvar.jl` — confirm `XAct.jl` include order
 - [ ] Invar database availability: plan mentions `xact.es/Invar/Riemann.tar.gz` — need to verify URL is still live for Phase 5
 
 ## Next Steps
@@ -90,7 +90,7 @@ Working on the Invar migration — porting Wolfram xAct's Invar module (Riemann 
    - New file `src/XInvar.jl` with InvariantCase, RPerm, RInv structs
    - MaxIndex table (47 non-dual cases) from Invar.m:389-452
    - `InvarCases()`, `PermDegree()` functions
-   - Add `include("XInvar.jl")` to `src/xAct.jl`
+   - Add `include("XInvar.jl")` to `src/XAct.jl`
    - ~150 lines, 1 session
 
 2. **Phase 5: Database parser (sxAct-h85)** [Priority: HIGH, parallelizable]

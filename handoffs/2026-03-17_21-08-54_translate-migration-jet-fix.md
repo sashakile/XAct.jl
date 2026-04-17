@@ -35,7 +35,7 @@ was documented in the beads issue notes for when Elegua is ready (sxAct-rvzo).
 - [x] Updated all `tests/translate/` test imports to `xact.translate`
 - [x] 142/142 translate tests pass
 - [x] Diagnosed JET failure: `QjpwK_XJHFC.ji` was a valid-but-broken pkgimage missing
-  `xAct.jl` source-text; 9 stale candidates caused Revise to pick wrong one
+  `XAct.jl` source-text; 9 stale candidates caused Revise to pick wrong one
 - [x] Fixed `test/runtests.jl` to purge stale pkgimage caches before `JET.test_package()`
 - [x] All pre-push hooks pass, pushed to remote
 
@@ -73,7 +73,7 @@ was documented in the beads issue notes for when Elegua is ready (sxAct-rvzo).
 
 1. **JET failure was stale pkgimage accumulation, not a code bug**
    - `Base.find_all_in_cache_path(id)` returned 9 candidates; `QjpwK_XJHFC.ji` passed
-     header validation but had no source-text for `xAct.jl`
+     header validation but had no source-text for `XAct.jl`
    - Revise (used internally by JET) picked the broken candidate on that run
    - Fix: purge all but the newest `.ji`/`.so` pair before `JET.test_package()`
    - Broken file confirmed via `Base.read_dependency_src(cachefile, srcfile)` — threw

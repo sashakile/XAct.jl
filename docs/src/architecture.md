@@ -1,18 +1,18 @@
 # Architecture
 
 !!! info "Architecture TL;DR for AI Agents"
-    Five Julia modules (XCore → XPerm → XTensor → XInvar, plus TExpr) bundled as `xAct.jl`. Verified via Python `sxact` framework against Dockerized Wolfram Oracle using TOML test cases and snapshot comparison. Python public API exposed via `xact-py`. Wolfram migration tooling in `sxact.translate`.
+    Five Julia modules (XCore → XPerm → XTensor → XInvar, plus TExpr) bundled as `XAct.jl`. Verified via Python `sxact` framework against Dockerized Wolfram Oracle using TOML test cases and snapshot comparison. Python public API exposed via `xact-py`. Wolfram migration tooling in `sxact.translate`.
 
-`xAct.jl` is a Julia port of the Wolfram xAct tensor algebra suite with ergonomic additions (TExpr typed expression layer, Python bindings). The `sxact` package provides verification tooling and Wolfram migration utilities. Chacana (external repo) is a language-agnostic tensor DSL; this repo will accept Chacana as an input format to the translate tooling once the Chacana spec stabilises.
+`XAct.jl` is a Julia port of the Wolfram xAct tensor algebra suite with ergonomic additions (TExpr typed expression layer, Python bindings). The `sxact` package provides verification tooling and Wolfram migration utilities. Chacana (external repo) is a language-agnostic tensor DSL; this repo will accept Chacana as an input format to the translate tooling once the Chacana spec stabilises.
 
 ## Related Projects
 
-- **xAct.jl** (This Repo): The native computational engine and verification suite.
+- **XAct.jl** (This Repo): The native computational engine and verification suite.
 - [Chacana](https://github.com/sashakile/chacana) (External): A language-agnostic Tensor DSL and specification. Once the Chacana spec stabilises, this repo will accept Chacana as an input format to the translate tooling.
 
 ## Julia Core
 
-The native library follows the original xAct design, split into modules bundled by `xAct.jl`:
+The native library follows the original xAct design, split into modules bundled by `XAct.jl`:
 
 - **XCore.jl**: Foundational symbol registry, expression validator, and session state manager.
 - **XPerm.jl**: Group theory engine implementing the Butler-Portugal algorithm for tensor index canonicalization. Includes Schreier-Sims, Niehoff shortcuts, and Young tableaux.
@@ -33,12 +33,12 @@ The `xact-py` package (`packages/xact-py`) exposes a Pythonic public API over th
 The `sxact.translate` module provides Wolfram Language → Julia migration utilities:
 
 - Parses Wolfram xAct expressions and notebook syntax.
-- Emits equivalent `xact-py` or `xAct.jl` code.
+- Emits equivalent `xact-py` or `XAct.jl` code.
 - Used for batch migration of existing Wolfram xAct workflows.
 
 ## Verification Layer
 
-To ensure mathematical correctness, `xAct.jl` is verified against the original Wolfram implementation:
+To ensure mathematical correctness, `XAct.jl` is verified against the original Wolfram implementation:
 
 - **Wolfram Oracle**: A Dockerized Wolfram Engine running xAct. Provides reference results for parity testing.
 - **Test Runner (`sxact`)**: A Python framework that drives TOML-defined test cases through the Julia and Wolfram adapters, comparing results via normalization, symbolic simplification, and numeric sampling.
@@ -69,5 +69,5 @@ Verification Pipeline
 Migration
   Wolfram Language expression / notebook
     → sxact.translate
-      → xact-py or xAct.jl code
+      → xact-py or XAct.jl code
 ```

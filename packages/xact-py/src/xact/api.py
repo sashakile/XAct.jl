@@ -1,6 +1,6 @@
 """Public Python API for xAct tensor algebra.
 
-Provides a Pythonic interface to the Julia xAct.jl engine. All Julia
+Provides a Pythonic interface to the Julia XAct.jl engine. All Julia
 internals (juliacall, Symbol conversion, Vector wrapping) are hidden.
 
 Example::

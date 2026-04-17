@@ -32,7 +32,7 @@ the docs. The codebase is now in a fully documented, clean state with no in-prog
 ### Planned (from `bd ready`)
 - **sxAct-d0gf** (P2) — Colab demo notebook content (Julia + Python)
 - **sxAct-rvzo** (P2) — Refactor sxAct to consume Elegua as external dependency (blocked on Elegua repo)
-- **sxAct-c15s** (P3) — Update install instructions once xAct.jl is in registry and xact-py is on PyPI
+- **sxAct-c15s** (P3) — Update install instructions once XAct.jl is in registry and xact-py is on PyPI
 
 ## Critical Files
 

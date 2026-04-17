@@ -1,4 +1,4 @@
-# xAct.jl (sxAct)
+# XAct.jl (sxAct)
 
 High-performance Julia implementation of the xAct tensor algebra suite for General Relativity.
 

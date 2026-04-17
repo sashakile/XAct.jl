@@ -1,6 +1,6 @@
 # Installation
 
-This guide covers how to install the `xAct.jl` package for research use, as well as the optional verification framework for developers.
+This guide covers how to install the `XAct.jl` package for research use, as well as the optional verification framework for developers.
 
 Canonical onboarding path: README → Installation → [Getting Started](getting-started.md) → [Typed Expressions (TExpr)](guide/TExpr.md).
 

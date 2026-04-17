@@ -1,10 +1,10 @@
-# Key Concepts in xAct.jl
+# Key Concepts in XAct.jl
 
-This page explains the fundamental concepts and design decisions in the `xAct.jl` implementation.
+This page explains the fundamental concepts and design decisions in the `XAct.jl` implementation.
 
 ## 1. Symbol Registry
 
-`xAct.jl` maintains a global registry of manifolds, vbundles, and tensors. This mimics the stateful nature of the original Wolfram implementation, allowing for a more direct migration path.
+`XAct.jl` maintains a global registry of manifolds, vbundles, and tensors. This mimics the stateful nature of the original Wolfram implementation, allowing for a more direct migration path.
 
 - **Stateful Definitions**: Functions that modify the global registry end in `!` by convention (e.g., `def_tensor!`, `def_manifold!`).
 - **Persistence**: Symbols defined in one part of your script are available globally until `reset_state!()` is called.
@@ -36,6 +36,6 @@ A core pillar of the project is **mathematical correctness**. Every operation is
 
 ## 5. Portability (Julia & Python)
 
-`xAct.jl` is designed as a polyglot library:
+`XAct.jl` is designed as a polyglot library:
 - **Julia Core**: High-performance implementation in native Julia.
 - **Python Wrapper**: Snake-case API using `PythonCall.jl`, allowing seamless use in Jupyter notebooks alongside `NumPy` and `SymPy`.

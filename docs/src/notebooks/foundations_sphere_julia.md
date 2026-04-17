@@ -8,7 +8,7 @@
     - **Goal**: Demonstrate intrinsic curvature on a 2-sphere embedded in $R^3$.
     - **Key Symbols**: Manifold `:S2`, Chart `:Sph`.
     - **Curvature**: Ricci Scalar $R = 2/R^2$.
-    - **Prerequisites**: `xAct.jl`, `Plots.jl`, `LinearAlgebra`.
+    - **Prerequisites**: `XAct.jl`, `Plots.jl`, `LinearAlgebra`.
 
 This tutorial explores **intrinsic curvature** using the 2-sphere ($S^2$)
 embedded in 3D Euclidean space. We will calculate the induced metric on the
@@ -116,7 +116,7 @@ println("Ricci Scalar (expected 2.0): ", val)
 
 ## 6. Symbolic Algebra: Leveraging the Engine
 
-The real power of `xAct.jl` lies in its ability to manipulate tensor expressions
+The real power of `XAct.jl` lies in its ability to manipulate tensor expressions
 abstractly. Instead of just calculating numbers, we can verify geometric identities
 that must hold for *any* metric.
 

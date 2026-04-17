@@ -13,13 +13,13 @@ status: handoff
 
 This session focused on advancing the xAct migration. Two issues were resolved:
 
-1. **sxAct-2ut** (P1) — "Bundle subcomponents into xAct.jl meta-package" was verified complete (all 5 acceptance criteria met) and closed.
+1. **sxAct-2ut** (P1) — "Bundle subcomponents into XAct.jl meta-package" was verified complete (all 5 acceptance criteria met) and closed.
 2. **sxAct-00d** (P2) — "xTensor: Implement Basis and Frame support" was implemented from scratch. This adds `def_basis!` and `def_chart!` to XTensor.jl, providing the foundation layer that xCoba (coordinate transformations and component maps) depends on.
 
 ## Current Status
 
 ### Completed
-- [x] sxAct-2ut: xAct.jl meta-package bundling (verified already complete, closed)
+- [x] sxAct-2ut: XAct.jl meta-package bundling (verified already complete, closed)
 - [x] sxAct-00d: Basis/Frame support — `BasisObj`, `ChartObj`, `def_basis!`, `def_chart!`
 - [x] All predicates: `BasisQ`, `ChartQ`, `VBundleOfBasis`, `BasesOfVBundle`, `CNumbersOf`, `PDOfBasis`, `ManifoldOfChart`, `ScalarsOfChart`
 - [x] `CovDQ` updated to recognize parallel derivatives from bases

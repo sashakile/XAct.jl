@@ -7,7 +7,7 @@
 ## 1. Current Architecture
 
 ```
-xAct.jl (module entry)
+XAct.jl (module entry)
 ├── XCore.jl       (663 lines)  — Symbol validation, utility functions
 ├── XTensor.jl    (5024 lines)  — Tensor algebra engine
 │   └── XPerm.jl  (2250 lines)  — Butler-Portugal canonicalization

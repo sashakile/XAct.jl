@@ -1,8 +1,8 @@
-# Contributing to xAct.jl
+# Contributing to XAct.jl
 
-This repository contains both the `xAct.jl` Julia package and the `sxact-py` verification framework.
+This repository contains both the `XAct.jl` Julia package and the `sxact-py` verification framework.
 
-## 1. Julia Development (xAct.jl)
+## 1. Julia Development (XAct.jl)
 
 The Julia source code is located in `src/`.
 
@@ -64,7 +64,7 @@ Test markers:
 
 ## 3. Documentation
 
-`xAct.jl` uses [Documenter.jl](https://juliadocs.github.io/Documenter.jl/stable/) for documentation.
+`XAct.jl` uses [Documenter.jl](https://juliadocs.github.io/Documenter.jl/stable/) for documentation.
 
 ### Building
 ```bash

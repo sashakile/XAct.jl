@@ -4,7 +4,7 @@
 
 # Physics: Relativistic Fluid Dynamics
 
-This tutorial explores **Relativistic Fluid Dynamics** using `xAct.jl`.
+This tutorial explores **Relativistic Fluid Dynamics** using `XAct.jl`.
 We will define the energy-momentum tensor for a **perfect fluid**, verify its
 conservation laws, and derive the relativistic Euler equations.
 

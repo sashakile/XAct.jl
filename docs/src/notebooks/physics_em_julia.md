@@ -4,7 +4,7 @@
 
 # Electromagnetism: Maxwell's Equations in Curved Spacetime
 
-This tutorial demonstrates how to use `xAct.jl` to study classical field theories,
+This tutorial demonstrates how to use `XAct.jl` to study classical field theories,
 specifically **Electromagnetism**. We will define the electromagnetic
 vector potential, construct the Faraday tensor, and verify Maxwell's equations
 in an arbitrary curved background.

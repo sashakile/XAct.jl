@@ -1,6 +1,6 @@
 # Differential Geometry Primer
 
-This document covers the mathematics underlying `xAct.jl`. It's aimed at
+This document covers the mathematics underlying `XAct.jl`. It's aimed at
 contributors with a programming background who want a working understanding of the
 relevant concepts — enough to read tensor algebra code and xAct's notation.
 

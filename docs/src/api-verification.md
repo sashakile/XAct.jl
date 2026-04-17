@@ -6,7 +6,7 @@
     - **Comparison**: Three-tier (`compare()`): normalized string → symbolic Simplify → numeric sampling
     - **Snapshots**: `SnapshotComparator` for offline hash-based regression testing
 
-The `sxact` Python package is a specialized framework for verifying the mathematical correctness of `xAct.jl` against the Wolfram Language implementation.
+The `sxact` Python package is a specialized framework for verifying the mathematical correctness of `XAct.jl` against the Wolfram Language implementation.
 
 ## 1. OracleClient
 

@@ -1,4 +1,4 @@
-# xAct.jl - Command Runner
+# XAct.jl - Command Runner
 
 # Build the documentation using Documenter.jl
 docs:

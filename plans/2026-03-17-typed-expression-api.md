@@ -823,7 +823,7 @@ Contains all typed expression types, `@indices`, `tensor()`, `covd()`,
 `_to_string()`, `_validate_tensor_indices()`, `_flatten_*` helpers,
 `show()` methods, and `TExpr` method overloads for engine functions.
 
-Included from `xAct.jl` after `XTensor.jl` (needs access to `_tensors`,
+Included from `XAct.jl` after `XTensor.jl` (needs access to `_tensors`,
 `_manifolds`, `_metrics` registries).
 
 ### Python

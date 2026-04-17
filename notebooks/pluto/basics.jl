@@ -13,9 +13,9 @@ end
 
 # ╔═╡ a1000002-0000-0000-0000-000000000002
 md"""
-# sxAct.jl — Interactive Tutorial
+# sXAct.jl — Interactive Tutorial
 
-This Pluto notebook introduces the core workflow of `xAct.jl`:
+This Pluto notebook introduces the core workflow of `XAct.jl`:
 manifolds, metrics, canonicalization, and curvature.
 
 Expressions are written using the **typed API** — `@indices` declares index

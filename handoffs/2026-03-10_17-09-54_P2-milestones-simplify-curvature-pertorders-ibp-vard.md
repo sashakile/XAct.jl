@@ -25,9 +25,9 @@ snapshots in `oracle/xtensor/`.
 
 ### Completed this session
 - [x] **sxAct-9ya** — `Simplify` now calls `Contract` then `ToCanonical` iteratively
-  until convergence (max 20 iters). Also added `xAct.jl` bundle entry-point and
+  until convergence (max 20 iters). Also added `XAct.jl` bundle entry-point and
   `reset_core!()`. Fixed `_serialize` pure-scalar trailing-space bug.
-  `src/julia/XTensor.jl:1840-1850`, `src/julia/xAct.jl`
+  `src/julia/XTensor.jl:1840-1850`, `src/julia/XAct.jl`
 - [x] **sxAct-sz5** — `PerturbCurvature` action: returns δΓ, δR_{abcd}, δR_{ab}, δR
   as formula strings. **RO5U found factor-of-2 bug in RicciScalar1** (was `2δR`,
   fixed to `δR`). `src/julia/XTensor.jl:1891-2291`
@@ -49,9 +49,9 @@ snapshots in `oracle/xtensor/`.
 ## Critical Files
 
 1. `src/julia/XTensor.jl` — entire algebra engine; ~2300 lines
-2. `src/julia/xAct.jl` — new bundle entry-point (loads XCore + XTensor)
+2. `src/julia/XAct.jl` — new bundle entry-point (loads XCore + XTensor)
 3. `src/sxact/adapter/julia_stub.py` — Python→Julia dispatch for all actions
-4. `src/sxact/xcore/_runtime.py:42-58` — runtime now loads `xAct.jl` (not XCore.jl)
+4. `src/sxact/xcore/_runtime.py:42-58` — runtime now loads `XAct.jl` (not XCore.jl)
 5. `src/julia/tests/test_xtensor.jl` — 132 Julia unit tests
 6. `tests/xtensor/` — TOML integration tests (144 total)
 7. `oracle/xtensor/` — snapshot oracles keyed by test id
@@ -61,11 +61,11 @@ snapshots in `oracle/xtensor/`.
 - `src/julia/XTensor.jl` — Simplify convergence loop; PerturbCurvature;
   PerturbationOrder/AtOrder; def_perturbation! duplicate guard;
   _serialize pure-scalar fix
-- `src/julia/xAct.jl` — new bundle file (46 lines)
+- `src/julia/XAct.jl` — new bundle file (46 lines)
 - `src/julia/XCore.jl:607-628` — new `reset_core!()` function
 - `src/sxact/adapter/julia_stub.py` — removed `_get_xtensor` lazy loader (now in
   runtime); added PerturbCurvature, PerturbationOrder, PerturbationAtOrder
-- `src/sxact/xcore/_runtime.py:42-58` — loads `xAct.jl` / `using .xAct`
+- `src/sxact/xcore/_runtime.py:42-58` — loads `XAct.jl` / `using .xAct`
 - `src/sxact/adapter/base.py` — new actions added to `supported_actions()`
 - `oracle/xtensor/pert_curvature/` — 17 oracle files (new)
 - `oracle/xtensor/pert_orders/` — 26 oracle files (new)
@@ -73,10 +73,10 @@ snapshots in `oracle/xtensor/`.
 
 ## Key Learnings
 
-1. **xAct.jl is now the runtime entry-point** (architectural shift)
-   - `_runtime.py` loads `xAct.jl` which `include()`s XCore.jl then XTensor.jl
+1. **XAct.jl is now the runtime entry-point** (architectural shift)
+   - `_runtime.py` loads `XAct.jl` which `include()`s XCore.jl then XTensor.jl
    - The old `_get_xtensor` lazy loader in `julia_stub.py` was deleted
-   - See `src/sxact/xcore/_runtime.py:42-58` and `src/julia/xAct.jl`
+   - See `src/sxact/xcore/_runtime.py:42-58` and `src/julia/XAct.jl`
 
 2. **RicciScalar1 had a factor-of-2 bug**
    - The inline content of `ricci_scalar1` duplicated `ricci1`'s 4 terms without
@@ -127,12 +127,12 @@ snapshots in `oracle/xtensor/`.
 
 4. **Update MEMORY.md** with new test counts and architecture
    - Test counts: 132 Julia unit tests, 144 TOML xtensor tests
-   - xAct.jl bundle now the runtime entry-point
+   - XAct.jl bundle now the runtime entry-point
 
 ## Artifacts
 
 **New files:**
-- `src/julia/xAct.jl`
+- `src/julia/XAct.jl`
 - `tests/xtensor/pert_curvature.toml`
 - `tests/xtensor/pert_orders.toml`
 - `oracle/xtensor/pert_curvature/` (17 files)
