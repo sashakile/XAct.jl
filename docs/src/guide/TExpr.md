@@ -3,7 +3,7 @@
 !!! info "LLM TL;DR"
     - `@indices M a b c` creates typed index variables bound to manifold `:M`
     - `tensor(:T)` returns a `TensorHead`; apply indices to get an expression: `T[-a,-b]`
-    - **Stage 2**: Full round-trip — engine functions return `TExpr` objects, not strings
+    - Typed expressions validate at construction time, but still serialize into the current string-based engine internally
     - Catches slot-count and manifold errors **at construction**, not inside the engine
     - Both APIs coexist: `ToCanonical(T[-a,-b])` and `ToCanonical("T[-a,-b]")` are equivalent
 
@@ -36,8 +36,9 @@ The string API works, but creates friction:
 | IDE support | No completions, no hover docs | Full LSP support on tensor heads and indices |
 
 The typed layer is a **thin wrapper** — it serializes to strings, calls the same
-battle-tested engine, and returns the result. There is no performance penalty for
-typical expressions; the engine dominates runtime at any meaningful expression size.
+battle-tested engine, and reconstructs typed results where supported. Its main
+benefit is correctness and ergonomics at the API boundary, not a new execution
+engine or guaranteed performance improvement.
 
 ---
 
@@ -203,12 +204,14 @@ xact.tensor("RiemannCD")[-a,-b,-c]  # IndexError: RiemannCD has 4 slots, got 3
 ## Interoperability with the string API
 
 All engine functions accept both `String` and `TExpr`. If you pass a `TExpr`,
-you get a `TExpr` back (Stage 2). If you pass a `String`, you get a `String` back.
+it is first serialized into the current string-based engine. Some typed entry
+points reconstruct typed results on the way out; string inputs continue to
+return strings.
 
 ```julia
-r1 = ToCanonical(Riem[-a,-b,-c,-d] + Riem[-a,-c,-d,-b])  # TExpr result
-r2 = Contract(r1)     # TExpr in, TExpr out — perfect for chaining
-r3 = Simplify(r2)     # same
+r1 = ToCanonical(Riem[-a,-b,-c,-d] + Riem[-a,-c,-d,-b])
+r2 = Contract(r1)
+r3 = Simplify(r2)
 ```
 
 You can freely mix the two styles:
@@ -250,7 +253,7 @@ slot positions. The typed layer never reaches into them.
 | Stage | Status | Description |
 |-------|--------|-------------|
 | **Stage 1** | ✅ Shipped | Typed construction, validation, serialization |
-| **Stage 2** | ✅ Shipped | Typed output — engine returns `TExpr`, not `String` |
+| **Stage 2** | ✅ Shipped | Typed construction + typed integration over the existing string engine |
 | **Stage 3** | Planned | Rich display — Unicode REPL, LaTeX for Jupyter |
 | **Stage 4** | Planned | Introspection — `free_indices()`, `rank()`, `terms()`. |
 

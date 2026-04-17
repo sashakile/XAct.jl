@@ -1,7 +1,7 @@
 # XAct.jl Feature Completion Matrix
 
 !!! info "Status TL;DR for AI Agents"
-    All core xAct modules ported: XPerm (canonicalization), XTensor (algebra, CovD, perturbation, IBP, VarD, Session isolation, TExpr typed expressions Stage 2), xCoba (coordinates, Christoffel), xTras (utilities), XInvar (Riemann invariant engine, all 11 phases). 1200+ Julia unit tests + 900+ Python tests passing. Architecture note: engine operates on strings (not typed AST); TExpr layer adds typed input/output but serializes internally. Gaps: spinors, exterior calculus, LaTeX rendering.
+    All core xAct modules ported: XPerm (canonicalization), XTensor (algebra, CovD, perturbation, IBP, VarD, Session isolation, TExpr typed expressions Stage 2), xCoba (coordinates, Christoffel), xTras (utilities), XInvar (Riemann invariant engine, all 11 phases). 1200+ Julia unit tests + 900+ Python tests passing. Architecture note: the engine still operates on strings rather than a native typed AST; the TExpr layer adds typed construction and typed integration at the API boundary, but serializes internally. Gaps: spinors, exterior calculus, LaTeX rendering.
 
 This page tracks the implementation status of features ported from the Wolfram [xAct](http://xact.es/) suite to `XAct.jl`, and their verification status against the Wolfram Language implementation.
 
@@ -51,7 +51,7 @@ Foundational tensor algebra and curvature operators.
 | `Session` struct & `reset_session!` | DONE | Isolated mutable state; all `def_*!` / accessors accept `session` kwarg |
 | `reset_state!()` | DONE | Clean session state for testing |
 | `ValidateSymbolInSession` | DONE | Checks all registries for name collisions |
-| **TExpr typed expression layer (Stage 2)** | **DONE** | `@indices`, `tensor()`, `T[-a,-b]` syntax; Typed input AND output. |
+| **TExpr typed expression layer (Stage 2)** | **DONE** | `@indices`, `tensor()`, `T[-a,-b]` syntax; typed construction and integration over the current string engine. |
 
 ---
 
@@ -150,9 +150,9 @@ zero-allocation workflows.
 
 The **TExpr typed expression layer** (Stage 2, complete) provides a typed
 front-end (`@indices`, `tensor()`, `T[-a,-b]` syntax) that validates at
-construction time, but currently serializes to string before calling the engine.
-A future refactor will make TExpr the native representation throughout the
-pipeline, eliminating the parse/serialize round-trips.
+construction time, but currently serializes to strings before calling the
+engine. A future refactor will make TExpr the native representation throughout
+the pipeline, eliminating the parse/serialize round-trips.
 
 ### Python wrapper
 

@@ -161,8 +161,8 @@ The `xact` package includes a typed expression layer that catches mistakes at
 expression-construction time — wrong slot counts, indices from the wrong
 manifold — rather than deep inside the engine.
 
-Stage 2 is fully implemented: engine functions accept typed expressions and
-return typed expressions (round-trip).
+Current behavior: engine functions accept typed expressions, serialize them into
+the existing string-based engine, then reconstruct typed results on the way out where supported.
 
 #### Index Types
 
@@ -247,7 +247,7 @@ xact.canonicalize("RiemannCD[-a,-b,-c,-d] + RiemannCD[-a,-c,-d,-b]")
 # Typed API (equivalent)
 Riem = xact.tensor("RiemannCD")
 a, b, c, d, e, f = xact.indices(M)
-xact.canonicalize(Riem[-a,-b,-c,-d] + Riem[-a,-c,-d,-b])   # returns str
+xact.canonicalize(Riem[-a,-b,-c,-d] + Riem[-a,-c,-d,-b])   # typed input; still runs through the string engine internally
 ```
 
 Supported: `canonicalize`, `contract`, `simplify`, `perturb`, `commute_covds`,

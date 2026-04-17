@@ -24,7 +24,7 @@ While the core engine operates on strings and symbols for maximum compatibility 
 
 - **Immediate Validation**: Checks for correct number of slots and manifold membership at construction time.
 - **Operator Overloading**: Use `*`, `+`, and `-` directly on tensor objects.
-- **Performance**: Reduces the overhead of string parsing for complex expressions.
+- **Current Boundary**: The typed layer improves ergonomics and catches mistakes earlier, but still serializes expressions into the existing string-based engine internally.
 
 ## 4. Parity Verification
 
