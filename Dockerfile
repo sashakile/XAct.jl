@@ -12,24 +12,10 @@
 # ── builder ────────────────────────────────────────────────────────────────────
 FROM julia:1.10 AS builder
 
-# System deps needed for Python / Jupyter build step
+# System deps needed for Julia package installation
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3 python3-pip python3-venv \
         curl ca-certificates git \
     && rm -rf /var/lib/apt/lists/*
-
-# Install uv for fast Python package management
-RUN curl -Ls https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.cargo/bin:/root/.local/bin:$PATH"
-
-# Install Jupyter + IJulia kernel dependencies into a system venv
-RUN python3 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --no-cache-dir \
-        jupyterlab==4.* \
-        notebook==7.* \
-        jupytext \
-        xact
 
 # Install Julia packages and precompile in the builder depot
 ENV JULIA_DEPOT_PATH="/opt/julia-depot"
@@ -51,7 +37,7 @@ FROM debian:bookworm-slim AS final
 
 # System runtime deps (no build tools)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3 python3-venv \
+        python3 python3-pip python3-venv \
         libgfortran5 libgomp1 libatomic1 \
         curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
@@ -64,8 +50,15 @@ ENV PATH="/usr/local/julia/bin:$PATH"
 COPY --from=builder /opt/julia-depot /opt/julia-depot
 ENV JULIA_DEPOT_PATH="/opt/julia-depot"
 
-# Copy the Python venv (Jupyter + xact-py + IJulia)
-COPY --from=builder /opt/venv /opt/venv
+# Create a fresh Python venv in the final image (venvs are not portable across images).
+# The builder's venv cannot be reused because its internal symlinks point to the
+# builder's Python, which differs from this image's Python path.
+RUN python3 -m venv /opt/venv && \
+    /opt/venv/bin/pip install --no-cache-dir \
+        jupyterlab==4.* \
+        notebook==7.* \
+        jupytext \
+        xact
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Register the IJulia kernel now that both Julia binary and depot are in place.
