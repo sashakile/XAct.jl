@@ -7,7 +7,7 @@ This repository contains both the `XAct.jl` Julia package and the `sxact` verifi
 The Julia source code is located in `src/`.
 
 ### Setup
-- [Julia 1.12+](https://julialang.org/downloads/)
+- [Julia 1.10+](https://julialang.org/downloads/)
 - Optional: [JuliaExtension](https://marketplace.visualstudio.com/items?itemName=julialang.language-julia) for VS Code.
 
 ### Running Julia Tests

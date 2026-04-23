@@ -4,7 +4,7 @@ This guide walks through the `sxact` verification workflow: defining tests in TO
 
 ## Prerequisites
 
-- Julia 1.12+ installed
+- Julia 1.10+ installed
 - Python environment set up: `uv sync`
 - For live oracle comparison: Docker oracle running (`docker compose up -d oracle`)
 

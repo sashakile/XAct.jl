@@ -9,7 +9,7 @@ Canonical onboarding path: README → Installation → [Getting Started](getting
 If you just want to use `xAct` for tensor calculus in Julia, you only need the Julia package.
 
 ### Prerequisites
-- [Julia 1.12+](https://julialang.org/downloads/)
+- [Julia 1.10+](https://julialang.org/downloads/)
 
 ### Installation
 Open your Julia REPL and run:
@@ -31,7 +31,7 @@ Next: continue to [Getting Started](getting-started.md) for the first working ex
 The Python wrapper provides an idiomatic interface to the Julia core. For the full verification framework, see [Developer Install](#3-developerverification-install).
 
 ### Prerequisites
-- [Julia 1.12+](https://julialang.org/downloads/)
+- [Julia 1.10+](https://julialang.org/downloads/)
 - Python 3.10+
 - [uv](https://docs.astral.sh/uv/) (recommended)
 
@@ -65,7 +65,7 @@ Next: continue to [Getting Started](getting-started.md#3-quick-start-python) for
 The full suite includes a Python wrapper and a Dockerized Wolfram Oracle for proving implementation parity.
 
 ### Prerequisites
-- [Julia 1.12+](https://julialang.org/downloads/)
+- [Julia 1.10+](https://julialang.org/downloads/)
 - [uv](https://docs.astral.sh/uv/) (recommended) or Python 3.10+
 - [Docker](https://www.docker.com/)
 
