@@ -30,8 +30,6 @@ In the Docker image or a local dev checkout this cell is a no-op.
 # Pkg.add("XAct")
 ```
 
-## 2. Setup
-
 ```{julia}
 using XAct
 ```

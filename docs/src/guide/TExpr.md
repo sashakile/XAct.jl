@@ -40,38 +40,7 @@ battle-tested engine, and reconstructs typed results where supported. Its main
 benefit is correctness and ergonomics at the API boundary, not a new execution
 engine or guaranteed performance improvement.
 
----
-
-## Quick Start (Julia)
-
-```julia
-using XAct
-
-reset_state!()
-def_manifold!(:M, 4, [:a, :b, :c, :d, :e, :f])
-def_metric!(-1, "g[-a,-b]", :CD)    # creates Riemann, Ricci, Weyl, ...
-
-# Step 1: declare index variables bound to a manifold
-@indices M a b c d e f
-
-# Step 2: get tensor handles
-Riem = tensor(:RiemannCD)
-Ric  = tensor(:RicciCD)
-g_h  = tensor(:g)
-
-# Step 3: write expressions
-ToCanonical(Riem[-a,-b,-c,-d] + Riem[-a,-c,-d,-b] + Riem[-a,-d,-b,-c])  # "0"
-ToCanonical(Riem[-a,-b,-c,-d] - Riem[-c,-d,-a,-b])                       # "0"
-
-# Contraction
-def_tensor!(:V, ["a"], :M)
-V = tensor(:V)
-Contract(V[a] * g_h[-a,-b])   # "V[-b]"
-
-# Rank-0 scalar: RS[] with empty index list
-RS = tensor(:RicciScalarCD)
-Simplify(RS[] * g_h[-a,-b])
-```
+*(For full setup and end-to-end tutorials, see [Getting Started](../getting-started.md) and the [Basics Tutorial](../examples/basics.md).)*
 
 ---
 
@@ -168,35 +137,6 @@ tensor(:Undefined)   # ERROR: Tensor Undefined is not defined (was reset_state!(
 
 # Index not registered for manifold
 @indices M x y       # ERROR: Index x is not registered for manifold M
-```
-
----
-
-## Python quick start
-
-```python
-import xact
-
-xact.reset()
-M = xact.Manifold("M", 4, ["a", "b", "c", "d", "e", "f"])
-g = xact.Metric(M, "g", signature=-1, covd="CD")
-
-# Typed index objects
-a, b, c, d, e, f = xact.indices(M)
-
-# Tensor handles
-Riem = xact.tensor("RiemannCD")
-V    = xact.Tensor("V", ["a"], M)
-g_h  = xact.tensor("g")
-
-# Build expressions with operators
-expr = Riem[-a,-b,-c,-d] + Riem[-a,-c,-d,-b] + Riem[-a,-d,-b,-c]
-xact.canonicalize(expr)  # "0"
-
-xact.contract(V[a] * g_h[-a,-b])  # "V[-b]"
-
-# Error at construction
-xact.tensor("RiemannCD")[-a,-b,-c]  # IndexError: RiemannCD has 4 slots, got 3
 ```
 
 ---
