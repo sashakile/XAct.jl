@@ -50,6 +50,9 @@ ENV PATH="/usr/local/julia/bin:$PATH"
 COPY --from=builder /opt/julia-depot /opt/julia-depot
 ENV JULIA_DEPOT_PATH="/opt/julia-depot"
 
+# Non-root user for Binder / security (created before chown steps below)
+RUN useradd --create-home --shell /bin/bash jovyan
+
 # Create a fresh Python venv in the final image (venvs are not portable across images).
 # The builder's venv cannot be reused because its internal symlinks point to the
 # builder's Python, which differs from this image's Python path.
@@ -61,13 +64,21 @@ RUN python3 -m venv /opt/venv && \
         xact-py
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Register the IJulia kernel now that both Julia binary and depot are in place.
-# Must run before switching to non-root user so the kernel lands in a system path.
+# Tell juliapkg to use the pre-installed Julia binary instead of downloading one.
+# This avoids a download and ensures the baked depot is used.
+ENV PYTHON_JULIAPKG_EXE=/usr/local/julia/bin/julia
+
+# Register the IJulia kernel system-wide.
 RUN mkdir -p /usr/local/share/jupyter && \
     JUPYTER_DATA_DIR=/usr/local/share/jupyter julia --project=/opt/julia-depot -e 'using IJulia; IJulia.installkernel("Julia", "--project=/opt/julia-depot")'
 
-# Non-root user for Binder / security
-RUN useradd --create-home --shell /bin/bash jovyan
+# Pre-resolve juliapkg as root (can write anywhere) so xact-py's Julia deps are
+# locked to the baked depot. Then hand the venv + depot to jovyan so the user can
+# write compiled caches and install additional packages at runtime.
+RUN JULIA_DEPOT_PATH=/opt/julia-depot \
+    /opt/venv/bin/python -c "import juliapkg; juliapkg.resolve()" && \
+    chown -R jovyan:jovyan /opt/venv /opt/julia-depot
+
 USER jovyan
 WORKDIR /home/jovyan
 
