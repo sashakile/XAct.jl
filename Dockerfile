@@ -63,7 +63,8 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Register the IJulia kernel now that both Julia binary and depot are in place.
 # Must run before switching to non-root user so the kernel lands in a system path.
-RUN julia --project=/opt/julia-depot -e 'using IJulia; IJulia.installkernel("Julia", "--project=/opt/julia-depot"; systemwide=true)'
+RUN mkdir -p /usr/local/share/jupyter && \
+    JUPYTER_DATA_DIR=/usr/local/share/jupyter julia --project=/opt/julia-depot -e 'using IJulia; IJulia.installkernel("Julia", "--project=/opt/julia-depot")'
 
 # Non-root user for Binder / security
 RUN useradd --create-home --shell /bin/bash jovyan
