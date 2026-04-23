@@ -59,6 +59,7 @@ for (subdir, lang_label) in [("julia", "Julia"), ("python", "Python")]
         end
         # Rewrite deployed-docs URLs to relative Documenter paths
         md = replace(md, "https://sashakile.github.io/sxAct/" => "../")
+        md = replace(md, "https://saxa.xyz/XAct.jl/" => "../")
         # Rewrite .ipynb cross-links: name.ipynb -> name_julia.md (or python)
         md = replace(
             md,
@@ -79,9 +80,11 @@ end
 
 makedocs(;
     sitename="XAct.jl",
+    repo="https://github.com/sashakile/XAct.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", nothing) == "true",
         canonical="https://saxa.xyz/XAct.jl/",
+        repolink="https://github.com/sashakile/XAct.jl",
         edit_link="main",
         assets=String[],
         size_threshold=300 * 1024, # Increase to 300KiB for large API page

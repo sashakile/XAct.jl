@@ -22,7 +22,7 @@ If running on Google Colab or a fresh environment, install the required packages
 ```@example foundations_2d_polar_julia
 # Uncomment the lines below if running on Google Colab:
 # using Pkg
-# Pkg.add(url="https://github.com/sashakile/XAct.jl.git")
+# Pkg.add("XAct")
 # Pkg.add("Plots")
 ```
 

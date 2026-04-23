@@ -2,7 +2,7 @@
 
 !!! info "LLM TL;DR"
     - Complete [Installation](installation.md) first
-    - Install from GitHub: `Pkg.add(url="https://github.com/sashakile/XAct.jl")`
+    - Install from the registry: `Pkg.add("XAct")`
     - Julia entry point: `using XAct`, then `def_manifold!`, `def_metric!`, `@indices`, `tensor()`
     - Typed API is recommended; string API also works
     - Python entry point: `import xact`
@@ -16,8 +16,8 @@ Before starting, make sure you have completed [Installation](installation.md).
 That page is the source of truth for Julia, Python, and verification setup.
 
 !!! note "Julia General Registry"
-    `XAct.jl` is not yet registered in the Julia General Registry.
-    Install it from the GitHub URL shown in [Installation](installation.md).
+    `XAct.jl` is published in the Julia registries.
+    Install it with `Pkg.add("XAct")` as shown in [Installation](installation.md).
 
 ## Run the first Julia session
 

@@ -27,7 +27,7 @@ In the Docker image or a local dev checkout this cell is a no-op.
 ```@example basics_julia
 # Uncomment the lines below if running on Google Colab:
 # using Pkg
-# Pkg.add(url="https://github.com/sashakile/XAct.jl.git")
+# Pkg.add("XAct")
 ```
 
 ## 2. Setup

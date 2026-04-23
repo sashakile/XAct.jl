@@ -146,4 +146,4 @@ except IndexError as err:
 
 - Full Julia API for more advanced workflows
 - Coordinate components, covariant derivative commutation
-- Documentation: [sashakile.github.io/sxAct](../index.md)
+- Documentation: [saxa.xyz/XAct.jl](../index.md)

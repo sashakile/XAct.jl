@@ -16,7 +16,7 @@ Open your Julia REPL and run:
 
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/sashakile/XAct.jl.git")
+Pkg.add("XAct")
 ```
 
 Wait for the installation to finish, then you can start using it:
@@ -72,7 +72,7 @@ The full suite includes a Python wrapper and a Dockerized Wolfram Oracle for pro
 ### Step A: Clone and Sync
 ```bash
 git clone https://github.com/sashakile/XAct.jl.git
-cd sxAct
+cd XAct.jl
 uv sync
 ```
 
@@ -109,4 +109,4 @@ docker compose run --rm wolfram wolframscript -activate
 Ensure your user is in the `docker` group or prefix commands with `sudo`.
 
 ### Julia: "Package not found"
-Ensure you are using the correct URL when adding via `Pkg.add(url=...)`.
+Ensure your Julia environment can access the registry that contains `XAct`, then install it with `Pkg.add("XAct")`.

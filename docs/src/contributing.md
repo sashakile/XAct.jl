@@ -11,7 +11,7 @@ Please see the root [CONTRIBUTING.md](https://github.com/sashakile/XAct.jl/blob/
 ```bash
 # 1. Clone the repository
 git clone https://github.com/sashakile/XAct.jl.git
-cd sxAct
+cd XAct.jl
 
 # 2. Install Python dependencies
 uv sync --extra dev

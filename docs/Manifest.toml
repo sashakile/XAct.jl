@@ -1111,9 +1111,9 @@ version = "1.21.0+2"
 
 [[deps.XAct]]
 deps = ["LinearAlgebra", "Reexport"]
-path = "/var/home/sasha/para/areas/dev/gh/sk/sxAct"
+path = "/var/home/sasha/para/areas/dev/gh/sk/XAct.jl"
 uuid = "61ed89dc-cc38-478d-be53-e1ee1d7160f1"
-version = "0.4.0"
+version = "0.7.1"
 
 [[deps.XML2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Zlib_jll"]
