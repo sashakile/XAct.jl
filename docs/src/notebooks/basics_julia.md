@@ -1,7 +1,7 @@
 !!! tip "Run this notebook"
     - [Download the Jupyter notebook](https://github.com/sashakile/XAct.jl/blob/main/notebooks/julia/basics.ipynb)
     - [Open in Google Colab](https://colab.research.google.com/github/sashakile/XAct.jl/blob/main/notebooks/julia/basics.ipynb)
-    - [Open in Binder](https://mybinder.org/v2/gh/sashakile/XAct.jl/main?urlpath=lab/tree/notebooks/julia/basics.ipynb)
+    - [Open in Binder](https://mybinder.org/v2/gh/sashakile/XAct.jl/main?labpath=notebooks%2Fjulia%2Fbasics.ipynb)
 
 # XAct.jl — Getting Started
 
