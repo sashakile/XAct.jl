@@ -29,11 +29,14 @@ end
 
         basics_code = extract_qmd_code_blocks(first(filter(p -> basename(p) == "basics.qmd", julia_notebooks)))
         sphere_code = extract_qmd_code_blocks(first(filter(p -> basename(p) == "foundations_sphere.qmd", julia_notebooks)))
+        em_code = extract_qmd_code_blocks(first(filter(p -> basename(p) == "physics_em.qmd", julia_notebooks)))
         @test occursin("using XAct", basics_code)
         @test occursin("reset_state!()", basics_code)
         @test occursin("sphere_gaussian_curvature", sphere_code)
         @test occursin("isapprox(sphere_ricci_scalar", sphere_code)
         @test occursin("Contract(g[a, b] * G[-a, -b])", sphere_code)
+        @test occursin("Faraday antisymmetry check passed", em_code)
+        @test occursin("Homogeneous Maxwell/Bianchi check passed", em_code)
         @test isnothing(run_notebook_smoke_tests(io=devnull, notebook_stdout=devnull, notebook_stderr=devnull))
     end
 
