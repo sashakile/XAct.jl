@@ -33,6 +33,7 @@ end
         fluids_code = extract_qmd_code_blocks(first(filter(p -> basename(p) == "physics_fluids.qmd", julia_notebooks)))
         cosmology_code = extract_qmd_code_blocks(first(filter(p -> basename(p) == "wald_cosmology.qmd", julia_notebooks)))
         em_code = extract_qmd_code_blocks(first(filter(p -> basename(p) == "physics_em.qmd", julia_notebooks)))
+        gw_code = extract_qmd_code_blocks(first(filter(p -> basename(p) == "mtw_gravitational_waves.qmd", julia_notebooks)))
         @test occursin("using XAct", basics_code)
         @test occursin("reset_state!()", basics_code)
         @test occursin("sphere_gaussian_curvature", sphere_code)
@@ -54,6 +55,9 @@ end
         @test occursin("illustrative only", cosmology_code)
         @test occursin("Faraday antisymmetry check passed", em_code)
         @test occursin("Homogeneous Maxwell/Bianchi check passed", em_code)
+        @test occursin("trace_reversed_wave_operator", gw_code)
+        @test occursin("lorenz_gauge_condition", gw_code)
+        @test occursin("The polarization plots below illustrate", gw_code)
         @test isnothing(run_notebook_smoke_tests(io=devnull, notebook_stdout=devnull, notebook_stderr=devnull))
     end
 

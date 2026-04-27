@@ -8,9 +8,10 @@ docs:
 serve-docs:
     julia --project=docs/ -e 'using LiveServer; servedocs(literate_dir="docs/examples", skip_dirs=["docs/src/examples", "docs/src/notebooks"])'
 
-# Run all Julia unit tests and quality checks
+# Run all Julia unit tests and quality checks via Julia's test target,
+# so extras like Aqua/JET/Literate are activated consistently.
 test-julia:
-    julia --project=. test/runtests.jl
+    julia --project=. -e 'using Pkg; Pkg.test()'
 
 # Run Python unit tests (excluding slow/oracle tests)
 test-python:

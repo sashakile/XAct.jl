@@ -64,8 +64,11 @@ h = tensor(:h)
 def_perturbation!(:h, :eta, 1)
 ```
 
-In the weak-field limit, we can derive the linearized curvature tensors
-symbolically using `perturb_curvature`.
+In the weak-field limit, `perturb_curvature(:PD, :h)` computes the curvature
+terms that are **linear in the perturbation** $h_{ab}$ around the flat
+background $\eta_{ab}$. This is the symbolic part of the notebook: we are not
+solving the wave equation from first principles here, but we *are* exposing the
+first-order geometric objects that enter the linearized Einstein equations.
 
 ```{julia}
 # Compute first-order perturbations of curvature tensors
@@ -75,19 +78,40 @@ println("Linearized Riemann tensor (first order in h):")
 println(pert_results["Riemann1"])
 
 println("\nLinearized Ricci tensor:")
-pert_results["Ricci1"]
+println(pert_results["Ricci1"])
 ```
 
-Using the Lorenz gauge and vacuum conditions, these equations reduce to the
-standard gravitational wave equation $\square \bar{h}_{ab} = 0$.
+To connect that symbolic output to the standard gravitational-wave story, it is
+helpful to name the usual physics assumptions explicitly.
+
+- **Perturbative order**: keep only terms linear in $h_{ab}$.
+- **Trace-reversed field**: define $\bar{h}_{ab} = h_{ab} - \tfrac{1}{2}\eta_{ab} h$ with $h = \eta^{cd} h_{cd}$.
+- **Lorenz gauge**: impose $\partial^a \bar{h}_{ab} = 0$.
+- **Vacuum**: set the linearized source term to zero.
+
+Under those extra assumptions, the linearized Einstein equations reduce to the
+flat-space wave equation $\square \bar{h}_{ab} = 0$.
+
+```{julia}
+trace_reversed_definition = raw"h̄_ab = h_ab - 1/2 η_ab h"
+lorenz_gauge_condition = raw"∂^a h̄_ab = 0"
+trace_reversed_wave_operator = raw"□ h̄_ab = 0"
+
+println("Trace-reversed field definition: ", trace_reversed_definition)
+println("Lorenz gauge condition: ", lorenz_gauge_condition)
+println("Vacuum wave equation: ", trace_reversed_wave_operator)
+println("Interpretation: perturb_curvature gives the linearized curvature ingredients; the gauge and vacuum statements are the extra physics assumptions used to reach the wave equation.")
+```
 
 ## 4. Visualization: Gravitational Wave Polarizations
 A gravitational wave propagating in the $z$-direction has two independent
 polarization modes: **Plus (+)** and **Cross ($\times$)**.
 
-Let's visualize the effect of these modes on a ring of test particles.
+The polarization plots below illustrate a **known transverse-traceless plane-wave solution** acting on an idealized ring of freely falling test particles. They are a physical visualization of the final wave solution, not a direct plot of the symbolic `perturb_curvature` output above.
 
 ```{julia}
+println("The polarization plots below illustrate a known transverse-traceless plane-wave solution, not the raw perturb_curvature output.")
+
 function plot_gw_effect(mode::Symbol, phase::Number)
     θs = range(0, 2π, length=50)
     # Original ring
@@ -106,7 +130,7 @@ function plot_gw_effect(mode::Symbol, phase::Number)
     end
 
     p = plot(x, y, seriestype=:scatter, aspect_ratio=:equal,
-             title="GW Polarization: $mode (phase=$(round(phase/π, digits=1))π)",
+             title=string("GW Polarization: ", mode, " (phase=", round(phase/π, digits=1), "π)"),
              xlims=(-1.5, 1.5), ylims=(-1.5, 1.5), label="Test Particles",
              markersize=3, color=:blue)
     plot!(p, x, y, label="", alpha=0.3, color=:blue)
@@ -135,8 +159,9 @@ plot(p1x, p2x, p3x, layout=(1, 3), size=(900, 300))
 
 This tutorial demonstrated:
 1. Setting up a linearized perturbation on a flat background.
-2. Understanding the theoretical origin of the GW wave equation from MTW.
-3. Visualizing the physical effect of Plus and Cross polarizations on test masses.
+2. Computing the first-order curvature quantities produced by that perturbation.
+3. Stating the extra assumptions — trace reversal, Lorenz gauge, and vacuum — that lead to $\square \bar{h}_{ab} = 0$.
+4. Visualizing the physical effect of Plus and Cross polarizations on test masses using a known plane-wave solution.
 
 ## Next Steps
 
