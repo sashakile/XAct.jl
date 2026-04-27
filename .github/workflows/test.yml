@@ -58,7 +58,7 @@ jobs:
           version: "1.12"
 
       - name: Cache Julia packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.julia/packages
@@ -131,7 +131,7 @@ jobs:
           version: ${{ matrix.julia-version }}
 
       - name: Cache Julia packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.julia/packages
