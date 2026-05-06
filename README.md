@@ -88,6 +88,10 @@ The engine currently operates on **string representations** of tensor expression
 
 The [`xact-py`](https://pypi.org/project/xact-py/) package provides a Pythonic API backed by the Julia engine via [juliacall](https://github.com/JuliaPy/PythonCall.jl), making XAct.jl accessible without writing Julia. For normal use, install the published PyPI release with `pip install xact-py`; it resolves `XAct` from the Julia registries on first import. Use `packages/xact-py` from this repository only if you explicitly need unreleased changes from `main`.
 
+### Textbook GR regression suite
+
+Examples from the docs are backed by `test/julia/xtensor/test_textbook_gr_regressions.jl`, which exercises concrete general-relativity checks drawn from the Schwarzschild, FLRW, and Riemann-symmetry notebooks. This suite complements the broader oracle, property, and invariant test layers.
+
 ## Try It
 
 - [Julia notebook](notebooks/julia/basics.ipynb) — open in JupyterLab, [Google Colab](https://colab.research.google.com/github/sashakile/XAct.jl/blob/main/notebooks/julia/basics.ipynb), or [Binder](https://mybinder.org/v2/gh/sashakile/XAct.jl/main?urlpath=lab/tree/notebooks/julia/basics.ipynb)

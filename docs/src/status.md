@@ -123,11 +123,13 @@ The `sxact` Python package provides a multi-tier verification suite.
 | Suite | Count | Status | Notes |
 |-------|-------|--------|-------|
 | XPerm Julia Unit Tests | 156 | PASS | Permutation group, Schreier-Sims, Young tableaux |
-| XTensor Julia Unit Tests | 567 | PASS | Tensor algebra, xCoba, xTras, perturbation, Session |
+| XTensor Julia Unit Tests | 567+ | PASS | Tensor algebra, xCoba, xTras, perturbation, Session, textbook GR regressions (`test/julia/xtensor/test_textbook_gr_regressions.jl`) |
 | TExpr Julia Unit Tests | 238 | PASS | Typed expression layer |
 | XInvar Julia Unit Tests | 648,825 | PASS | Riemann invariant phases 2-11 |
 | Python Runner Tests | 909 | PASS | Adapter, normalization, CLI, TExpr |
 | Property Tests (Layer 2) | 29 | PASS | Riemann symmetries, tensor algebra, xCore laws (27 pass, 2 skip) |
+
+The textbook regression suite lives in `test/julia/xtensor/test_textbook_gr_regressions.jl`. It reuses documented Schwarzschild and FLRW examples plus algebraic Riemann checks, while leaving second-Bianchi coverage to `sxAct-i2er` and randomized symmetry/property coverage to `sxAct-96ry` / `test/julia/test_xtensor_fuzz.jl`.
 
 ---
 
