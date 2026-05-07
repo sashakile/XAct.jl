@@ -5,8 +5,9 @@
     - Use `uv run xact-test repl` for interactive translation
     - This page is the migration workflow guide
     - For command mappings and function tables, use [Wolfram Translation Reference](wolfram-translation-reference.md)
+    - See [Branding and Upstream Relationship](branding.md) for the project's stance on naming.
 
-This guide shows how to move an existing Wolfram xAct workflow into the XAct.jl ecosystem. You should already have completed [Installation](installation.md) and have a Wolfram expression, notebook, or `.wl` file ready to translate.
+This guide shows how to move an existing workflow from the original **Wolfram xAct** suite into **XAct.jl**, the native Julia port.
 
 ## Choose the migration mode
 

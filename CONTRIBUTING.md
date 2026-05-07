@@ -97,6 +97,7 @@ Notebook validation policy:
 | `packages/sxact/` | Python validation logic (`import sxact`). |
 | `tests/` | Multi-tier test suite (Julia, Python, Oracle). |
 | `docs/` | Documentation (Julia-centric, built with Documenter.jl). |
+| (External) | **Wolfram xAct**: The original Mathematica suite used as a reference/oracle. |
 
 ## 5. Workflow
 

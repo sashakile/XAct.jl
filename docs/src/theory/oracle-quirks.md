@@ -4,8 +4,9 @@
     **Reserved names**: avoid `N`, `I`, `E`, `C`, `D`, `O` as symbol names.
     **Context isolation**: use `context_id` parameter to prevent symbol pollution.
     **Key gotcha**: `ToCanonical` only handles mono-term symmetries, not Bianchi identity.
+    **Upstream Note**: In this document, "xAct" refers to the original **Wolfram xAct** suite running in the oracle.
 
-This document captures quirks, edge cases, and gotchas discovered while working with xAct through the Oracle HTTP server.
+This document captures quirks, edge cases, and gotchas discovered while working with the original Wolfram xAct through the Oracle HTTP server.
 
 ## Symbol Context Pollution (RESOLVED)
 

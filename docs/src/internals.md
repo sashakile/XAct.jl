@@ -12,9 +12,9 @@ XAct.jl is a native Julia port of the same functionality. It exposes the same op
 
 ### Phase 1 — Prototype (January 2026)
 
-The project started as a proof of concept: an HTTP oracle client that could send Wolfram Language expressions to a Dockerized Wolfram Engine running xAct, record the responses as JSON snapshots, and then compare a naive Julia reimplementation against those snapshots.
+The project started as a proof of concept: an HTTP oracle client that could send Wolfram Language expressions to a Dockerized Wolfram Engine running the original **Wolfram xAct**, record the responses as JSON snapshots, and then compare a naive Julia reimplementation against those snapshots.
 
-The core insight was to build the verification infrastructure first and let it drive the implementation. No Julia code was trusted until it passed a TOML test case that had been recorded against the live oracle.
+The core insight was to build the verification infrastructure first and let it drive the implementation. No Julia code was trusted until it passed a TOML test case that had been recorded against the live Wolfram oracle.
 
 ### Phase 2 — Butler-Portugal and tensor algebra (February–March 2026)
 
