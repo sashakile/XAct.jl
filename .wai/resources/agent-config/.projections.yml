@@ -1,12 +1,6 @@
-# Agent config projections — defines how configs are synced to tool-specific locations
-# Strategies: symlink, inline, reference, copy
-#
-# Example for general agents (like Pi): syncs skills to .agents/
-# projections:
-#   - target: .agents
-#
-# Example for Claude Code (built-in projection): translates skills to commands
-# projections:
-#   - target: claude-code
-
-projections: []
+projections:
+  - source: .wai/resources/agent-config/skills
+    target: .agents/commands/skills
+    strategy: symlink
+    recursive: true
+    description: Project agent skills for direct tool access
