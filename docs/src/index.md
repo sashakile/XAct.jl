@@ -92,4 +92,4 @@ The typed API validates index usage before evaluation. For the full typed-expres
 
 ## Project note
 
-Most of the codebase was developed with AI assistance and then checked by humans and by oracle-backed verification. The mathematical trust story depends on both implementation review and parity testing.
+Most of the codebase was developed with AI assistance and then checked by humans and by oracle-backed verification. Correctness depends on both: human code review catches structural problems; parity tests catch numerical and symbolic divergence from the Wolfram reference.

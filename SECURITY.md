@@ -11,7 +11,7 @@ We currently support the following versions with security updates:
 
 ## Reporting a Vulnerability
 
-We take the security of `sxAct` seriously. If you believe you have found a security vulnerability, please report it to us as follows:
+If you discover a security vulnerability in `sxAct`, please report it as follows:
 
 1.  **Do not** open a public issue.
 2.  Send an email to [INSERT EMAIL ADDRESS] with the details of the vulnerability.

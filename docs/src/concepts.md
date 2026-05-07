@@ -28,7 +28,7 @@ While the core engine operates on strings and symbols for maximum compatibility 
 
 ## 4. Parity Verification
 
-A core pillar of the project is **mathematical correctness**. Every operation is verified against the original Wolfram implementation:
+**Mathematical correctness** is the project's defining constraint. Every operation is verified against the original Wolfram implementation:
 
 - **Oracle Comparison**: Results are compared with those from a live Wolfram Engine or pre-recorded snapshots.
 - **Multiple Tiers**: Verification happens at the string level, symbolic level, and sometimes numeric level.
@@ -37,5 +37,5 @@ A core pillar of the project is **mathematical correctness**. Every operation is
 ## 5. Portability (Julia & Python)
 
 `XAct.jl` is designed as a polyglot library:
-- **Julia Core**: High-performance implementation in native Julia.
-- **Python Wrapper**: Snake-case API using `PythonCall.jl`, allowing seamless use in Jupyter notebooks alongside `NumPy` and `SymPy`.
+- **Julia Core**: Native Julia implementation using type specialization for zero-overhead dispatch.
+- **Python Wrapper**: Snake-case API using `PythonCall.jl`, callable directly from Jupyter notebooks alongside `NumPy` and `SymPy`.
