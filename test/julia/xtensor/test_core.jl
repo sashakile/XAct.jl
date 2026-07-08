@@ -898,6 +898,35 @@
         reset_state!()
     end
 
+    @testset "reset!() clears both XCore and XTensor state" begin
+        reset_state!()
+
+        # Wire XCore hooks (as XAct.jl does at load time)
+        set_symbol_hooks!(XCore.ValidateSymbol, XCore.register_symbol)
+
+        # Define a manifold — registers name in both XCore and XTensor
+        def_manifold!(:ResetAllM, 4, [:ra, :rb, :rc, :rd])
+
+        # XTensor.reset_state!() alone leaves XCore symbol registry stale
+        XTensor.reset_state!()
+        @test !ManifoldQ(:ResetAllM)          # XTensor session cleared
+
+        # Demonstrating the footgun: redefinition fails because XCore
+        # still holds "ResetAllM" via register_symbol
+        @test_throws ArgumentError def_manifold!(:ResetAllM, 4, [:ra, :rb, :rc, :rd])
+
+        # Now reset!() clears BOTH layers
+        reset!()
+        @test !ManifoldQ(:ResetAllM)          # still cleared
+
+        # After reset!(), redefinition succeeds because XCore is also cleared
+        @test_nowarn def_manifold!(:ResetAllM, 4, [:ra, :rb, :rc, :rd])
+
+        # Restore no-op hooks
+        set_symbol_hooks!((_) -> nothing, (_, _) -> nothing)
+        reset_state!()
+    end
+
     # ==========================================================
     # Basis and Frame support
     # ==========================================================

@@ -30,7 +30,7 @@ include("XTensor.jl") # XTensor includes XPerm
 include("XInvar.jl")
 include("TExpr.jl")
 
-export XCore, XTensor, XPerm, XInvar, reset_state!
+export XCore, XTensor, XPerm, XInvar, reset_state!, reset!
 
 @reexport using .XCore
 @reexport using .XTensor
@@ -45,11 +45,31 @@ XTensor.set_symbol_hooks!(XCore.ValidateSymbol, XCore.register_symbol)
     reset_state!()
 
 Perform a global reset of all xAct subcomponents (XCore, XPerm, XTensor).
+
+!!! warning "Two-layer reset"
+    `XTensor.reset_state!()` alone clears only the XTensor session state
+    (manifolds, tensors, metrics), **not** the XCore symbol registry.
+    Defining new objects after `XTensor.reset_state!()` may fail with
+    "already used by XTensor" because XCore still holds the old names.
+
+    Use `reset!()` (XAct-level) or this function to clear both layers:
+    `XAct.reset_state!()` calls both `XCore.reset_core!()` **and**
+    `XTensor.reset_state!()`.
 """
 function reset_state!()
     XCore.reset_core!()
     XTensor.reset_state!()
     XInvar._reset_invar_db!()
 end
+
+"""
+    reset!()
+
+Convenience alias for `reset_state!()`.  Clears both the XCore symbol
+registry and the XTensor session state in one call.
+
+See also: [`reset_state!`](@ref)
+"""
+const reset! = reset_state!
 
 end # module XAct

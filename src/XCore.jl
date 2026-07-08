@@ -602,7 +602,8 @@ function ValidateSymbol(name::Symbol)
         throw(
             ArgumentError(
                 "ValidateSymbol: \"$sname\" already used by $pkg." *
-                " Call reset_state!() to clear all definitions or choose a different name.",
+                " Call XAct.reset!() or XCore.reset_core!() to clear the" *
+                " symbol registry, or choose a different name.",
             ),
         )
     end
