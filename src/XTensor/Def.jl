@@ -515,6 +515,12 @@ function _auto_create_curvature!(
         session.trace_scalars[einstein_name] = (ricci_scalar_name, coeff_int)
     end
 
+    # Register Ricci tensor trace rule: tr(Ricci_{ab}) = g^{ab} Ricci_{ab} = RicciScalar
+    # Coefficient 1: contracting the Ricci tensor (by definition) yields the Ricci scalar.
+    if !haskey(session.trace_scalars, ricci_name)
+        session.trace_scalars[ricci_name] = (ricci_scalar_name, 1)
+    end
+
     # Register Einstein expansion rule: G_{ab} = R_{ab} - (1/2) g_{ab} R
     metric_obj = get(session.metrics, covd, nothing)
     if !isnothing(metric_obj) && !haskey(session.einstein_expansion, einstein_name)

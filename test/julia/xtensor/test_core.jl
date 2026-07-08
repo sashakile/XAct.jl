@@ -298,6 +298,13 @@
         def_metric!(-1, "gM5t[-t5a,-t5b]", :CD5t)
         @test Contract("gM5t[t5a,t5b] EinsteinCD5t[-t5a,-t5b]") ==
             "-(3/2) RicciScalarCD5t[]"
+
+        # Ricci trace in 4D: g^{ab} Ricci_{ab} → RicciScalar
+        # Bug sxAct-equo: Ricci was not registered in trace_scalars
+        reset_state!()
+        def_manifold!(:Rt4, 4, [:r4a, :r4b, :r4c, :r4d])
+        def_metric!(-1, "Rg4[-r4a,-r4b]", :RD4)
+        @test Contract("Rg4[r4a,r4b] RicciRD4[-r4a,-r4b]") == "RicciScalarRD4[]"
     end
 
     # ============================================================
