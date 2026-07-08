@@ -1304,6 +1304,16 @@ function _canonicalize_term(term::TermAST)::TermAST
             return ZERO_TERM
         end
 
+        # Dimension-dependent vanishing: a fully antisymmetric tensor whose
+        # rank exceeds its manifold dimension is identically zero.
+        # e.g. rank-5 antisymmetric on 4D manifold → 0
+        if sym.type == :Antisymmetric && length(sym.slots) == length(f.indices)
+            m = get_manifold(t.manifold)
+            if !isnothing(m) && m.dimension < length(f.indices)
+                return ZERO_TERM
+            end
+        end
+
         running_sign *= (factor_sign // 1)
         push!(new_factors, TensorFactor(f.tensor_name, canon_indices))
     end
