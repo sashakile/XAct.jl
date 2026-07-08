@@ -134,6 +134,44 @@ scalar-times-subexpression patterns.
 function _push_chunk!(terms::Vector{TermAST}, chunk::AbstractString, sign::Int)
     s = strip(chunk)
 
+    # Case 0: (N/D) (parenthesized sum): e.g. "(1/2)(g[c,d] ...)"
+    # Must be checked before Case 1 which would incorrectly swallow the whole string.
+    m0 = match(r"^\((\d+)/(\d+)\)\s*\((.+)\)$"s, s)
+    if !isnothing(m0)
+        num = parse(Int, something(m0.captures[1]))
+        den = parse(Int, something(m0.captures[2]))
+        inner = strip(something(m0.captures[3]))
+        sub_terms = TermAST[]
+        _parse_sum!(sub_terms, inner)
+        for t in sub_terms
+            push!(terms, TermAST(t.coeff * sign * (num // den), t.factors))
+        end
+        return nothing
+    end
+
+    # Case 1b: (N/D)*tensor(parenthesized sum): e.g. "(1/2)*g[a,d](covd[-b][...] + ...)"
+    # Must be checked before Case 1 (generic parenthesized check) because this
+    # string ALSO starts with "(" and ends with ")" but has a tensor in the middle.
+    m1b = match(r"^\((\d+)/(\d+)\)\*?\s*([A-Za-z_]\w*)\[([^\]]*)\]\((.+)\)$"s, s)
+    if !isnothing(m1b)
+        num = parse(Int, something(m1b.captures[1]))
+        den = parse(Int, something(m1b.captures[2]))
+        tensor_name_str = something(m1b.captures[3])
+        tensor_idx_str = something(m1b.captures[4])
+        inner = strip(something(m1b.captures[5]))
+        tname = Symbol(tensor_name_str)
+        idx_list = String[strip(x) for x in split(tensor_idx_str, ",")]
+        tensor_factor = TensorFactor(tname, idx_list)
+        # Recursively parse the parenthesized sum
+        sub_terms = TermAST[]
+        _parse_sum!(sub_terms, inner)
+        for t in sub_terms
+            combined_factors = vcat([tensor_factor], t.factors)
+            push!(terms, TermAST(t.coeff * sign * (num // den), combined_factors))
+        end
+        return nothing
+    end
+
     # Case 1: Entire chunk is a parenthesized sub-expression: (A + B + ...)
     if startswith(s, "(") && endswith(s, ")")
         inner = strip(s[2:(end - 1)])
@@ -141,6 +179,27 @@ function _push_chunk!(terms::Vector{TermAST}, chunk::AbstractString, sign::Int)
         _parse_sum!(sub_terms, inner)
         for t in sub_terms
             push!(terms, TermAST(t.coeff * sign, t.factors))
+        end
+        return nothing
+    end
+
+    # Case 1a: tensor_factors (N/D) (parenthesized sum): e.g. "g[a,b] (1/2)(g[c,d] ...)"
+    # The tensor prefix is parsed by _parse_monomial; the (N/D) coefficient
+    # and trailing parenthesized sum are distributed.
+    m1 = match(r"^(.+?)\((\d+)/(\d+)\)\s*\((.+)\)$"s, s)
+    if !isnothing(m1)
+        prefix = strip(something(m1.captures[1]))
+        num = parse(Int, something(m1.captures[2]))
+        den = parse(Int, something(m1.captures[3]))
+        inner = strip(something(m1.captures[4]))
+        # Parse the prefix as a monomial
+        prefix_factors = _parse_monomial(prefix)
+        # Recursively parse the parenthesized sum
+        sub_terms = TermAST[]
+        _parse_sum!(sub_terms, inner)
+        for t in sub_terms
+            combined_factors = vcat(prefix_factors, t.factors)
+            push!(terms, TermAST(t.coeff * sign * (num // den), combined_factors))
         end
         return nothing
     end
@@ -222,7 +281,10 @@ function _parse_monomial(s::AbstractString)::Vector{FactorNode}
             pos += 1
         end
         name_end = pos - 1
-        name_start > name_end && break
+        name_start > name_end && error(
+            "_parse_monomial: unexpected character '$(s[name_start])' " *
+            "at position $name_start after parsing: $(s[1:name_end])",
+        )
 
         tensor_name = Symbol(s[name_start:name_end])
 

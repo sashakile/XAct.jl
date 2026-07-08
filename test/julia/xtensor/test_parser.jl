@@ -128,4 +128,43 @@
             @test ST(PE(expr)) == expr
         end
     end
+
+    @testset "_parse_monomial unconsumed input (sxAct-7w25)" begin
+        pm = XTensor._parse_monomial
+
+        # Core bug: silent break at line 225 drops unconsumed chars like '/ 2'
+        # Currently pm("T[-a] / 2") returns silently — no error thrown.
+        # After fix: should throw on unconsumed input.
+        let caught = false
+            try
+                pm("T[-a] / 2");
+            catch
+                ; caught = true;
+            end
+            @test caught
+        end
+
+        # Punctuation after tensor also silently dropped
+        let caught = false
+            try
+                pm("T[-a]!");
+            catch
+                ; caught = true;
+            end
+            @test caught
+        end
+
+        # Step 2: perturb_curvature → ToCanonical round-trip
+        reset_state!()
+        def_manifold!(:PpM, 4, [:ppa, :ppb, :ppc, :ppd])
+        def_metric!(-1, "Ppg[-ppa,-ppb]", :Ppd)
+        def_tensor!(
+            :PertPpg1, ["-ppa", "-ppb"], :PpM; symmetry_str="Symmetric[{-ppa,-ppb}]"
+        )
+        def_perturbation!(:PertPpg1, :Ppg, 1)
+        pc = perturb_curvature(:Ppd, :PertPpg1; order=1)
+        for (key, val) in pc
+            @test ToCanonical(val) != ""
+        end
+    end
 end
