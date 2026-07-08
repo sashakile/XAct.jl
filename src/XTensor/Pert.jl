@@ -278,7 +278,7 @@ function perturb(expr::AbstractString, order::Int)::String
             result = p.order == order ? String(tname) : "0"
             # Reattach index decoration: e.g. "Pertg1" + "[-a,-b]" → "Pertg1[-a,-b]"
             if result != "0"
-                index_part = raw[length(bare)+1:end]
+                index_part = raw[(length(bare) + 1):end]
                 result = result * index_part
             end
             return coeff == "" ? result : "$coeff $result"
@@ -287,7 +287,7 @@ function perturb(expr::AbstractString, order::Int)::String
         try
             perturbed_name = perturb(tname, order)
             # Reattach index decoration: e.g. "dg" + "[-a,-b]" → "dg[-a,-b]"
-            index_part = raw[length(bare)+1:end]
+            index_part = raw[(length(bare) + 1):end]
             result = perturbed_name * index_part
             return coeff == "" ? result : "$coeff $result"
         catch e

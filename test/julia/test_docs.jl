@@ -27,13 +27,29 @@ end
         @test all(endswith.(julia_notebooks, ".qmd"))
         @test basename.(python_notebooks) == ["basics.qmd"]
 
-        basics_code = extract_qmd_code_blocks(first(filter(p -> basename(p) == "basics.qmd", julia_notebooks)))
-        sphere_code = extract_qmd_code_blocks(first(filter(p -> basename(p) == "foundations_sphere.qmd", julia_notebooks)))
-        schwarzschild_code = extract_qmd_code_blocks(first(filter(p -> basename(p) == "carroll_schwarzschild.qmd", julia_notebooks)))
-        fluids_code = extract_qmd_code_blocks(first(filter(p -> basename(p) == "physics_fluids.qmd", julia_notebooks)))
-        cosmology_code = extract_qmd_code_blocks(first(filter(p -> basename(p) == "wald_cosmology.qmd", julia_notebooks)))
-        em_code = extract_qmd_code_blocks(first(filter(p -> basename(p) == "physics_em.qmd", julia_notebooks)))
-        gw_code = extract_qmd_code_blocks(first(filter(p -> basename(p) == "mtw_gravitational_waves.qmd", julia_notebooks)))
+        basics_code = extract_qmd_code_blocks(
+            first(filter(p -> basename(p) == "basics.qmd", julia_notebooks))
+        )
+        sphere_code = extract_qmd_code_blocks(
+            first(filter(p -> basename(p) == "foundations_sphere.qmd", julia_notebooks))
+        )
+        schwarzschild_code = extract_qmd_code_blocks(
+            first(filter(p -> basename(p) == "carroll_schwarzschild.qmd", julia_notebooks))
+        )
+        fluids_code = extract_qmd_code_blocks(
+            first(filter(p -> basename(p) == "physics_fluids.qmd", julia_notebooks))
+        )
+        cosmology_code = extract_qmd_code_blocks(
+            first(filter(p -> basename(p) == "wald_cosmology.qmd", julia_notebooks))
+        )
+        em_code = extract_qmd_code_blocks(
+            first(filter(p -> basename(p) == "physics_em.qmd", julia_notebooks))
+        )
+        gw_code = extract_qmd_code_blocks(
+            first(
+                filter(p -> basename(p) == "mtw_gravitational_waves.qmd", julia_notebooks)
+            ),
+        )
         @test occursin("using XAct", basics_code)
         @test occursin("reset_state!()", basics_code)
         @test occursin("Contract(V_h[a] * V_h[-a])", basics_code)
@@ -63,7 +79,11 @@ end
         @test occursin("The polarization plots below illustrate", gw_code)
 
         if get(ENV, "XACT_RUN_NOTEBOOK_SMOKE", "false") == "true"
-            @test isnothing(run_notebook_smoke_tests(io=devnull, notebook_stdout=devnull, notebook_stderr=devnull))
+            @test isnothing(
+                run_notebook_smoke_tests(
+                    io=devnull, notebook_stdout=devnull, notebook_stderr=devnull
+                ),
+            )
         else
             @info "Skipping notebook smoke subprocesses in unit-test workflow; run via docs workflow or set XACT_RUN_NOTEBOOK_SMOKE=true"
             @test_skip true

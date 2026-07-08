@@ -85,8 +85,12 @@
         reset_state!()
         # A rank-5 totally antisymmetric tensor on 4D is identically zero
         def_manifold!(:Ddv, 4, [:dda, :ddb, :ddc, :ddd, :dde])
-        def_tensor!(:A5, ["-dda", "-ddb", "-ddc", "-ddd", "-dde"], :Ddv;
-            symmetry_str="Antisymmetric[{-dda,-ddb,-ddc,-ddd,-dde}]")
+        def_tensor!(
+            :A5,
+            ["-dda", "-ddb", "-ddc", "-ddd", "-dde"],
+            :Ddv;
+            symmetry_str="Antisymmetric[{-dda,-ddb,-ddc,-ddd,-dde}]",
+        )
         @test ToCanonical("A5[-dda,-ddb,-ddc,-ddd,-dde]") == "0"
     end
 

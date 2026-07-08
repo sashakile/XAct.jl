@@ -15,7 +15,9 @@ using XAct
 @testset "Textbook GR regressions" begin
     @testset "docs advertise the regression suite" begin
         readme = read(joinpath(@__DIR__, "..", "..", "..", "README.md"), String)
-        status = read(joinpath(@__DIR__, "..", "..", "..", "docs", "src", "status.md"), String)
+        status = read(
+            joinpath(@__DIR__, "..", "..", "..", "docs", "src", "status.md"), String
+        )
 
         @test occursin("textbook gr regression suite", lowercase(readme))
         @test occursin("test/julia/xtensor/test_textbook_gr_regressions.jl", status)
@@ -28,7 +30,7 @@ using XAct
 
         # Pair exchange symmetry R_abcd = R_cdab.
         pair_exchange = ToCanonical(
-            "RiemannJGRCD[-ja,-jb,-jc,-jd] - RiemannJGRCD[-jc,-jd,-ja,-jb]",
+            "RiemannJGRCD[-ja,-jb,-jc,-jd] - RiemannJGRCD[-jc,-jd,-ja,-jb]"
         )
         @test pair_exchange == "0"
 
