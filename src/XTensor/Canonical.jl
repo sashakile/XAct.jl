@@ -204,6 +204,29 @@ function _push_chunk!(terms::Vector{TermAST}, chunk::AbstractString, sign::Int)
         return nothing
     end
 
+    # Case 1c: (parenthesized sum) followed by tensor factors
+    # e.g. "(rho[] + p[]) u[-mu] u[-nu]"
+    # Match opening (...), then whitespace, then a tensor name.
+    # Uses non-greedy inner match since tensors use [] not ().
+    # Guard: inner must contain a tensor name (letter) to avoid matching
+    # rational coefficients like "(1/2) T[-a]" which are handled by _parse_term.
+    m1c = match(r"^\((.+?)\)\s+([A-Za-z_]\S.*)$"s, s)
+    if !isnothing(m1c)
+        inner = strip(something(m1c.captures[1]))
+        suffix = strip(something(m1c.captures[2]))
+        # Guard: skip purely numeric rationals (handled by _parse_term)
+        if occursin(r"[A-Za-z_]", inner)
+            suffix_factors = _parse_monomial(suffix)
+            sub_terms = TermAST[]
+            _parse_sum!(sub_terms, inner)
+            for t in sub_terms
+                combined_factors = vcat(t.factors, suffix_factors)
+                push!(terms, TermAST(t.coeff * sign, combined_factors))
+            end
+            return nothing
+        end
+    end
+
     # Case 2: Integer * (sub-expression): N * (A + B)
     m = match(r"^(-?\d+)\s*\*\s*\((.+)\)$"s, s)
     if !isnothing(m)
@@ -253,10 +276,13 @@ Check if a string contains a top-level `+` or `-` (not inside brackets).
 """
 function _has_top_level_sum(s::AbstractString)::Bool
     depth = 0
+    paren_depth = 0
     for (i, c) in enumerate(s)
         c == '[' && (depth += 1)
         c == ']' && (depth -= 1)
-        if depth == 0 && i > 1 && (c == '+' || c == '-')
+        c == '(' && (paren_depth += 1)
+        c == ')' && (paren_depth -= 1)
+        if depth == 0 && paren_depth == 0 && i > 1 && (c == '+' || c == '-')
             return true
         end
     end

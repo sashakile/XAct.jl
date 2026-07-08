@@ -139,7 +139,8 @@
             try
                 pm("T[-a] / 2");
             catch
-                ; caught = true;
+                ;
+                caught = true;
             end
             @test caught
         end
@@ -149,7 +150,8 @@
             try
                 pm("T[-a]!");
             catch
-                ; caught = true;
+                ;
+                caught = true;
             end
             @test caught
         end
