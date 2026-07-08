@@ -263,6 +263,18 @@
         # Coefficient outside brackets untouched
         @test _swap("3 T[-a,-b]", "a", "b") == "3 T[-b,-a]"
     end
+
+    @testset "SortCovDs — scalar commutator (sxAct-edpw)" begin
+        reset_state!()
+        def_manifold!(:ScM, 4, [:sca, :scb, :scc, :scd])
+        def_metric!(-1, "Scg[-sca,-scb]", :Sccd)
+        def_tensor!(:phi, String[], :ScM)
+
+        # [∇_a, ∇_b]φ = 0 on a torsion-free connection
+        @test SortCovDs(
+            "Sccd[-sca][Sccd[-scb][phi[]]] - Sccd[-scb][Sccd[-sca][phi[]]]", :Sccd
+        ) == "0"
+    end
 end
 
 # ============================================================

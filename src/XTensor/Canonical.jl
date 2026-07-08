@@ -712,7 +712,11 @@ function _extract_covd_chain(
         bracket_depth > 0 && (pos += 1)
     end
     inner_slots_str = term[slots_start:(pos - 1)]
-    inner_slots = [strip(s) for s in split(inner_slots_str, ",")]
+    inner_slots = if isempty(inner_slots_str)
+        String[]
+    else
+        [strip(s) for s in split(inner_slots_str, ",")]
+    end
 
     # Skip past the closing ']' for the tensor slots, then the chain closing brackets
     pos += 1  # skip ']' for tensor slots
