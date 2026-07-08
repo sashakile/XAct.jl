@@ -841,6 +841,63 @@
         reset_state!()
     end
 
+    @testset "fresh Session() inherits symbol hooks from module-level refs" begin
+        reset_state!()
+        validated1 = String[]
+        registered1 = Tuple{String,String}[]
+
+        set_symbol_hooks!(
+            name -> push!(validated1, string(name)),
+            (name, pkg) -> push!(registered1, (string(name), pkg)),
+        )
+
+        s = Session()
+        # Calling hooks on fresh Session should trigger the same side-effects
+        # as the default session
+        s.validate_symbol_hook(:Foo)
+        s.register_symbol_hook(:Foo, "XTensor")
+        @test "Foo" in validated1
+        @test ("Foo", "XTensor") in registered1
+
+        # Another fresh Session also inherits the hooks
+        s2 = Session()
+        s2.validate_symbol_hook(:Bar)
+        s2.register_symbol_hook(:Bar, "XTensor")
+        @test "Bar" in validated1
+        @test ("Bar", "XTensor") in registered1
+
+        # Restore no-op hooks
+        set_symbol_hooks!((_) -> nothing, (_, _) -> nothing)
+        reset_state!()
+    end
+
+    @testset "fresh Session() enforces XCore validation when hooks are wired" begin
+        reset_state!()
+
+        # Wire XCore hooks (as XAct.jl does)
+        set_symbol_hooks!(XCore.ValidateSymbol, XCore.register_symbol)
+
+        # A fresh Session should enforce the same XCore validation
+        s = Session()
+
+        # First definition succeeds
+        def_manifold!(:FrM, 4, [:fa, :fb, :fc, :fd]; session=s)
+        # Manifold is registered in the fresh session (not the default)
+        @test haskey(s.manifolds, :FrM)
+
+        # Redefinition via same fresh Session should throw XCore collision
+        @test_throws ArgumentError def_manifold!(:FrM, 4, [:fa, :fb, :fc, :fd]; session=s)
+
+        # A different fresh Session has no-op XCore validation by default
+        # (until set_symbol_hooks! is called again)
+        s2 = Session()
+        @test !haskey(s2.manifolds, :FrM)
+
+        # Restore no-op hooks
+        set_symbol_hooks!((_) -> nothing, (_, _) -> nothing)
+        reset_state!()
+    end
+
     # ==========================================================
     # Basis and Frame support
     # ==========================================================

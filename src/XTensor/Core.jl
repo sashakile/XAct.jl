@@ -237,8 +237,8 @@ function Session()
         Dict{Symbol,Tuple{Symbol,Rational{Int}}}(),
         Dict{Symbol,Tuple{Symbol,Symbol,Symbol}}(),
         Dict{Symbol,Vector{MultiTermIdentity}}(),
-        (_) -> nothing,
-        (_, _) -> nothing,
+        _validate_symbol_hook[],
+        _register_symbol_hook[],
     )
 end
 
