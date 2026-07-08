@@ -276,12 +276,20 @@ function perturb(expr::AbstractString, order::Int)::String
         if haskey(_perturbations, tname)
             p = _perturbations[tname]
             result = p.order == order ? String(tname) : "0"
+            # Reattach index decoration: e.g. "Pertg1" + "[-a,-b]" → "Pertg1[-a,-b]"
+            if result != "0"
+                index_part = raw[length(bare)+1:end]
+                result = result * index_part
+            end
             return coeff == "" ? result : "$coeff $result"
         end
         # Look up registered perturbation by background + order; return "0" if none
         try
             perturbed_name = perturb(tname, order)
-            return coeff == "" ? perturbed_name : "$coeff $perturbed_name"
+            # Reattach index decoration: e.g. "dg" + "[-a,-b]" → "dg[-a,-b]"
+            index_part = raw[length(bare)+1:end]
+            result = perturbed_name * index_part
+            return coeff == "" ? result : "$coeff $result"
         catch e
             e isa ArgumentError || rethrow(e)
             return "0"

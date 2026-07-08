@@ -497,6 +497,23 @@
         @test ToCanonical("Psi[-ga,-ga]") == "0"
     end
 
+    @testset "perturb — string API index preservation (sxAct-pck6)" begin
+        reset_state!()
+        def_manifold!(:Ppk, 4, [:ppa, :ppb, :ppc, :ppd])
+        def_metric!(-1, "Cpg[-ppa,-ppb]", :Cpd)
+        def_tensor!(
+            :PertCpg1, ["-ppa", "-ppb"], :Ppk; symmetry_str="Symmetric[{-ppa,-ppb}]"
+        )
+        def_perturbation!(:PertCpg1, :Cpg, 1)
+
+        # Single factor: indices must be preserved
+        @test perturb("Cpg[-ppa,-ppb]", 1) == "PertCpg1[-ppa,-ppb]"
+
+        # Product rule: each factor's indices must be preserved
+        @test perturb("Cpg[-ppa,-ppb] Cpg[-ppc,-ppd]", 1) ==
+            "PertCpg1[-ppa,-ppb] Cpg[-ppc,-ppd] + Cpg[-ppa,-ppb] PertCpg1[-ppc,-ppd]"
+    end
+
     @testset "perturb_curvature — first-order curvature perturbations" begin
         reset_state!()
         def_manifold!(:Bpc, 4, [:bpca, :bpcb, :bpcc, :bpcd])
