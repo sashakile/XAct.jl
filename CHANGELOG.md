@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-07-08
+
+### Added
+
+- **`reset!()` convenience** — new exported function that clears both the
+  XCore symbol registry and the XTensor session state in one call.
+  Addresses the two-layer reset footgun where `XTensor.reset_state!()`
+  alone silently leaves the XCore symbol registry populated.
+
+### Fixed
+
+- **Session() no-op symbol hooks** — manually constructed `Session()` no
+  longer carries no-op validation hooks; it inherits whatever hooks are
+  installed at the module level. Fresh `Session()` now enforces XCore
+  reserved-name checks via `def_*!` with `session=s`.
+- **Parenthesized expression parsing** — `_has_top_level_sum` correctly
+  tracks `()` depth; `_parse_monomial` handles parenthesized sums
+  multiplied by tensors and nested bracket patterns.
+- **`perturb()` string API** — index decoration reattached to perturbation
+  names, preventing index corruption in perturbed expressions.
+- **`SortCovDs` on scalars** — handles empty slot vectors in
+  `_extract_covd_chain`, fixing commutator evaluation on rank-0 tensors.
+- **Ricci trace registration** — `g^{ab} Ricci_{ab}` now correctly
+  simplifies to `RicciScalar` via `trace_scalars` registration.
+- **Dimension-dependent vanishing** — fully antisymmetric tensors in
+  dimensions lower than their rank correctly vanish.
+- **ValidateSymbol error message** — now references `XAct.reset!()`
+  or `XCore.reset_core!()` instead of the ambiguous `reset_state!()`.
+
+### Changed
+
+- **reset_state!() docstring** — expanded with a warning about the
+  two-layer reset requirement and guidance on when to use `reset!()`.
+
+### Testing
+
+- Added tests for fresh `Session()` hook inheritance and XCore
+  validation enforcement.
+- Added tests for `reset!()` demonstrating the footgun and its fix.
+- Added textbook GR regression tests.
+
+### Infrastructure
+
+- Adopted wai workspace with ubiquitous language and skill projections.
+- Migrated legacy docs and agent skills to wai PARA structure.
+
 ## [0.7.2] - 2026-05-05
 
 ### Changed
