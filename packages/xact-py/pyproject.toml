@@ -1,6 +1,6 @@
 [project]
 name = "xact-py"
-version = "0.7.2"
+version = "0.8.0"
 description = "Python wrapper for XAct.jl — tensor algebra for general relativity"
 readme = "README.md"
 requires-python = ">=3.10"
