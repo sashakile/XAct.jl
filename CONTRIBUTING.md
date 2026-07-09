@@ -113,3 +113,17 @@ bd update <id> --status=in_progress
 # Close when done
 bd close <id>
 ```
+
+## 6. Releases
+
+### Creating a new release
+
+1. Update `Project.toml` version and `CHANGELOG.md`.
+2. Commit, tag (`git tag vX.Y.Z`), and push (`git push && git push --tags`).
+3. **TagBot** automatically creates a GitHub Release from the tag.
+
+### Publishing to Julia General Registry
+
+1. Ensure `Project.toml` `[compat]` entries are up to date.
+2. Comment `@JuliaRegistrator register` on the release commit or PR.
+3. Once merged by the registry bot, `]add XAct` works for all users.

@@ -1,0 +1,20 @@
+name: CompatHelper
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  compathelper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: JuliaRegistries/CompatHelper@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}

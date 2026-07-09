@@ -65,3 +65,26 @@ Before submitting a PR, please ensure:
 2. `uv run pytest` passes.
 3. `just docs` builds the documentation without errors.
 4. `just test-notebooks` passes if you changed notebook sources or notebook-derived docs.
+
+## Release Workflows
+
+### TagBot
+
+Automatically creates a GitHub Release when a new version tag (`v*`) is pushed.
+Triggered by issue comments from `@JuliaTagBot` or via `workflow_dispatch`.
+
+### CompatHelper
+
+Runs daily (midnight UTC) to check for new versions of dependencies and opens
+PRs updating the `[compat]` entries in `Project.toml`. This ensures the package
+remains installable with compatible dependency versions.
+
+### Publishing to Julia General Registry
+
+Once a release tag exists, register the package via
+[JuliaRegistrator](https://github.com/JuliaRegistries/Registrator.jl):
+
+1. Ensure `Project.toml` has accurate `[compat]` entries for all dependencies.
+2. Comment `@JuliaRegistrator register` on the release commit or PR.
+3. The bot opens a PR at `github.com/JuliaRegistries/General`.
+4. Once merged (automated, takes minutes), `]add XAct` works for all users.
