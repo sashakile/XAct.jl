@@ -47,6 +47,7 @@ XTensor.set_symbol_hooks!(XCore.ValidateSymbol, XCore.register_symbol)
 Perform a global reset of all xAct subcomponents (XCore, XPerm, XTensor).
 
 !!! warning "Two-layer reset"
+
     `XTensor.reset_state!()` alone clears only the XTensor session state
     (manifolds, tensors, metrics), **not** the XCore symbol registry.
     Defining new objects after `XTensor.reset_state!()` may fail with
