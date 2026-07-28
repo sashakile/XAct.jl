@@ -25,6 +25,10 @@ test-regression:
 # Run all quality gates (unit, quality, regression)
 test: test-julia test-python test-regression
 
+# Check all dont claims are grounded (verified)
+dont-check:
+    dont check
+
 # Smoke-test Julia Quarto notebook sources by executing their code cells
 test-notebooks:
     julia --project=. scripts/notebook_smoke.jl

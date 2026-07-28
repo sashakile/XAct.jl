@@ -61,3 +61,8 @@ resources/xAct/Invar/Riemann/
 
 # Beads / Dolt files (added by bd init)
 .beads-credential-key
+.dont/*
+!.dont/AGENTS.md
+!.dont/config.toml
+!.dont/events.jsonl
+!.dont/db.cozo
