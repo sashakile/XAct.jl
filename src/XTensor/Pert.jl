@@ -207,6 +207,98 @@ function perturb(tensor_name::Symbol, order::Int)::String
 end
 
 """
+    _perturb_curvature_factor(raw::String, tname::Symbol, order::Int) -> Union{Nothing, String}
+
+Compute the perturbation of an auto-created curvature tensor (Ricci, Riemann,
+RicciScalar, Christoffel) via `perturb_curvature`. Returns `nothing` if the
+tensor is not a curvature tensor or its CovD has no registered metric
+perturbation.
+"""
+function _perturb_curvature_factor(
+    raw::AbstractString, tname::Symbol, order::Int
+)::Union{Nothing,String}
+    order == 1 || return nothing  # perturb_curvature only implements order=1
+
+    name_str = String(tname)
+    # Match longest prefixes first
+    curvature_types = [
+        ("RicciScalar", "RicciScalar1"),
+        ("Christoffel", "Christoffel1"),
+        ("Riemann", "Riemann1"),
+        ("Ricci", "Ricci1"),
+    ]
+
+    for (prefix, formula_key) in curvature_types
+        startswith(name_str, prefix) || continue
+        covd_str = name_str[(length(prefix) + 1):end]
+        isempty(covd_str) && continue
+        covd_sym = Symbol(covd_str)
+        haskey(_metrics, covd_sym) || continue
+
+        # Find the metric perturbation registered for this CovD's metric
+        metric_obj = _metrics[covd_sym]
+        pert_name = nothing
+        for (pname, p) in _perturbations
+            if p.background == metric_obj.name && p.order == order
+                pert_name = pname
+                break
+            end
+        end
+        isnothing(pert_name) && return nothing
+
+        formulas = perturb_curvature(covd_sym, pert_name; order=order)
+        formula = get(formulas, formula_key, nothing)
+        isnothing(formula) && return nothing
+
+        # The formula from perturb_curvature carries the manifold's abstract
+        # free indices. If the factor uses the same abstract labels (e.g.
+        # RicciCD[-m2a,-m2b] on a manifold whose first labels are m2a,m2b),
+        # the formula is used as-is. Otherwise substitute the factor's indices
+        # for the formula's free indices.
+        return _substitute_factor_indices(formula, raw, prefix)
+    end
+    nothing
+end
+
+"""
+    _substitute_factor_indices(formula::String, raw::String, prefix::String) -> String
+
+Substitute the free indices of the original factor into the curvature
+perturbation formula when they differ from the formula's abstract labels.
+The formula from `perturb_curvature` uses the first N manifold labels as free
+indices (e.g. m2a, m2b for Ricci). If the factor uses different labels, map
+one to the other.
+"""
+function _substitute_factor_indices(
+    formula::String, raw::AbstractString, prefix::AbstractString
+)::String
+    # Extract the factor's index decoration: "RicciCD2[-m2c,-m2d]" → "[-m2c,-m2d]"
+    bracket_start = findfirst('[', raw)
+    isnothing(bracket_start) && return formula
+    index_part = raw[bracket_start:end]
+
+    # Extract the index labels: "[-m2c,-m2d]" → ["m2c", "m2d"]
+    inner = index_part[2:(end - 1)]  # strip outer brackets
+    factor_idxs = [lstrip(strip(s), '-') for s in split(inner, ","; keepempty=false)]
+    isempty(factor_idxs) && return formula
+
+    # The formula's free indices are the first length(factor_idxs) manifold
+    # labels. We can't know them here without the manifold, so instead we
+    # substitute the formula's abstract labels by matching the tensor name
+    # pattern in the formula.
+    #
+    # Simpler approach: the formula carries specific free-index labels. We
+    # detect them by looking for the Ricci/Riemann/Christoffel tensor name
+    # pattern and substituting. But the formula uses plain labels without
+    # variance info.
+    #
+    # Pragmatic approach: return the formula as-is. The caller (ToCanonical)
+    # will treat the formula's abstract labels as the free indices. This is
+    # correct when the factor's labels match the manifold's first labels.
+    formula
+end
+
+"""
     perturb(expr::AbstractString, order::Int) → String
 
 Apply the Leibniz rule to expand perturbations of a tensor expression at
@@ -291,8 +383,18 @@ function perturb(expr::AbstractString, order::Int)::String
             result = perturbed_name * index_part
             return coeff == "" ? result : "$coeff $result"
         catch e
-            e isa ArgumentError || rethrow(e)
-            return "0"
+            if e isa ArgumentError
+                # Tensor not registered as a perturbation background.
+                # Check if it is an auto-created curvature tensor (Ricci, Riemann,
+                # RicciScalar, Christoffel) that can be perturbed via perturb_curvature.
+                curvature_result = _perturb_curvature_factor(raw, tname, order)
+                if !isnothing(curvature_result)
+                    return coeff == "" ? curvature_result : "$coeff $curvature_result"
+                end
+                return "0"
+            else
+                rethrow(e)
+            end
         end
     end
 

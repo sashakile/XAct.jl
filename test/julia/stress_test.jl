@@ -37,7 +37,7 @@
     # See: sxAct-i6cp
     #
     # Status: metric perturb preserves indices — FIXED.
-    #         curvature perturb returns 0 — still broken.
+    #         curvature perturb (Ricci non-zero) — FIXED.
     # ==========================================================
     @testset "Defect 2 — perturb drops indices" begin
         reset_state!()
@@ -53,8 +53,8 @@
         @test occursin("[-m2a,-m2b]", perturb("g2[-m2a,-m2b] g2[-m2c,-m2d]", 1))
         @test occursin("[-m2c,-m2d]", perturb("g2[-m2a,-m2b] g2[-m2c,-m2d]", 1))
 
-        # perturb of curvature is nonzero — still broken
-        @test_broken perturb("RicciCD2[-m2a,-m2b]", 1) != "0"
+        # perturb of curvature is nonzero — FIXED
+        @test perturb("RicciCD2[-m2a,-m2b]", 1) != "0"
     end
 
     # ==========================================================
