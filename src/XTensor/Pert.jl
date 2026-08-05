@@ -1166,14 +1166,58 @@ function _vard_term_contributions(
     covd::AbstractString,
 )::Vector{Tuple{Rational{Int},String}}
     contributions = Tuple{Rational{Int},String}[]
+
+    # Determine the field's natural variance from its definition
+    field_sym = Symbol(field)
+    field_tensor = get(_tensors, field_sym, nothing)
+    field_slots = isnothing(field_tensor) ? nothing : field_tensor.slots
+
     for (i, factor) in enumerate(factors)
         rest = [factors[k] for k in eachindex(factors) if k != i]
         rest_str = join(filter(!isempty, rest), " ")
 
         # Case 1: Direct field occurrence — factor starts with "field["
         if startswith(factor, field * "[")
-            # Contribution: (+coeff, rest_str) or (+coeff, "1") if no rest
             body = isempty(rest_str) ? "1" : rest_str
+
+            # Check if the field factor's indices match the field's natural variance.
+            # When the field appears with opposite variance (e.g. T[a,b] when field
+            # is defined as T[-a,-b]), the variation δT[a,b]/δT[-c,-d] introduces
+            # metric factors g^{ac}g^{bd}. The rest is the field with natural variance
+            # (T[-a,-b]), and the contribution should be the rest raised by the
+            # metric: g[a,c]g[b,d] T[-c,-d] = T[a,b].
+            #
+            # To avoid inserting metric factors explicitly, we swap the variance of
+            # the field's indices in the body to match the factor's variance.
+            # This is equivalent because T[a,b] = g[a,c]g[b,d] T[-c,-d].
+            if !isnothing(field_slots) && !isempty(body) && body != "1"
+                # Extract indices from the field factor
+                bracket_start = findfirst('[', factor)
+                if !isnothing(bracket_start)
+                    inner = factor[(bracket_start + 1):end]
+                    inner = inner[1:prevind(inner, lastindex(inner))]
+                    factor_idxs = strip.(split(inner, ","; keepempty=false))
+                    if length(factor_idxs) == length(field_slots)
+                        needs_swap = false
+                        for (idx_str, slot) in zip(factor_idxs, field_slots)
+                            is_cov = startswith(strip(idx_str), "-")
+                            if is_cov != slot.covariant
+                                needs_swap = true
+                                break
+                            end
+                        end
+                        if needs_swap
+                            # The field factor has opposite variance.
+                            # Swap the variance of the field's indices in the body.
+                            # For each field slot, swap the variance of the corresponding index.
+                            body = _swap_variance(body, field, String[String(x) for x in factor_idxs])
+                            push!(contributions, (coeff, body))
+                            continue
+                        end
+                    end
+                end
+            end
+
             push!(contributions, (coeff, body))
             continue
         end
@@ -1224,6 +1268,61 @@ function _vard_term_contributions(
         end
     end
     contributions
+end
+
+"""
+    _swap_variance(body::String, field::String, target_idxs::Vector{String}) -> String
+
+Swap the variance of indices in the body string that belong to the given field.
+If the body contains `T[-a,-b]` and the target indices are `[a, b]` (opposite variance),
+the result is `T[a,b]`.
+"""
+function _swap_variance(body::String, field::String, target_idxs::Vector{String})::String
+    # Find the field occurrence in the body
+    field_prefix = field * "["
+    pos = findfirst(field_prefix, body)
+    isnothing(pos) && return body
+
+    # Find the matching bracket
+    start_idx = last(pos) + 1
+    depth = 0
+    end_idx = start_idx - 1
+    for i in start_idx:lastindex(body)
+        c = body[i]
+        if c == '['
+            depth += 1
+        elseif c == ']'
+            if depth == 0
+                end_idx = i - 1
+                break
+            end
+            depth -= 1
+        end
+    end
+
+    # Extract the index content
+    idx_content = body[start_idx:end_idx]
+    idxs = strip.(split(idx_content, ","; keepempty=false))
+
+    # Swap the variance of each index
+    if length(idxs) == length(target_idxs)
+        new_idxs = String[]
+        for (idx, target) in zip(idxs, target_idxs)
+            target_is_cov = startswith(strip(target), "-")
+            idx_is_cov = startswith(strip(idx), "-")
+            if idx_is_cov == target_is_cov
+                push!(new_idxs, strip(idx))
+            elseif idx_is_cov
+                push!(new_idxs, lstrip(strip(idx), '-'))
+            else
+                push!(new_idxs, "-" * strip(idx))
+            end
+        end
+        new_content = join(new_idxs, ",")
+        return string(body[1:(start_idx - 1)], new_content, body[(end_idx + 1):end])
+    end
+
+    body
 end
 
 """

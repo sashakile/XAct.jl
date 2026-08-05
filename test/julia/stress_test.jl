@@ -90,7 +90,7 @@
     # See: sxAct-zx0a
     #
     # Status: AllContractions includes RicciScalar — FIXED.
-    #         VarD variance-inconsistent — still broken.
+    #         VarD variance-inconsistent — FIXED.
     # ==========================================================
     @testset "Defect 5 — AllContractions and VarD" begin
         reset_state!()
@@ -101,12 +101,11 @@
         ricci_contractions = AllContractions("RicciCD5[-m5a,-m5b]", :g5)
         @test "RicciScalarCD5[]" in ricci_contractions
 
-        # VarD with correct variance — still broken
+        # VarD with correct variance — FIXED
         def_tensor!(:T5, ["-m5a", "-m5b"], :M5)
         var_result = VarD("T5[-m5a,-m5b] T5[m5a,m5b]", :T5, :CD5)
-        # Should be a single (0,2) tensor, no mixed-variance
-        @test_broken length(split(strip(var_result), r"\s+")) == 1
-        @test_broken !occursin(r"T5\[[^-]", var_result)
+        # Should be a single term with consistent variance: 2 T^{ab}
+        @test var_result == "2 T5[m5a,m5b]"
     end
 
     # ==========================================================
