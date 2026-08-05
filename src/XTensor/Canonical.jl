@@ -574,32 +574,40 @@ function CommuteCovDs(
 )::String
     covd_str = string(covd_name)
 
-    # Escape special regex chars in idx1, idx2 (e.g. the leading '-')
-    re_esc(s)::String = replace(s, r"([-\[\].\^$*+?{}|()])" => s"\\\1")
+    # Parse expression using the unified AST parser
+    terms = _parse_expression(expr)
+    isempty(terms) &&
+        error("CommuteCovDs: expression is empty or zero: $expr")
 
-    # Pattern: covd[idx1][covd[idx2][TENSOR_NAME[SLOTS]]]
-    pat = Regex(
-        covd_str *
-        raw"\[" *
-        re_esc(idx1) *
-        raw"\]\[" *
-        covd_str *
-        raw"\[" *
-        re_esc(idx2) *
-        raw"\]\[" *
-        raw"(\w+)\[(.*?)\]" *
-        raw"\]\]",
-    )
-    m = match(pat, expr)
-    if isnothing(m)
-        error("CommuteCovDs: pattern not found in expression: $expr")
+    # Find the term with the matching nested CovD pattern in the AST
+    # Look for: CovDFactor(covd_name, idx1, [CovDFactor(covd_name, idx2, [TensorFactor(...)])])
+    tensor_name = nothing
+    slots = String[]
+    found_term_idx = nothing
+
+    for (ti, term) in enumerate(terms)
+        isempty(term.factors) && continue
+        f = term.factors[1]
+        (f isa CovDFactor && f.covd_name == covd_name && f.deriv_index == idx1) || continue
+        inner = f.operand
+        if length(inner) == 1 && inner[1] isa CovDFactor
+            inner_cd = inner[1]
+            if inner_cd.covd_name == covd_name && inner_cd.deriv_index == idx2
+                inner_op = inner_cd.operand
+                if length(inner_op) == 1 && inner_op[1] isa TensorFactor
+                    tf = inner_op[1]
+                    tensor_name = string(tf.tensor_name)
+                    slots = copy(tf.indices)
+                    found_term_idx = ti
+                    break
+                end
+            end
+        end
     end
 
-    tensor_name = m[1]
-    slots_str = m[2]   # e.g. "-cvc" or "-cvc,-cvd,cve"
-
-    # Parse slot strings
-    slots = strip.(split(slots_str, ","))
+    if isnothing(found_term_idx)
+        error("CommuteCovDs: pattern not found in expression: $expr")
+    end
 
     # Lookup tensor to find its manifold
     tensor_sym = Symbol(tensor_name)
@@ -909,6 +917,70 @@ function _split_expression_terms(expr::AbstractString)::Vector{String}
     terms
 end
 
+# ============================================================
+# AST-based CovD chain extraction (Phase C: unified parser)
+# ============================================================
+
+"""
+    _extract_covd_chain_from_ast(term::TermAST, covd_name::Symbol) -> Union{Nothing, Tuple{Vector{String}, String, Vector{String}}}
+
+Extract covariant derivative chain information from a TermAST by walking the
+CovDFactor chain. Returns `(covd_indices, inner_tensor_name, inner_slots)`
+where:
+- `covd_indices` is the list of CovD indices in outer-to-inner order
+- `inner_tensor_name` is the string name of the innermost tensor
+- `inner_slots` is the list of slot strings
+
+Returns `nothing` if the term doesn't contain a CovD chain anchored on
+`covd_name`.
+"""
+function _extract_covd_chain_from_ast(term::TermAST, covd_name::Symbol)
+    isempty(term.factors) && return nothing
+
+    # The chain must start with a CovDFactor with the matching covd_name
+    f = term.factors[1]
+    (f isa CovDFactor && f.covd_name == covd_name) || return nothing
+
+    # Walk the chain
+    covd_indices = String[]
+    current = f
+    while current isa CovDFactor
+        current.covd_name == covd_name || return nothing
+        push!(covd_indices, current.deriv_index)
+        inner = current.operand
+        if length(inner) == 1 && inner[1] isa CovDFactor
+            current = inner[1]
+        elseif length(inner) == 1 && inner[1] isa TensorFactor
+            tf = inner[1]
+            return (covd_indices, string(tf.tensor_name), copy(tf.indices))
+        else
+            # Not a simple chain (e.g., product inside CovD operand)
+            return nothing
+        end
+    end
+    nothing
+end
+
+"""
+    _term_to_string(term::TermAST) -> String
+
+Serialize a TermAST to a string representation suitable for the SortCovDs
+pipeline. Produces the same format as the string-based parser.
+"""
+function _term_to_string(term::TermAST)::String
+    coeff = term.coeff
+    factors_str = _term_key_str(term.factors)
+    isempty(factors_str) && return string(coeff)
+
+    if coeff == 1 // 1
+        return factors_str
+    elseif coeff == -1 // 1
+        return "- " * factors_str
+    else
+        return string(coeff) * " " * factors_str
+    end
+end
+
 """
     _commute_covd_pair(covd_str, covd_indices, swap_pos, tensor_name, inner_slots, manifold_sym)
 
@@ -1173,8 +1245,12 @@ function SortCovDs(expr::AbstractString, covd_name::Symbol)::String
     current = s
 
     for _ in 1:max_iters
-        terms = _split_expression_terms(current)
-        isempty(terms) && return "0"
+        # Parse via unified AST (_parse_expression) instead of string-based
+        # _split_expression_terms. Each TermAST is serialized back to a string
+        # for the commutation pipeline, ensuring the AST round-trip is lossless.
+        ast_terms = _parse_expression(current)
+        isempty(ast_terms) && return "0"
+        terms = _term_to_string.(ast_terms)
 
         found_unsorted = false
 
@@ -1247,8 +1323,9 @@ function SortCovDs(expr::AbstractString, covd_name::Symbol)::String
     # Simplify the non-CovD correction terms by canonicalizing them.
     # Split into terms that contain any CovD reference and those that don't.
     # Only the purely non-CovD terms can be safely sent through ToCanonical.
-    terms = _split_expression_terms(current)
-    isempty(terms) && return "0"
+    ast_terms = _parse_expression(current)
+    isempty(ast_terms) && return "0"
+    terms = _term_to_string.(ast_terms)
 
     covd_terms = String[]
     plain_terms = String[]
