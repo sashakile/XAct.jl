@@ -73,8 +73,17 @@ Apply ContractMetric to a single term.
 Returns the contracted TermAST, or nothing if the term is zero.
 """
 function _contract_term(term::TermAST)::TermAST
+    # Handle self-traces first (e.g. R^a_a → RicciScalar, no metric factor involved)
+    current = _contract_self_trace(term)
+    if _is_zero_term(current)
+        return ZERO_TERM
+    end
+    if current !== term
+        # Self-trace rule fired, no need for metric contraction loop
+        return current
+    end
+
     # Iteratively contract metrics until none remain
-    current = term
     max_iters = 20
     for _ in 1:max_iters
         result = _contract_one_metric(current)
@@ -88,6 +97,66 @@ function _contract_term(term::TermAST)::TermAST
         current = result
     end
     current
+end
+
+"""
+    _contract_self_trace(term::TermAST) -> TermAST
+
+Detect and handle self-traces within individual factors (no metric factor involved).
+A self-trace occurs when the same bare index label appears twice with opposite
+variance in a single factor, e.g. `RicciCD[ma,-ma]` → `RicciScalarCD[]`.
+
+Returns the contracted term, or the original term unchanged if no self-trace is found.
+Returns ZERO_TERM if the self-trace is on a traceless tensor (e.g. Weyl).
+"""
+function _contract_self_trace(term::TermAST)::TermAST
+    new_factors = FactorNode[]
+    traced = false
+
+    for f in term.factors
+        f isa TensorFactor || return term  # CovDFactor not handled yet
+
+        # Check for self-trace: same bare label appearing twice with opposite variance
+        self_trace_bare = nothing
+        for i in 1:length(f.indices)
+            for j in (i + 1):length(f.indices)
+                if _bare(f.indices[i]) == _bare(f.indices[j]) &&
+                   _is_covariant(f.indices[i]) != _is_covariant(f.indices[j])
+                    self_trace_bare = _bare(f.indices[i])
+                    break
+                end
+            end
+            !isnothing(self_trace_bare) && break
+        end
+
+        if isnothing(self_trace_bare)
+            push!(new_factors, f)
+            continue
+        end
+
+        # Traceless tensor (e.g. Weyl) → zero
+        if f.tensor_name in _traceless_tensors
+            return ZERO_TERM
+        end
+
+        # Registered trace scalar (e.g. Ricci → RicciScalar)
+        if haskey(_trace_scalars, f.tensor_name)
+            # Only fire if ALL indices are traced
+            remaining_free = [
+                idx for idx in f.indices if _bare(idx) != self_trace_bare
+            ]
+            if isempty(remaining_free)
+                (scalar_name, coeff_int) = _trace_scalars[f.tensor_name]
+                push!(new_factors, TensorFactor(scalar_name, String[]))
+                traced = true
+                continue
+            end
+        end
+
+        push!(new_factors, f)
+    end
+
+    traced ? TermAST(term.coeff, new_factors) : term
 end
 
 """

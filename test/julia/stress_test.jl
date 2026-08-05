@@ -68,19 +68,18 @@
     # Defect 4 — Contract fails to reduce g^{ab}R_{ab} to Ricci scalar
     # See: sxAct-fzs3
     #
-    # Status: g^{ab}R_{ab} → RicciScalar is FIXED.
-    #         R^{a}_{a} self-trace still broken.
+    # Status: BOTH g^{ab}R_{ab} → RicciScalar AND R^{a}_{a} → RicciScalar — FIXED
     # ==========================================================
     @testset "Defect 4 — Contract traces to Ricci scalar" begin
         reset_state!()
         def_manifold!(:M4, 4, [:m4a, :m4b, :m4c, :m4d, :m4e, :m4f])
         def_metric!(-1, "g4[-m4a,-m4b]", :CD4)
 
-        # g^{ab} R_{ab} → Ricci scalar — FIXED
+        # g^{ab} R_{ab} → Ricci scalar
         @test Contract("g4[m4a,m4b] RicciCD4[-m4a,-m4b]") == "RicciScalarCD4[]"
 
-        # R^{a}_{a} → Ricci scalar (self-trace) — still broken
-        @test_broken Contract("RicciCD4[m4a,-m4a]") == "RicciScalarCD4[]"
+        # R^{a}_{a} → Ricci scalar (self-trace)
+        @test Contract("RicciCD4[m4a,-m4a]") == "RicciScalarCD4[]"
 
         # Existing traces remain green
         @test Contract("g4[m4a,m4b] g4[-m4a,-m4b]") == "4"
