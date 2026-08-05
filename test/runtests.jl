@@ -785,3 +785,6 @@ include("julia/test_xperm.jl")
 include("julia/test_xtensor.jl")
 include("julia/test_xinvar.jl")
 include("julia/test_docs.jl")
+
+# Regression seeds for sandbox-trial defects (all @test_broken until fixed)
+include("julia/stress_test.jl")
