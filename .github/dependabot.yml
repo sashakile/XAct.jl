@@ -12,6 +12,18 @@ updates:
     commit-message:
       prefix: "ci"
 
+  # Julia — Project.toml [compat] entries (replaces CompatHelper; the action
+  # repo juliaregistries/compathelper was deleted upstream)
+  - package-ecosystem: julia
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - julia
+    commit-message:
+      prefix: "deps"
+
   # Python (pip) — oracle/Dockerfile and pyproject.toml
   - package-ecosystem: pip
     directory: /
